@@ -61,6 +61,7 @@ public final class EditorBridge implements Disposable {
         Disposer.register(this, browser);
         Disposer.register(this, query);
         instrument();
+        installPinchZoom();
 
         if (!EditorResources.isBundled()) {
             LOG.error("the modux editor bundle is missing from the plugin: build editor/ first");
@@ -100,6 +101,15 @@ public final class EditorBridge implements Disposable {
 
             @Override
             public void onLoadEnd(CefBrowser cef, CefFrame frame, int httpStatusCode) {
+                // Lift the frame-rate cap. On macOS JBR routes even a "windowed" JCEF browser through
+                // an offscreen surface it composites into Swing, so CEF's windowless frame rate still
+                // governs it — and its default is 30fps, which makes panning/zooming a large canvas
+                // feel choppy ("a tirones"). 60 is smooth and matches the usual display refresh.
+                // Set on the main frame's load, once the browser is realized. Harmless if the mode
+                // turns out to be truly windowed (the call is a no-op there).
+                if (frame.isMain()) {
+                    cef.setWindowlessFrameRate(60);
+                }
                 // Debugging the webview: with -Dmodux.devtools the JCEF DevTools open once the page
                 // is loaded, so a render freeze can be paused and read (there is no right-click
                 // «Open DevTools» here). Opened after load so the browser is realized.
@@ -112,9 +122,72 @@ public final class EditorBridge implements Disposable {
     }
 
     private boolean devtoolsOpened = false;
+    private boolean magnifyLogged = false;
 
     public JComponent component() {
         return browser.getComponent();
+    }
+
+    /**
+     * Two-finger pinch-to-zoom on the canvas (macOS).
+     *
+     * <p>JBR does not hand a trackpad pinch to the web view as a pinch — it reaches CEF as ordinary
+     * wheel events, indistinguishable from a two-finger scroll (verified by capturing the events:
+     * {@code ctrlKey} is never set). So we tap the gesture one layer lower, at Swing: macOS delivers
+     * a magnification gesture to the browser's AWT component, and each step is forwarded into the
+     * editor as a wheel event at the cursor, which the canvas's existing d3-zoom turns into a zoom
+     * around that point.
+     *
+     * <p>The Apple gesture API ({@code com.apple.eawt.event}) is macOS-only and off the compile
+     * classpath, so it is reached by reflection; on any other platform, or if the classes are
+     * missing, this quietly does nothing and pinch falls back to scroll-zoom.
+     */
+    private void installPinchZoom() {
+        JComponent component = browser.getComponent();
+        try {
+            var gestureUtilities = Class.forName("com.apple.eawt.event.GestureUtilities");
+            var gestureListener = Class.forName("com.apple.eawt.event.GestureListener");
+            var magnificationListener = Class.forName("com.apple.eawt.event.MagnificationListener");
+            Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    magnificationListener.getClassLoader(),
+                    new Class<?>[]{magnificationListener},
+                    (proxy, method, args) -> {
+                        if ("magnify".equals(method.getName()) && args != null && args.length == 1) {
+                            double m = (double) args[0].getClass().getMethod("getMagnification").invoke(args[0]);
+                            onMagnify(component, m);
+                        }
+                        return null;
+                    });
+            gestureUtilities.getMethod("addGestureListenerTo", JComponent.class, gestureListener)
+                    .invoke(null, component, listener);
+            LOG.info("modux editor: pinch-to-zoom gesture listener attached");
+        } catch (Throwable t) {
+            LOG.info("modux editor: pinch-to-zoom unavailable (" + t.getClass().getSimpleName() + ": " + t.getMessage() + ")");
+        }
+    }
+
+    /** Forward one magnification step to the canvas as a wheel-at-cursor zoom. */
+    private void onMagnify(JComponent component, double magnification) {
+        if (magnification == 0 || magnification <= -1) return;
+        if (!magnifyLogged) {
+            magnifyLogged = true;
+            LOG.info("modux editor: magnify gesture received (m=" + magnification + ")");
+        }
+        // Cursor position in the browser viewport (component px == client px — the browser fills it).
+        var p = component.getMousePosition();
+        double x = p != null ? p.x : component.getWidth() / 2.0;
+        double y = p != null ? p.y : component.getHeight() / 2.0;
+        // The canvas maps a wheel event to scale 2^(-clamp(deltaY)·0.005). Invert so this
+        // magnification step becomes the matching zoom: deltaY = -log2(1+m)/0.005.
+        double deltaY = -(Math.log1p(magnification) / Math.log(2)) / 0.005;
+        String js = "(function(){"
+                + "function f(r){for(const e of r.querySelectorAll('*')){"
+                + "if(e.tagName==='MODUX-CANVAS')return e;"
+                + "if(e.shadowRoot){const x=f(e.shadowRoot);if(x)return x;}}return null;}"
+                + "var c=f(document);if(!c)return;var svg=c.renderRoot.querySelector('svg.main');if(!svg)return;"
+                + "svg.dispatchEvent(new WheelEvent('wheel',{deltaY:" + deltaY
+                + ",clientX:" + x + ",clientY:" + y + ",bubbles:true,cancelable:true}));})()";
+        browser.getCefBrowser().executeJavaScript(js, browser.getCefBrowser().getURL(), 0);
     }
 
     /** Serve one request from the editor. Errors come back as data, never as a dead promise. */

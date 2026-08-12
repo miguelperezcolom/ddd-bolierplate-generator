@@ -167,7 +167,22 @@ export class ModuxCanvas extends LitElement {
   /** Manual bend points per edge id (host-owned geometry, like node positions). */
   @property({ attribute: false }) edgePoints: Record<string, Point[]> = {};
 
-  @state() private _t: ZoomTransform = zoomIdentity;
+  /**
+   * The pan/zoom transform. NOT reactive: a wheel gesture fires many events, and re-rendering the
+   * whole scene (every node/edge template) per tick is what made zoom crawl on the big unified
+   * canvas. Instead the zoom handler moves ONE `<g class="viewport">` transform imperatively, and a
+   * debounced re-render refreshes the minimap. Reads (hit-testing, sceneFromClient) see it live.
+   */
+  private _t: ZoomTransform = zoomIdentity;
+  /** Cached reference to the world <g> so the hot zoom path never hits querySelector. */
+  private _viewportEl: SVGGElement | null = null;
+  /** True between a zoom/pan gesture's start and end — freezes hover so it can't re-render per frame. */
+  private _zoomingActive = false;
+  /**
+   * Minimap projection (scene→minimap), captured on render so the zoom path can move the minimap's
+   * viewport box imperatively — without a full scene re-render. Null until the minimap is drawn.
+   */
+  private _minimapGeom: { minX: number; minY: number; scale: number } | null = null;
   @state() private _dragPos: { id: string; x: number; y: number } | null = null;
   /** Dragging a menu row: every landing slot, with the one under the pointer lit. */
   @state() private _menuSlots: {
@@ -212,6 +227,22 @@ export class ModuxCanvas extends LitElement {
       cursor: default;
       user-select: none;
       -webkit-user-select: none;
+    }
+    /*
+     * Pan/zoom is driven through the compositor, not by re-rasterizing vectors. The transform is a
+     * CSS property (set imperatively), and "transform-box: view-box; transform-origin: 0 0" makes it
+     * line up exactly with the equivalent SVG transform attribute (the main svg has no viewBox and is
+     * 100% x 100%, so 1px == 1 user unit from the top-left). will-change is toggled ON only while a
+     * gesture is live: it promotes the group to its own layer so the browser scales a cached raster
+     * (buttery under JCEF's offscreen software rendering) instead of repainting every node and edge
+     * per wheel tick. It's removed on gesture end so the layer re-rasterizes crisp at rest.
+     */
+    svg.main g.viewport {
+      transform-box: view-box;
+      transform-origin: 0 0;
+    }
+    svg.main g.viewport.zooming {
+      will-change: transform;
     }
     svg.main.linking {
       cursor: crosshair;
@@ -398,6 +429,20 @@ export class ModuxCanvas extends LitElement {
     const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement;
     this._zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 4])
+      .wheelDelta((event: WheelEvent) => {
+        // Map a wheel/trackpad event to a zoom step (used as the exponent of 2). d3's default is a
+        // plain linear 0.002·deltaY, which does not survive a macOS trackpad: JBR delivers the
+        // two-finger *pinch* not as a pinch (ctrlKey is never set) but as ordinary wheel events with
+        // momentum spikes up to ~2600, so a single event became a ~38× jump ("da un salto"), while a
+        // gentle two-finger scroll emits deltas of ~0–4 that barely zoomed ("empieza lento").
+        // Clamping the delta kills the lurch (no event can move the zoom by more than one clamped
+        // step); the higher factor keeps gentle scrolls responsive. Non-pixel modes (a real mouse
+        // wheel) are normalized to pixels first so a notch still zooms.
+        const px =
+          event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * 400 : event.deltaY;
+        const clamped = Math.max(-40, Math.min(40, px));
+        return -clamped * 0.005;
+      })
       .filter((event: Event) => {
         // Wheel zooms anywhere. Panning is a deliberate gesture: hold space and
         // drag with the left button. A plain drag is a rubber-band selection,
@@ -406,10 +451,56 @@ export class ModuxCanvas extends LitElement {
         if (event.type === 'wheel') return true;
         return this._spaceDown && (event as MouseEvent).button === 0;
       })
+      .on('start', () => {
+        // Promote the group to its own compositor layer for the duration of the gesture.
+        this._viewportEl?.classList.add('zooming');
+        // Freeze hover/spotlight while zooming. As the scene scales under a stationary cursor, nodes
+        // slide across it and fire pointerenter/leave every frame — each recomputes the spotlight and
+        // triggers a full re-render (and a visible dim/undim flicker). Clear any active spotlight once
+        // here; setFocusNode() then ignores hover until the gesture ends.
+        this._zoomingActive = true;
+        if (this._focusNodeId) this._focusNodeId = null;
+      })
       .on('zoom', (event) => {
         this._t = event.transform;
+        this.applyViewportTransform();
+      })
+      .on('end', () => {
+        // Drop the layer so the vectors re-rasterize crisp at the final scale. No requestUpdate here:
+        // re-rendering the whole scene on every pause in scrolling was a visible hitch. The minimap
+        // is kept in sync imperatively (applyViewportTransform), so nothing else needs a re-render.
+        this._viewportEl?.classList.remove('zooming');
+        this._zoomingActive = false;
       });
     select(svgEl).call(this._zoomBehavior);
+    this._viewportEl = this.renderRoot.querySelector('svg.main > g.viewport') as SVGGElement | null;
+    this.applyViewportTransform();
+  }
+
+  /**
+   * Move the world group to the current pan/zoom, imperatively — no scene re-render. The transform
+   * is set as a CSS property (not the SVG attribute) so it goes through the compositor: while the
+   * `.zooming` layer is live the browser scales a cached raster instead of repainting every vector.
+   */
+  private applyViewportTransform(): void {
+    const g = this._viewportEl ?? (this._viewportEl = this.renderRoot.querySelector('svg.main > g.viewport') as SVGGElement | null);
+    if (g) g.style.transform = `translate(${this._t.x}px, ${this._t.y}px) scale(${this._t.k})`;
+    this.syncMinimapViewport();
+  }
+
+  /** Move the minimap's viewport box to match the current pan/zoom — no scene re-render. */
+  private syncMinimapViewport(): void {
+    const geom = this._minimapGeom;
+    if (!geom) return;
+    const box = this.renderRoot.querySelector('rect.minimap-viewport') as SVGRectElement | null;
+    if (!box) return;
+    const rect = this.getBoundingClientRect();
+    const vx = -this._t.x / this._t.k;
+    const vy = -this._t.y / this._t.k;
+    box.setAttribute('x', String((vx - geom.minX) * geom.scale));
+    box.setAttribute('y', String((vy - geom.minY) * geom.scale));
+    box.setAttribute('width', String((rect.width / this._t.k) * geom.scale));
+    box.setAttribute('height', String((rect.height / this._t.k) * geom.scale));
   }
 
   protected willUpdate(changed: PropertyValues<this>): void {
@@ -627,7 +718,8 @@ export class ModuxCanvas extends LitElement {
       this._wpDrag ||
       this._resize ||
       this._rubber ||
-      this._spaceDown
+      this._spaceDown ||
+      this._zoomingActive
     );
   }
 
@@ -638,6 +730,7 @@ export class ModuxCanvas extends LitElement {
    * stay lit together. Passing null (pointer left) clears the spotlight.
    */
   private setFocusNode(id: string | null): void {
+    if (this._zoomingActive) return; // hover is frozen mid-zoom (see the zoom 'start' handler)
     if (id && this.gestureActive()) return;
     if (id === this._focusNodeId) return;
     this._focusNodeId = id;
@@ -1832,6 +1925,8 @@ export class ModuxCanvas extends LitElement {
     const MW = 160;
     const MH = 110;
     const scale = Math.min(MW / bounds.w, MH / bounds.h);
+    // Remember the projection so applyViewportTransform() can move the viewport box on its own.
+    this._minimapGeom = { minX: bounds.minX, minY: bounds.minY, scale };
     const rect = this.getBoundingClientRect();
     // visible scene area under the current transform
     const vx = (0 - this._t.x) / this._t.k;
@@ -1869,6 +1964,7 @@ export class ModuxCanvas extends LitElement {
               stroke-width="0.4"></rect>`;
           })}
           <rect
+            class="minimap-viewport"
             x=${(vx - bounds.minX) * scale}
             y=${(vy - bounds.minY) * scale}
             width=${vw * scale}
@@ -1938,7 +2034,7 @@ export class ModuxCanvas extends LitElement {
               </marker>`,
           )}
         </defs>
-        <g transform="translate(${this._t.x}, ${this._t.y}) scale(${this._t.k})">
+        <g class="viewport" transform="translate(${this._t.x}, ${this._t.y}) scale(${this._t.k})">
           <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
                 pointer-events="none"></rect>
           ${edgeHits}
