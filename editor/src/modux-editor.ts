@@ -232,7 +232,7 @@ export class ModuxEditor extends LitElement {
    * Deep link from the IDE host (§12): open at a given lens and curated scope. Applied once — the
    * user is free to switch views afterwards — so a model round-trip does not snap them back.
    */
-  @property({ attribute: false }) open: { view?: string; activeViewId?: string } | null = null;
+  @property({ attribute: false }) open: { activeViewId?: string } | null = null;
 
   /**
    * True inside the IDE plugin, where a view is a document file (§12): creating one opens its
@@ -315,26 +315,8 @@ export class ModuxEditor extends LitElement {
   @state() private _tilt = false;
   /** Keyboard-shortcuts help popover (toggled with ?). */
   @state() private _helpOpen = false;
-  @state() private _newName = '';
-  @state() private _newBoundedContextId = '';
-  @state() private _newArchetype = 'TRIGGERS';
-  @state() private _newTriggerAggId = '';
-  @state() private _newTriggerEvent = '';
-  @state() private _newTargetId = '';
   @state() private _undoStack: EditOp[][] = [];
   @state() private _redoStack: EditOp[][] = [];
-  @state() private _newStepName = '';
-  @state() private _newStepType: 'AUTOMATED' | 'HUMAN' = 'AUTOMATED';
-  @state() private _newStepRole = '';
-  @state() private _newStepDeadline = '';
-  @state() private _editStepRole = '';
-  @state() private _editStepDeadline = '';
-  @state() private _editStepComp = '';
-  @state() private _newStepUseCase = '';
-  @state() private _newStepEmits = '';
-  @state() private _editStepUseCase = '';
-  @state() private _editStepEmits = '';
-  @state() private _editStepAwaits = '';
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
 
@@ -1015,7 +997,6 @@ export class ModuxEditor extends LitElement {
 
   protected willUpdate(changed: PropertyValues): void {
     if (this.open && !this._opened && (changed.has('open') || changed.has('model'))) {
-      if (this.open.view) this._view = this.open.view as ViewId;
       this._activeViewId = this.open.activeViewId ?? '';
       this._opened = true;
     }
@@ -1867,65 +1848,6 @@ export class ModuxEditor extends LitElement {
     }
   }
 
-  private addStepFromToolbar(): void {
-    const name = this._newStepName.trim();
-    if (!name || !this._selectedId) return;
-    const selectedProcess = (this.model.processes ?? []).find((p) => p.id === this._selectedId);
-    const owner = selectedProcess ?? this.owningProcessOf(this._selectedId);
-    if (!owner) return;
-    const afterStepId = selectedProcess
-      ? undefined // process selected → append at the end
-      : this._selectedId;
-    this.command({
-      kind: 'add-process-step',
-      processId: owner.id,
-      id: `step-${slug(name)}`,
-      name,
-      stepType: this._newStepType,
-      roleId: this._newStepType === 'HUMAN' ? this._newStepRole.trim() || undefined : undefined,
-      deadline: this._newStepType === 'HUMAN' ? this._newStepDeadline.trim() || undefined : undefined,
-      afterStepId,
-    });
-    this._newStepName = '';
-    this._newStepDeadline = '';
-  }
-
-  private addWorkflowStepFromToolbar(): void {
-    const name = this._newStepName.trim();
-    if (!name || !this._selectedId) return;
-    const selectedWorkflow = (this.model.workflows ?? []).find((w) => w.id === this._selectedId);
-    const owner = selectedWorkflow ?? this.owningWorkflowOf(this._selectedId);
-    if (!owner) return;
-    this.command({
-      kind: 'add-workflow-step',
-      workflowId: owner.id,
-      id: `wfstep-${slug(name)}`,
-      name,
-      emittedEventName: this._newStepEmits.trim() || undefined,
-      targetUseCaseId: this._newStepUseCase || undefined,
-      // Dragging a step onto another declares dependencies later; a selected
-      // step is the natural predecessor of the new one.
-      dependsOnStepIds: selectedWorkflow ? undefined : [this._selectedId],
-      afterStepId: selectedWorkflow ? undefined : this._selectedId,
-    });
-    this._newStepName = '';
-    this._newStepEmits = '';
-  }
-
-  private applyWorkflowStepEdit(): void {
-    const stepId = this._selectedId;
-    const owner = stepId ? this.owningWorkflowOf(stepId) : undefined;
-    if (!stepId || !owner) return;
-    this.command({
-      kind: 'update-workflow-step',
-      workflowId: owner.id,
-      id: stepId,
-      emittedEventName: this._editStepEmits.trim() || undefined,
-      targetUseCaseId: this._editStepUseCase || undefined,
-      completionEventName: this._editStepAwaits.trim() || undefined,
-    });
-  }
-
   private addRagContentSourceFromToolbar(): void {
     const uri = this._newRagSourceUri.trim();
     const ragId = this._selectedId;
@@ -2006,18 +1928,6 @@ export class ModuxEditor extends LitElement {
   private onElementSelected(e: CustomEvent): void {
     this._selectedId = e.detail.id;
     this._multi = [];
-    if (e.detail.kind === 'process-step') {
-      const step = this.owningProcessOf(e.detail.id)?.steps.find((s) => s.id === e.detail.id);
-      this._editStepRole = step?.roleId ?? '';
-      this._editStepDeadline = step?.deadline ?? '';
-      this._editStepComp = step?.compensationUseCaseId ?? '';
-    }
-    if (e.detail.kind === 'workflow-step') {
-      const step = this.owningWorkflowOf(e.detail.id)?.steps.find((s) => s.id === e.detail.id);
-      this._editStepUseCase = step?.targetUseCaseId ?? '';
-      this._editStepEmits = step?.emittedEventName ?? '';
-      this._editStepAwaits = step?.completionEventName ?? '';
-    }
     this.emit('modux-select', { elementType: e.detail.kind, id: e.detail.id });
   }
 
@@ -2214,20 +2124,6 @@ export class ModuxEditor extends LitElement {
           (px.publishedByExternalSystemId ? externalIds.has(px.publishedByExternalSystemId) : false),
       ),
     };
-  }
-
-  private applyStepEdit(): void {
-    const stepId = this._selectedId;
-    const owner = stepId ? this.owningProcessOf(stepId) : undefined;
-    if (!stepId || !owner) return;
-    this.command({
-      kind: 'update-process-step',
-      processId: owner.id,
-      id: stepId,
-      roleId: this._editStepRole.trim() || undefined,
-      deadline: this._editStepDeadline.trim() || undefined,
-      compensationUseCaseId: this._editStepComp.trim() || undefined,
-    });
   }
 
   /**
@@ -4181,44 +4077,6 @@ export class ModuxEditor extends LitElement {
     `;
   }
 
-  private createElementFromToolbar(): void {
-    const name = this._newName.trim();
-    if (!name) return;
-    if (this._view === 'aggregates') {
-      const boundedContextId = this._newBoundedContextId || this.model.boundedContexts[0]?.id;
-      if (!boundedContextId) return;
-      this.command({ kind: 'add-aggregate', id: `agg-${slug(name)}`, name, boundedContextId });
-    } else if (this._view === 'flows') {
-      const triggerAggregateId = this._newTriggerAggId || this.model.aggregates?.[0]?.id;
-      const targetId = this._newTargetId || this.model.boundedContexts[0]?.id;
-      const triggerEvent = this._newTriggerEvent.trim();
-      if (!triggerAggregateId || !targetId || !triggerEvent) return;
-      this.command({
-        kind: 'add-flow',
-        id: `flow-${slug(name)}`,
-        name,
-        archetype: this._newArchetype,
-        triggerAggregateId,
-        triggerEvent,
-        targetId,
-      });
-      this._newTriggerEvent = '';
-    } else if (this._view === 'processes') {
-      const boundedContextId = this._newBoundedContextId || this.model.boundedContexts[0]?.id;
-      if (!boundedContextId) return;
-      this.command({
-        kind: 'add-process',
-        id: `proc-${slug(name)}`,
-        name,
-        boundedContextId,
-        triggerAggregateId: this._newTriggerAggId || this.model.aggregates?.[0]?.id,
-        triggerEvent: this._newTriggerEvent.trim() || undefined,
-      });
-      this._newTriggerEvent = '';
-    }
-    this._newName = '';
-  }
-
   private sceneFor(view: ViewId, opts?: { expandAll?: boolean }) {
     const vl = this.viewLayout(view);
     const model = this.filteredModel();
@@ -4644,97 +4502,6 @@ export class ModuxEditor extends LitElement {
             `
           : ''}
         <input
-          class="new-name"
-          ?hidden=${this._view !== 'aggregates' && this._view !== 'flows' && this._view !== 'processes'}
-          placeholder=${({
-            aggregates: 'Nuevo agregado…',
-            flows: 'Nuevo flow…',
-            processes: 'Nuevo proceso…',
-          } as Partial<Record<ViewId, string>>)[this._view] ?? ''}
-          .value=${this._newName}
-          @input=${(e: Event) => (this._newName = (e.target as HTMLInputElement).value)}
-          @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createElementFromToolbar()}
-        />
-        ${this._view === 'aggregates' || this._view === 'processes'
-          ? html`<select
-              title=${this._view === 'aggregates'
-                ? 'Contexto del nuevo agregado'
-                : 'Contexto dueño del proceso'}
-              @change=${(e: Event) => (this._newBoundedContextId = (e.target as HTMLSelectElement).value)}
-            >
-              ${this.model.boundedContexts.map(
-                (m) =>
-                  html`<option
-                    value=${m.id}
-                    ?selected=${m.id === (this._newBoundedContextId || this.model.boundedContexts[0]?.id)}
-                  >
-                    ${m.name}
-                  </option>`,
-              )}
-            </select>`
-          : ''}
-        ${this._view === 'flows' || this._view === 'processes'
-          ? html`
-              ${this._view === 'flows'
-                ? html`<select
-                    title="Arquetipo del nuevo flow"
-                    @change=${(e: Event) =>
-                      (this._newArchetype = (e.target as HTMLSelectElement).value)}
-                  >
-                    ${['MATERIALIZES', 'TRIGGERS', 'ORCHESTRATES', 'NOTIFIES'].map(
-                      (a) =>
-                        html`<option value=${a} ?selected=${a === this._newArchetype}>${a}</option>`,
-                    )}
-                  </select>`
-                : ''}
-              <select
-                title="Agregado que dispara"
-                @change=${(e: Event) => (this._newTriggerAggId = (e.target as HTMLSelectElement).value)}
-              >
-                ${(this.model.aggregates ?? []).map(
-                  (a) =>
-                    html`<option
-                      value=${a.id}
-                      ?selected=${a.id === (this._newTriggerAggId || this.model.aggregates?.[0]?.id)}
-                    >
-                      ${a.name}
-                    </option>`,
-                )}
-              </select>
-              <input
-                class="new-name evt"
-                placeholder="Evento trigger…"
-                .value=${this._newTriggerEvent}
-                @input=${(e: Event) => (this._newTriggerEvent = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) =>
-                  e.key === 'Enter' && this.createElementFromToolbar()}
-              />
-              ${this._view === 'flows'
-                ? html`<select
-                    title="Destino del nuevo flow"
-                    @change=${(e: Event) => (this._newTargetId = (e.target as HTMLSelectElement).value)}
-                  >
-                    ${[...this.model.boundedContexts, ...this.model.externalSystems].map(
-                      (t) =>
-                        html`<option
-                          value=${t.id}
-                          ?selected=${t.id === (this._newTargetId || this.model.boundedContexts[0]?.id)}
-                        >
-                          ${t.name}
-                        </option>`,
-                    )}
-                  </select>`
-                : ''}
-            `
-          : ''}
-        <button
-          class="tab"
-          ?hidden=${this._view !== 'aggregates' && this._view !== 'flows' && this._view !== 'processes'}
-          @click=${this.createElementFromToolbar}
-        >
-          ＋ Crear
-        </button>
-        <input
           class="import-api-file"
           type="file"
           hidden
@@ -4784,172 +4551,6 @@ export class ModuxEditor extends LitElement {
               >
                 ＋ Fuente
               </button>
-            `
-          : ''}
-        ${this._view === 'processes' &&
-        this._selectedId &&
-        ((this.model.processes ?? []).some((p) => p.id === this._selectedId) ||
-          this.owningProcessOf(this._selectedId))
-          ? html`
-              <span class="sep"></span>
-              <input
-                class="new-name evt"
-                placeholder="Nuevo paso…"
-                .value=${this._newStepName}
-                @input=${(e: Event) => (this._newStepName = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addStepFromToolbar()}
-              />
-              <select
-                title="Tipo de paso"
-                @change=${(e: Event) =>
-                  (this._newStepType = (e.target as HTMLSelectElement).value as
-                    | 'AUTOMATED'
-                    | 'HUMAN')}
-              >
-                ${['AUTOMATED', 'HUMAN'].map(
-                  (t) => html`<option value=${t} ?selected=${t === this._newStepType}>${t}</option>`,
-                )}
-              </select>
-              ${this._newStepType === 'HUMAN'
-                ? html`<input
-                      class="new-name evt"
-                      placeholder="Rol…"
-                      .value=${this._newStepRole}
-                      @input=${(e: Event) =>
-                        (this._newStepRole = (e.target as HTMLInputElement).value)}
-                    /><input
-                      class="new-name evt"
-                      placeholder="Deadline (PT4H)…"
-                      title="Deadline ISO-8601 del nuevo paso"
-                      .value=${this._newStepDeadline}
-                      @input=${(e: Event) =>
-                        (this._newStepDeadline = (e.target as HTMLInputElement).value)}
-                    />`
-                : ''}
-              <button class="tab" title="Añadir paso tras la selección" @click=${this.addStepFromToolbar}>
-                ＋ Paso
-              </button>
-              ${this.owningProcessOf(this._selectedId)
-                ? html`
-                    <span class="sep"></span>
-                    <input
-                      class="new-name evt"
-                      placeholder="Rol…"
-                      title="Rol del paso seleccionado (HUMAN)"
-                      .value=${this._editStepRole}
-                      @input=${(e: Event) =>
-                        (this._editStepRole = (e.target as HTMLInputElement).value)}
-                    />
-                    <input
-                      class="new-name evt"
-                      placeholder="Deadline (PT4H)…"
-                      title="Deadline ISO-8601 del paso seleccionado"
-                      .value=${this._editStepDeadline}
-                      @input=${(e: Event) =>
-                        (this._editStepDeadline = (e.target as HTMLInputElement).value)}
-                    />
-                    <input
-                      class="new-name evt"
-                      placeholder="Compensación…"
-                      title="Use case de compensación del paso seleccionado"
-                      .value=${this._editStepComp}
-                      @input=${(e: Event) =>
-                        (this._editStepComp = (e.target as HTMLInputElement).value)}
-                    />
-                    <button class="tab" title="Aplicar cambios al paso" @click=${this.applyStepEdit}>
-                      ✓ Aplicar
-                    </button>
-                  `
-                : ''}
-            `
-          : ''}
-        ${this._view === 'workflows' &&
-        this._selectedId &&
-        ((this.model.workflows ?? []).some((w) => w.id === this._selectedId) ||
-          this.owningWorkflowOf(this._selectedId))
-          ? html`
-              <span class="sep"></span>
-              <input
-                class="new-name evt"
-                placeholder="Nuevo paso…"
-                .value=${this._newStepName}
-                @input=${(e: Event) => (this._newStepName = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) =>
-                  e.key === 'Enter' && this.addWorkflowStepFromToolbar()}
-              />
-              <select
-                title="Caso de uso que lanza el nuevo paso"
-                @change=${(e: Event) => (this._newStepUseCase = (e.target as HTMLSelectElement).value)}
-              >
-                <option value="" ?selected=${this._newStepUseCase === ''}>— sin use case —</option>
-                ${this.model.boundedContexts
-                  .flatMap((m) => m.useCases ?? [])
-                  .map(
-                    (u) =>
-                      html`<option value=${u.id} ?selected=${u.id === this._newStepUseCase}>
-                        ${u.name}
-                      </option>`,
-                  )}
-              </select>
-              <input
-                class="new-name evt"
-                placeholder="Evento que emite…"
-                title="Evento que el workflow emite para arrancar el paso"
-                .value=${this._newStepEmits}
-                @input=${(e: Event) => (this._newStepEmits = (e.target as HTMLInputElement).value)}
-              />
-              <button
-                class="tab"
-                title="Añadir paso (workflow seleccionado = suelto; paso seleccionado = dependiente de él)"
-                @click=${this.addWorkflowStepFromToolbar}
-              >
-                ＋ Paso
-              </button>
-              ${this.owningWorkflowOf(this._selectedId)
-                ? html`
-                    <span class="sep"></span>
-                    <select
-                      title="Caso de uso destino del paso seleccionado"
-                      @change=${(e: Event) =>
-                        (this._editStepUseCase = (e.target as HTMLSelectElement).value)}
-                    >
-                      <option value="" ?selected=${this._editStepUseCase === ''}>
-                        — sin use case —
-                      </option>
-                      ${this.model.boundedContexts
-                        .flatMap((m) => m.useCases ?? [])
-                        .map(
-                          (u) =>
-                            html`<option value=${u.id} ?selected=${u.id === this._editStepUseCase}>
-                              ${u.name}
-                            </option>`,
-                        )}
-                    </select>
-                    <input
-                      class="new-name evt"
-                      placeholder="Emite…"
-                      title="Evento que arranca el paso seleccionado"
-                      .value=${this._editStepEmits}
-                      @input=${(e: Event) =>
-                        (this._editStepEmits = (e.target as HTMLInputElement).value)}
-                    />
-                    <input
-                      class="new-name evt"
-                      placeholder="Espera…"
-                      title="Evento que marca el paso como completado"
-                      .value=${this._editStepAwaits}
-                      @input=${(e: Event) =>
-                        (this._editStepAwaits = (e.target as HTMLInputElement).value)}
-                    />
-                    <button
-                      class="tab"
-                      title="Aplicar cambios al paso"
-                      @click=${this.applyWorkflowStepEdit}
-                    >
-                      ✓ Aplicar
-                    </button>
-                  `
-                : ''}
             `
           : ''}
         <button

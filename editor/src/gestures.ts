@@ -450,12 +450,6 @@ export function applyConnectionGesture(
         }
       }
     }
-    // Integraciones: las líneas significan lo mismo que en el mapa de contextos
-    // (fuentes, escrituras, eventos) — se aplican bajo sus reglas.
-    if (view === 'integrations') {
-      applyConnectionGesture(host, 'context-map', sourceId, targetId, x, y, connectKind);
-      return;
-    }
     // EventStorming: a step dropped on a CODE sticky delegates in that hand-written code.
     if (view === 'eventstorming') {
       const isCC = (id: string) => (host.model.customCodes ?? []).some((cc) => cc.id === id);
