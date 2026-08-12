@@ -93,6 +93,16 @@ export const UI_COMMANDS: Record<string, Handler> = {
       menuItems: withoutCrudEntries(menuOf(app), `pg-crud-${aggregateId}`, aggregateId),
     });
   },
+
+  // ---- mockups: the page's visual, a first-class node linked to its page ----
+  'add-mockup': add({ type: 'mockups', init: (c) => ({ pageId: c.pageId ?? null }) }),
+  'delete-mockup': remove({ type: 'mockups' }),
+  /** Link (or unlink, with a null page) a mockup to the page it stands for. */
+  'set-mockup-page': (store, command) => {
+    const mockup = store.get('mockups', String(command.id));
+    if (!mockup) throw new CommandError(`Mockup desconocido: ${command.id}`);
+    store.patch('mockups', mockup.id, { pageId: command.pageId ? String(command.pageId) : null });
+  },
 };
 
 /** A menu is a tree, so both questions about it are recursive. */
@@ -130,4 +140,4 @@ function requireApp(store: ModelStore, id: unknown): Element {
 
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */
-export const UI_TYPES: string[] = ['uis'];
+export const UI_TYPES: string[] = ['uis', 'mockups'];

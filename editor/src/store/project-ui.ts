@@ -13,13 +13,20 @@ import { asList, nested, type Element, type ModelStore } from './store.js';
 
 /** Element types this half reads. */
 export const UI_PROJECTED_TYPES = [
-  'uiAdapters', 'pages', 'modelMappings', 'customCodes', 'buttonGroups', 'transformations',
+  'uiAdapters', 'pages', 'mockups', 'modelMappings', 'customCodes', 'buttonGroups', 'transformations',
   'identityProviders', 'notifications', 'documents', 'etlFlows',
 ];
 
 /** The UI-facing fields of the editor's model, merged into what `project()` builds. */
 export function projectUi(store: ModelStore): Partial<ModuxModel> {
   return {
+    mockups: store.all('mockups').map((mk) => ({
+      id: mk.id,
+      name: name(mk),
+      pageId: str(mk.pageId),
+      content: nested(mk.content) as never,
+    })),
+
     uiApps: store.all('uiAdapters').map((app) => ({
       id: app.id,
       name: name(app),

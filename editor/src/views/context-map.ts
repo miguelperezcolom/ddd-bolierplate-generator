@@ -794,6 +794,13 @@ function buildScene(
       proxy: false,
       uiPage: true,
     }))),
+    ...(distributionLevel ? [] : (model.mockups ?? []).map((mk) => ({
+      ref: mk,
+      external: false,
+      api: false,
+      proxy: false,
+      mockup: true,
+    }))),
     // ETL flows without owner (legacy) still float; owned ones enter through their context.
     ...(distributionLevel ? [] : (model.etlFlows ?? [])
       .filter((f) => !f.ownerBoundedContextId)
@@ -940,6 +947,25 @@ function buildScene(
         stroke: '#0ea5e9',
         badge: pg.type ? `PÁGINA · ${pg.type}` : 'PÁGINA',
         tooltip: `${pg.name} — página${pg.route ? ` · ${pg.route}` : ''}${pg.type ? ` (${pg.type})` : ''}`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      return;
+    }
+    if ('mockup' in entry && entry.mockup) {
+      const mk = entry.ref as NonNullable<ModuxModel['mockups']>[number];
+      nodes.push({
+        id: mk.id,
+        label: mk.name,
+        kind: 'mockup',
+        symbol: 'interface',
+        fill: '#f0f9ff',
+        stroke: '#0ea5e9',
+        dashed: true,
+        badge: 'MOCKUP',
+        tooltip: `${mk.name} — mockup${mk.pageId ? ' de una página' : ' (arrastra su asa hasta una página)'}`,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -2048,6 +2074,20 @@ function buildScene(
     })),
   );
 
+  // A mockup stands for a page: the visual and the semantic page, tied by an edge.
+  const mockupEdges: SceneEdge[] = (model.mockups ?? [])
+    .filter((mk) => mk.pageId && (model.pages ?? []).some((p) => p.id === mk.pageId))
+    .map((mk): SceneEdge => ({
+      id: `mockupof:${mk.id}->${mk.pageId}`,
+      sourceId: mk.id,
+      targetId: mk.pageId!,
+      kind: 'mockup-of',
+      color: '#0ea5e9',
+      dashed: true,
+      arrow: true,
+      tooltip: 'el mockup de esta página',
+    }));
+
   // A menu entry → what it drives (page, use case, aggregate CRUD, query listing, another app).
   const menuEdges: SceneEdge[] = (model.uiApps ?? []).flatMap((app) =>
     flattenMenu(app).flatMap(({ entry, path }): SceneEdge[] => {
@@ -2558,6 +2598,7 @@ function buildScene(
       ...workflowStepEdges,
       ...processStepEdges,
       ...menuEdges,
+      ...mockupEdges,
       ...etlPipeEdges,
       ...mappingEdges,
       ...agentApiEdges,

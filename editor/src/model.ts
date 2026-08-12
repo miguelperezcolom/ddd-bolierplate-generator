@@ -695,6 +695,21 @@ export interface UiComponentNodeRef {
   detailPageId?: string;
 }
 
+/**
+ * A page MOCKUP: the visual layout, kept SEPARATE from the page it stands for and tied to it by an
+ * edge (§ Etapa 2). A first-class element on the canvas — dragged from the palette, linked to its
+ * page — so the visual and the semantic page evolve apart. Its component tree lands here later; for
+ * now it is the node and the link.
+ */
+export interface MockupRef {
+  id: string;
+  name: string;
+  /** The page this mockup stands for, or none yet (linked by the `mockup-of` edge). */
+  pageId?: string;
+  /** UI-first composition: Mateu layouts with components inside (reuses the page tree shape). */
+  content?: UiComponentNodeRef[];
+}
+
 export interface UiPageRef {
   id: string;
   name: string;
@@ -838,6 +853,8 @@ export interface ModuxModel {
   uiApps?: UiAppRef[];
   /** Pages (Mateu views) with their MVVM wiring. */
   pages?: UiPageRef[];
+  /** Page mockups: the visual, kept apart from the page and linked to it by an edge. */
+  mockups?: MockupRef[];
   /** Actor → app links (Role.uiAdapterIds). */
   actorAppUses?: ActorAppUseRef[];
   /** Data models with their fields — the mappings view edits them in place. */

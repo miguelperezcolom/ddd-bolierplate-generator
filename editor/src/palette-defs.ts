@@ -64,6 +64,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'ui-app-masterdetail', label: 'Maestro-detalle', symbol: 'component', color: '#0ea5e9', group: 'UI' },
   { type: 'ui-app-vieweditor', label: 'Vista-editor', symbol: 'process', color: '#c026d3', group: 'UI' },
   { type: 'page', label: 'Página', child: true, symbol: 'interface', color: '#0284c7', group: 'UI' },
+  { type: 'mockup', label: 'Mockup', symbol: 'interface', color: '#0ea5e9', group: 'UI' },
   { type: 'menu-item', label: 'Opción de menú', child: true, symbol: 'process', color: '#0ea5e9', group: 'UI' },
   { type: 'button-group', label: 'Grupo de botones', symbol: 'usecase', color: '#0e7490', group: 'UI' },
   { type: 'ui-button', label: 'Botón', child: true, symbol: 'usecase', color: '#0e7490', group: 'UI' },

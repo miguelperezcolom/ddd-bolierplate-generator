@@ -391,6 +391,19 @@ export function applyConnectionGesture(
       host.command({ kind: 'note-attach', id: noteId, targetId: ref });
       return;
     }
+    // A mockup ⇆ page: the mockup stands for that page (either drag direction).
+    {
+      const isMockup = (id: string) => (host.model.mockups ?? []).some((mk) => mk.id === id);
+      const isPage = (id: string) => (host.model.pages ?? []).some((p) => p.id === id);
+      if (isMockup(sourceId) !== isMockup(targetId)) {
+        const mockupId = isMockup(sourceId) ? sourceId : targetId;
+        const other = isMockup(sourceId) ? targetId : sourceId;
+        if (isPage(other)) {
+          host.command({ kind: 'set-mockup-page', id: mockupId, pageId: other });
+          return;
+        }
+      }
+    }
     // On the unified canvas the caller passes 'context-map'; read the real meaning from the
     // endpoints. Distribution/eventstorming MODES arrive as their own view and keep it; the
     // '__classic' sentinel (an internal re-entry from connectionOptions) also keeps context-map.
@@ -1927,6 +1940,20 @@ export function performDeleteGesture(
   kind: string,
 ): void {
   if (view === 'context-map') view = resolveDeleteLens(id, kind);
+  // A mockup, or its link to a page (kind is unique, so no lens needed).
+  if (kind === 'mockup-of') {
+    const m = /^mockupof:(.+)->(.+)$/.exec(id);
+    if (m) {
+      host.clearSelection();
+      host.command({ kind: 'set-mockup-page', id: m[1], pageId: null });
+    }
+    return;
+  }
+  if (elementType === 'node' && kind === 'mockup') {
+    host.clearSelection();
+    host.command({ kind: 'delete-mockup', id });
+    return;
+  }
   if (kind === 'ui-serving') {
     const m = /^uisrv:(.+)->(.+)$/.exec(id);
     if (m) {

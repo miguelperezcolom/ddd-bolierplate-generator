@@ -1328,6 +1328,9 @@ export type ModuxCommand =
     }
   | { kind: 'add-page-button'; pageId: string; useCaseId: string; label?: string; type?: string }
   | { kind: 'remove-page-button'; pageId: string; useCaseId: string }
+  | { kind: 'add-mockup'; id: string; name: string; pageId?: string }
+  | { kind: 'delete-mockup'; id: string }
+  | { kind: 'set-mockup-page'; id: string; pageId: string | null }
   | { kind: 'rename-ui-page'; pageId: string; name: string }
   | { kind: 'set-page-type'; pageId: string; pageType: string }
   | { kind: 'set-page-route'; pageId: string; path: string }

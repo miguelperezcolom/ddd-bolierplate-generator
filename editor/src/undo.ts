@@ -79,6 +79,16 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       }
       case 'add-model':
         return [{ kind: 'remove-model', id: c.id }];
+      case 'add-mockup':
+        return [{ kind: 'delete-mockup', id: c.id }];
+      case 'delete-mockup': {
+        const mk = (host.model.mockups ?? []).find((x) => x.id === c.id);
+        return mk ? [{ kind: 'add-mockup', id: mk.id, name: mk.name, pageId: mk.pageId }] : null;
+      }
+      case 'set-mockup-page': {
+        const mk = (host.model.mockups ?? []).find((x) => x.id === c.id);
+        return mk ? [{ kind: 'set-mockup-page', id: c.id, pageId: mk.pageId ?? null }] : null;
+      }
       case 'add-model-mapping':
         return [{ kind: 'remove-model-mapping', id: c.id }];
       case 'remove-model-mapping': {

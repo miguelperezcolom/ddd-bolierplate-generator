@@ -3231,6 +3231,8 @@ export class ModuxEditor extends LitElement {
                                   ? { kind: 'add-service', id, name }
                                   : type === 'url'
                                   ? { kind: 'add-url', id, name }
+                                  : type === 'mockup'
+                                  ? { kind: 'add-mockup', id, name }
                                   : {
                                 kind: 'add-workflow',
                                 id,
