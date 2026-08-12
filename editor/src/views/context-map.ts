@@ -2,6 +2,7 @@ import type {
   ModuxModel, ContextMapRelationType, FlowRef, FieldRef, ReferencedProject,
 } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { menuNodeId, flattenMenu } from './ui.js';
 
 /**
  * How a referenced project's whereabouts read in a tooltip. A migrated model may know none —
@@ -207,6 +208,10 @@ export function ownershipIndex(
   for (const p of model.processes ?? []) {
     for (const s of p.steps) owners.set(s.id, p.id);
   }
+  // A UI app's menu entries roll up into the app (menu nodes carry synthetic ids).
+  for (const app of model.uiApps ?? []) {
+    for (const { entry, path } of flattenMenu(app)) owners.set(menuNodeId(app.id, entry, path), app.id);
+  }
   return owners;
 }
 
@@ -252,6 +257,8 @@ interface ChildDesc {
     | 'external-system'
     | 'workflow-step'
     | 'process-step'
+    | 'menu-group'
+    | 'menu-item'
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -289,6 +296,8 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   ui: { symbol: 'interface', fill: '#f0f9ff', stroke: '#0ea5e9' },
   'workflow-step': { symbol: 'gear', fill: '#ede9fe', stroke: '#6d28d9' },
   'process-step': { symbol: 'gear', fill: '#f5f3ff', stroke: '#7c3aed' },
+  'menu-group': { symbol: 'process', fill: '#f0f9ff', stroke: '#7dd3fc' },
+  'menu-item': { symbol: 'process', fill: '#ffffff', stroke: '#7dd3fc' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -322,6 +331,8 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se asigna a apps y páginas',
   'workflow-step': 'Paso de workflow — corre cuando sus dependencias completan',
   'process-step': 'Paso de proceso — eslabón de la cadena (HUMAN o AUTOMÁTICO)',
+  'menu-group': 'Agrupador de menú — contiene un submenú, no abre nada',
+  'menu-item': 'Entrada de menú — abre una página, app, caso de uso o CRUD',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
@@ -641,6 +652,17 @@ function buildScene(
         // with it when folded.
         const p = (model.processes ?? []).find((x) => x.id === id);
         return (p?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'process-step' }));
+      }
+      case 'ui-app': {
+        // The app's menu tree, flattened (like the UI lens): each entry a child, groups vs leaves;
+        // what each entry drives (use case / aggregate / query / app) is drawn by menuEdges.
+        const app = (model.uiApps ?? []).find((a) => a.id === id);
+        if (!app) return [];
+        return flattenMenu(app).map(({ entry, path }): ChildDesc => ({
+          id: menuNodeId(app.id, entry, path),
+          name: entry.label,
+          kind: entry.children?.length ? 'menu-group' : 'menu-item',
+        }));
       }
       default:
         return [];
@@ -1938,6 +1960,32 @@ function buildScene(
     })),
   );
 
+  // A menu entry → what it drives (use case, aggregate CRUD, query listing, another app). The
+  // page it opens lights up once pages are nodes on the canvas (that comes with the mockup rework).
+  const menuEdges: SceneEdge[] = (model.uiApps ?? []).flatMap((app) =>
+    flattenMenu(app).flatMap(({ entry, path }): SceneEdge[] => {
+      const src = menuNodeId(app.id, entry, path);
+      const out: SceneEdge[] = [];
+      if (entry.uiAdapterId && (model.uiApps ?? []).some((a) => a.id === entry.uiAdapterId)) {
+        out.push({ id: `menuapp:${src}->${entry.uiAdapterId}`, sourceId: src, targetId: entry.uiAdapterId,
+          kind: 'menu-app', color: '#64748b', arrow: true, tooltip: 'abre esta app' });
+      }
+      if (entry.useCaseId) {
+        out.push({ id: `menuuc:${src}->${entry.useCaseId}`, sourceId: src, targetId: entry.useCaseId,
+          kind: 'menu-use-case', color: '#06b6d4', dashed: true, arrow: true, tooltip: 'lanza este caso de uso' });
+      }
+      if (entry.aggregateId) {
+        out.push({ id: `menuagg:${src}->${entry.aggregateId}`, sourceId: src, targetId: entry.aggregateId,
+          kind: 'menu-aggregate', label: 'CRUD', color: '#8b5cf6', dashed: true, arrow: true, tooltip: 'CRUD sobre este agregado' });
+      }
+      if (entry.queryOperationId) {
+        out.push({ id: `menuqop:${src}->${entry.queryOperationId}`, sourceId: src, targetId: entry.queryOperationId,
+          kind: 'menu-query-operation', label: 'listado', color: '#0284c7', dashed: true, arrow: true, tooltip: 'listado de esta consulta' });
+      }
+      return out;
+    }),
+  );
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -2359,6 +2407,7 @@ function buildScene(
       ...workflowChainEdges,
       ...workflowStepEdges,
       ...processStepEdges,
+      ...menuEdges,
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,

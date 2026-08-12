@@ -36,7 +36,7 @@ export function parseMenuNodeId(
 }
 
 /** Depth-first flatten of an app's menu tree, with the label path to each entry. */
-function flattenMenu(app: UiAppRef): { entry: UiMenuEntryRef; path: string[]; depth: number }[] {
+export function flattenMenu(app: UiAppRef): { entry: UiMenuEntryRef; path: string[]; depth: number }[] {
   const out: { entry: UiMenuEntryRef; path: string[]; depth: number }[] = [];
   const walk = (items: UiMenuEntryRef[], prefix: string[], depth: number) => {
     for (const entry of items ?? []) {
