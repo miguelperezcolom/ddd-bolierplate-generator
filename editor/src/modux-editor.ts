@@ -1683,10 +1683,10 @@ export class ModuxEditor extends LitElement {
           .map((i) => this.memberIdOf(i.id, i.kind))
           .filter((m): m is string => !!m && view.memberIds.includes(m))
       : [];
-    this._deletePicker = {
-      items,
-      memberIds: memberIds.length === items.length ? memberIds : [],
-    };
+    // Offer «quitar de la vista» whenever ANY deleted item is a member of the active view — not only
+    // when every one is. Deleting a member and a non-member together still lets you pull the member
+    // out of the view without touching the model.
+    this._deletePicker = { items, memberIds };
   }
 
   /** Canvas node → the catalog id a view lists as member (null when not a member kind). */
@@ -1701,6 +1701,12 @@ export class ModuxEditor extends LitElement {
       case 'workflow':
       case 'page':
       case 'ui-app':
+      case 'actor':
+      case 'ai-agent':
+      case 'rag':
+      case 'mcp-gateway':
+      case 'api':
+      case 'proxy-api':
         return id;
       case 'flow':
         return id.replace(/^flow:/, '');
@@ -2013,16 +2019,11 @@ export class ModuxEditor extends LitElement {
 
   private createViewFromSelection(): void {
     const name = this._newViewName.trim();
-    // Selection → its catalog members. Only when NOTHING is selected does the
-    // whole diagram on screen become the vista; a selection that maps to no
-    // member (e.g. an edge) makes no view rather than silently grabbing all.
-    const selected = this.memberIdsFromSelection();
-    const memberIds = selected.length
-      ? selected
-      : this.viewSelection().length
-        ? []
-        : this.visibleMemberIds();
-    if (!name || !memberIds.length) return;
+    if (!name) return;
+    // A view is born curated and EMPTY unless a selection seeds it — you then fill it by dropping
+    // elements or checking members in the tree. (Before, an empty selection quietly grabbed the whole
+    // screen, so a "new view" was never actually empty — the friction we're removing here.)
+    const memberIds = this.memberIdsFromSelection();
     const id = crypto.randomUUID();
     this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
@@ -2039,19 +2040,6 @@ export class ModuxEditor extends LitElement {
    */
   private afterViewCreated(id: string, name: string): void {
     this.emit('create-view', { viewId: id, name, kind: this._view });
-  }
-
-  /** The catalog members currently on stage as top-level nodes (vista candidates). */
-  private visibleMemberIds(): string[] {
-    const MEMBER_KINDS = new Set([
-      'boundedContext', 'external-system', 'process', 'workflow', 'actor', 'ai-agent',
-      'rag', 'mcp-gateway', 'api', 'proxy-api', 'ui-app', 'page', 'aggregate', 'entity',
-    ]);
-    return [...new Set(
-      this.sceneFor(this._view)
-        .nodes.filter((n) => !n.parentId && MEMBER_KINDS.has(n.kind))
-        .map((n) => n.id.replace(/^tgt:/, '')),
-    )];
   }
 
   /** Model scoped to the active modux View (CURATED members + their context). */
@@ -4228,7 +4216,7 @@ export class ModuxEditor extends LitElement {
                 placeholder="Nombre de la vista…"
                 title=${this.viewSelection().length
                   ? 'Crear una vista modux con la selección'
-                  : 'Crear una vista modux con lo que hay en pantalla — hereda esta geometría y expansión'}
+                  : 'Crear una vista modux vacía — luego añades elementos soltándolos o desde el árbol'}
                 .value=${this._newViewName}
                 @input=${(e: Event) => (this._newViewName = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
@@ -4237,7 +4225,7 @@ export class ModuxEditor extends LitElement {
                 class="tab"
                 title=${this.viewSelection().length
                   ? 'Crear una vista modux con la selección'
-                  : 'Crear una vista modux con lo que hay en pantalla — hereda esta geometría y expansión'}
+                  : 'Crear una vista modux vacía — luego añades elementos soltándolos o desde el árbol'}
                 @click=${this.createViewFromSelection}
               >
                 ⊞ Vista${this.viewSelection().length ? ` (${this.viewSelection().length})` : ''}
