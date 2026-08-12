@@ -100,6 +100,15 @@ public final class EditorBridge implements Disposable {
 
             @Override
             public void onLoadEnd(CefBrowser cef, CefFrame frame, int httpStatusCode) {
+                // Lift the frame-rate cap. On macOS JBR routes even a "windowed" JCEF browser through
+                // an offscreen surface it composites into Swing, so CEF's windowless frame rate still
+                // governs it — and its default is 30fps, which makes panning/zooming a large canvas
+                // feel choppy ("a tirones"). 60 is smooth and matches the usual display refresh.
+                // Set on the main frame's load, once the browser is realized. Harmless if the mode
+                // turns out to be truly windowed (the call is a no-op there).
+                if (frame.isMain()) {
+                    cef.setWindowlessFrameRate(60);
+                }
                 // Debugging the webview: with -Dmodux.devtools the JCEF DevTools open once the page
                 // is loaded, so a render freeze can be paused and read (there is no right-click
                 // «Open DevTools» here). Opened after load so the browser is realized.
