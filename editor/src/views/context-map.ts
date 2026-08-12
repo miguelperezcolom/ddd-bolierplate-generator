@@ -199,6 +199,10 @@ export function ownershipIndex(
     if (px.publishedByExternalSystemId) owners.set(px.id, px.publishedByExternalSystemId);
     if (px.targetApiId) apiOps(px.targetApiId, px.id, px.id);
   }
+  // A workflow's steps roll up into it: a dependency edge between two folded steps folds away.
+  for (const w of model.workflows ?? []) {
+    for (const s of w.steps) owners.set(s.id, w.id);
+  }
   return owners;
 }
 
@@ -242,6 +246,7 @@ interface ChildDesc {
     | 'ui'
     | 'ui-app'
     | 'external-system'
+    | 'workflow-step'
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -277,6 +282,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   document: { symbol: 'readmodel', fill: '#f8fafc', stroke: '#475569' },
   'ui-app': { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
   ui: { symbol: 'interface', fill: '#f0f9ff', stroke: '#0ea5e9' },
+  'workflow-step': { symbol: 'gear', fill: '#ede9fe', stroke: '#6d28d9' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -308,6 +314,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
   'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
   ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se asigna a apps y páginas',
+  'workflow-step': 'Paso de workflow — corre cuando sus dependencias completan',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
@@ -616,6 +623,12 @@ function buildScene(
             )
           : [];
       }
+      case 'workflow': {
+        // Its steps (joins/splits included) hang inside it; their dependency arrows are drawn
+        // between them (see workflowStepEdges) and roll up when the workflow is folded.
+        const w = (model.workflows ?? []).find((x) => x.id === id);
+        return (w?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'workflow-step' }));
+      }
       default:
         return [];
     }
@@ -759,6 +772,8 @@ function buildScene(
     }
     if ('workflow' in entry && entry.workflow) {
       const w = entry.ref as NonNullable<ModuxModel['workflows']>[number];
+      const kids = ownedChildren(w.id, 'workflow');
+      const expanded = toggledIds.has(w.id) && kids.length > 0;
       nodes.push({
         id: w.id,
         label: w.name,
@@ -769,11 +784,14 @@ function buildScene(
         dashed: true,
         badge: 'WORKFLOW',
         tooltip: `${w.name} — workflow${w.triggerEvent ? ` · arranca con ${w.triggerEvent}` : ''}`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
       });
+      if (expanded) emitChildren(w.id, 'workflow', w.name, pos);
       return;
     }
     if (entry.proxy) {
@@ -1843,6 +1861,26 @@ function buildScene(
           })),
   );
 
+  // Inside a workflow: the step→step dependency DAG. Steps are children of the workflow, so these
+  // roll up with it when it is folded (both ends re-anchor to the workflow → the edge drops).
+  const workflowStepEdges: SceneEdge[] = (model.workflows ?? []).flatMap((w) => {
+    const stepIds = new Set(w.steps.map((s) => s.id));
+    const nameOf = new Map(w.steps.map((s) => [s.id, s.name]));
+    return w.steps.flatMap((step) =>
+      (step.dependsOnStepIds ?? [])
+        .filter((id) => stepIds.has(id))
+        .map((dep): SceneEdge => ({
+          id: `wfdep:${dep}->${step.id}`,
+          sourceId: dep,
+          targetId: step.id,
+          kind: 'workflow-dependency',
+          color: '#6d28d9',
+          arrow: true,
+          tooltip: `${step.name} espera a ${nameOf.get(dep) ?? dep}`,
+        })),
+    );
+  });
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -2262,6 +2300,7 @@ function buildScene(
       ...workflowCallEdges,
       ...workflowTriggerEdges,
       ...workflowChainEdges,
+      ...workflowStepEdges,
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,
