@@ -2103,6 +2103,8 @@ export class ModuxEditor extends LitElement {
       ),
       // Workflows have no owner boundedContext (they live outside the contexts): member-only.
       workflows: (this.model.workflows ?? []).filter((w) => members.has(w.id)),
+      // Free-standing use cases scope by membership too (a curated view shows only what it lists).
+      looseUseCases: (this.model.looseUseCases ?? []).filter((u) => members.has(u.id)),
       // Top-level AI/strategic pieces scope by membership too — a curated view
       // about one subdomain should not drag every agent and gateway along.
       actors: (this.model.actors ?? []).filter((a) => members.has(a.id)),
@@ -3289,13 +3291,24 @@ export class ModuxEditor extends LitElement {
     if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant', 'field', 'operation'].includes(type)) {
       container = this.nearestAggregateTo(pos);
     }
-    // Free-standing creation: an aggregate dropped on empty canvas is born without a context and
-    // tied to one later by drawing a composition edge (it wears a «sin asociar» badge until then).
-    if (!container && type === 'aggregate') {
+    // Free-standing creation: dropped on empty canvas, these are born without an owner and tied to
+    // their parent later by drawing a composition edge (they wear a «sin asociar» badge until then).
+    if (!container && ['aggregate', 'entity', 'use-case', 'policy'].includes(type)) {
       const { id, name } = this.uniquePaletteName(def.label);
-      issue({ kind: 'add-aggregate', id, name }, id);
+      const cmd: ModuxCommand =
+        type === 'aggregate'
+          ? { kind: 'add-aggregate', id, name }
+          : type === 'entity'
+            ? { kind: 'add-entity', id, name }
+            : { kind: 'add-use-case', id, name, ...(type === 'policy' ? { policy: true } : {}) };
+      issue(cmd, id);
+      const noun =
+        type === 'aggregate' ? 'Agregado'
+          : type === 'entity' ? 'Entidad'
+          : type === 'policy' ? 'Policy' : 'Caso de uso';
+      const parentNoun = type === 'entity' ? 'un agregado' : 'un contexto';
       this.emit('modux-notice', {
-        message: `Agregado «${name}» creado suelto — arrastra una composición desde un contexto para asociarlo`,
+        message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
       });
       return;
     }

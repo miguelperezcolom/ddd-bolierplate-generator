@@ -117,19 +117,21 @@ export type ModuxCommand =
       kind: 'add-entity';
       id: string;
       name: string;
-      aggregateId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-entity-aggregate. */
+      aggregateId?: string;
     }
-  | { kind: 'remove-entity'; id: string; aggregateId: string }
+  | { kind: 'remove-entity'; id: string; aggregateId?: string }
   | {
       /** A value object owned by an aggregate — its own shape, invariant-ready. */
       kind: 'add-value-object';
       id: string;
       name: string;
-      aggregateId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-value-object-aggregate. */
+      aggregateId?: string;
       /** Enum | Record | Wrapper (defaults to Record). */
       type?: string;
     }
-  | { kind: 'remove-value-object'; id: string; aggregateId: string }
+  | { kind: 'remove-value-object'; id: string; aggregateId?: string }
   | {
       /** An operation of an aggregate (input model → output model). */
       kind: 'add-operation';
@@ -678,9 +680,16 @@ export type ModuxCommand =
       kind: 'add-use-case';
       id: string;
       name: string;
-      boundedContextId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-use-case-context. */
+      boundedContextId?: string;
       /** Reaction logic with use-case shape that expresses no business case. */
       policy?: boolean;
+    }
+  | {
+      /** Tie a free-standing use case to a context, or detach it (omit boundedContextId). */
+      kind: 'set-use-case-context';
+      id: string;
+      boundedContextId?: string;
     }
   | {
       kind: 'remove-use-case';

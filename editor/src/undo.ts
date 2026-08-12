@@ -786,6 +786,10 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'add-context-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case':
         return [{ kind: 'remove-use-case', id: c.id }];
+      case 'set-use-case-context': {
+        const owner = host.model.boundedContexts.find((mo) => (mo.useCases ?? []).some((u) => u.id === c.id));
+        return [{ kind: 'set-use-case-context', id: c.id, boundedContextId: owner?.id }];
+      }
       case 'remove-use-case': {
         for (const m of host.model.boundedContexts) {
           const u = (m.useCases ?? []).find((x) => x.id === c.id);

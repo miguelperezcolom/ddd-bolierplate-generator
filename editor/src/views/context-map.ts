@@ -1161,38 +1161,44 @@ function buildScene(
     });
     if (expanded) emitChildren(m.id, 'boundedContext', m.name, pos);
   });
-  // Free-standing aggregates: born loose (no context yet), they show at top level with a
-  // «sin asociar» badge until a composition edge ties them to a context. Their contents still
-  // expand like any aggregate.
+  // Free-standing elements: born loose (no owner yet), they show at top level with a «sin asociar»
+  // badge until a composition edge ties them to their parent. Their contents still expand normally.
+  // Aggregate (no context), entity and value object (no aggregate) share this treatment.
   if (!distributionLevel) {
+    const looseGroups: { items: { id: string; name: string; policy?: boolean }[]; kind: ChildDesc['kind']; noun: string }[] = [
+      { items: (model.aggregates ?? []).filter((a) => !a.boundedContextId), kind: 'aggregate', noun: 'agregado' },
+      { items: (model.entities ?? []).filter((e) => !e.aggregateId), kind: 'entity', noun: 'entidad' },
+      { items: model.looseUseCases ?? [], kind: 'use-case', noun: 'caso de uso' },
+    ];
     let looseIdx = 0;
-    for (const agg of model.aggregates ?? []) {
-      if (agg.boundedContextId) continue; // owned aggregates render under their context
-      const pos = layout[agg.id] ?? { x: 60 + (looseIdx % 5) * 200, y: 60 + Math.floor(looseIdx / 5) * 120 };
-      looseIdx++;
-      const grand = ownedChildren(agg.id, 'aggregate');
-      const expanded = toggledIds.has(agg.id) && grand.length > 0;
-      const style = CHILD_STYLE.aggregate;
-      const aSize = sizes[agg.id];
-      nodes.push({
-        id: agg.id,
-        label: agg.name,
-        kind: 'aggregate',
-        symbol: style.symbol,
-        fill: style.fill,
-        stroke: style.stroke,
-        badge: 'sin asociar',
-        dashed: true,
-        resizable: true,
-        collapsible: grand.length > 0,
-        collapsed: grand.length > 0 && !expanded,
-        tooltip: `${agg.name} — agregado sin asociar; arrastra una composición desde un contexto para tenerlo dentro`,
-        x: pos.x,
-        y: pos.y,
-        w: aSize?.w ?? NODE_W,
-        h: aSize?.h ?? NODE_H,
-      });
-      if (expanded) emitChildren(agg.id, 'aggregate', agg.name, pos);
+    for (const group of looseGroups) {
+      for (const el of group.items) {
+        const style = el.policy ? POLICY_STYLE : CHILD_STYLE[group.kind];
+        const pos = layout[el.id] ?? { x: 60 + (looseIdx % 5) * 200, y: 60 + Math.floor(looseIdx / 5) * 120 };
+        looseIdx++;
+        const grand = ownedChildren(el.id, group.kind);
+        const expanded = toggledIds.has(el.id) && grand.length > 0;
+        const eSize = sizes[el.id];
+        nodes.push({
+          id: el.id,
+          label: el.name,
+          kind: group.kind,
+          symbol: style.symbol,
+          fill: style.fill,
+          stroke: style.stroke,
+          badge: 'sin asociar',
+          dashed: true,
+          resizable: true,
+          collapsible: grand.length > 0,
+          collapsed: grand.length > 0 && !expanded,
+          tooltip: `${el.name} — ${group.noun} sin asociar; arrastra una composición desde su contenedor`,
+          x: pos.x,
+          y: pos.y,
+          w: eSize?.w ?? NODE_W,
+          h: eSize?.h ?? NODE_H,
+        });
+        if (expanded) emitChildren(el.id, group.kind, el.name, pos);
+      }
     }
   }
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every

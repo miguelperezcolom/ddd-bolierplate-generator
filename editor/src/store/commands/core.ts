@@ -136,8 +136,10 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
   'add-entity': add({
     type: 'entities',
-    parent: { type: 'aggregates', from: 'aggregateId' },
-    init: (c) => ({ parentAggregateId: c.aggregateId, isCollection: false, invariants: [] }),
+    // Optional owner: an entity can be born free-standing and tied to an aggregate later
+    // (set-entity-aggregate) by drawing a composition edge.
+    parent: { type: 'aggregates', from: 'aggregateId', required: false },
+    init: (c) => ({ parentAggregateId: c.aggregateId ?? null, isCollection: false, invariants: [] }),
   }),
 
   'remove-entity': remove({ type: 'entities' }),
@@ -156,7 +158,8 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
   'add-value-object': add({
     type: 'valueObjects',
-    parent: { type: 'aggregates', from: 'aggregateId', list: 'valueObjectIds' },
+    // Optional owner: free-standing, tied to an aggregate later via set-value-object-aggregate.
+    parent: { type: 'aggregates', from: 'aggregateId', list: 'valueObjectIds', required: false },
     init: (c) => ({
       type: c.type && String(c.type).trim() ? c.type : 'Record',
       valuesJson: '[]',
@@ -232,6 +235,18 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'useCaseIds' },
     detach: [{ type: 'roles', field: 'allowedUseCaseIds' }],
   }),
+
+  /** Tie a free-standing use case to a context, or detach it (no target). */
+  'set-use-case-context': (store, command) => {
+    const id = String(command.id);
+    if (!store.has('useCases', id)) throw new CommandError(`Caso de uso desconocido: ${id}`);
+    const target = command.boundedContextId as string | undefined;
+    if (target && !store.has('boundedContexts', target)) {
+      throw new CommandError(`Contexto desconocido: ${target}`);
+    }
+    store.removeFromAllLists('boundedContexts', 'useCaseIds', id);
+    if (target) store.addToList('boundedContexts', target, 'useCaseIds', id);
+  },
 
   // ---- strategic relations (top-level, one file each) ---------------------
 

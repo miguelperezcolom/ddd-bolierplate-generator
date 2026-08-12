@@ -64,6 +64,9 @@ export function project(store: ModelStore): ModuxModel {
     boundedContexts: store.all('boundedContexts').map((bc) => boundedContext(store, bc, owner)),
     relations: store.all('contextMapRelations').map(relation),
     aggregates: store.all('aggregates').map((a) => aggregate(a, owner)),
+    // Use cases with no owning context: they only nest under a context, so they'd vanish. Surface
+    // them here for the canvas to draw top-level with a «sin asociar» badge until composed.
+    looseUseCases: store.all('useCases').filter((u) => !owner.of.get(u.id)).map(useCase),
     entities: store.all('entities').map(entity),
     valueObjects: store.all('valueObjects').map((vo) => valueObject(vo, owner)),
     externalSystems: store.all('externalSystems').map(named),

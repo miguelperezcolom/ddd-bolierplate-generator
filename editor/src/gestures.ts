@@ -406,15 +406,27 @@ export function applyConnectionGesture(
         }
       }
     }
-    // contexto ⇆ agregado SUELTO: componerlo — el contexto pasa a contenerlo. Solo si el agregado
-    // no tiene dueño aún (uno ya asociado usa las relaciones CRUD entre contextos, resueltas abajo).
+    // Composición de un elemento SUELTO: arrastrar desde su contenedor lo mete dentro (fija su
+    // dueño). Solo aplica a elementos sin dueño; los que ya pertenecen usan sus relaciones normales.
     {
       const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
       const aggById = (id: string) => (host.model.aggregates ?? []).find((a) => a.id === id);
+      const entById = (id: string) => (host.model.entities ?? []).find((e) => e.id === id);
       const ctx = isCtx(sourceId) ? sourceId : isCtx(targetId) ? targetId : null;
-      const loose = aggById(sourceId) ?? aggById(targetId);
-      if (ctx && loose && !loose.boundedContextId) {
-        host.command({ kind: 'set-aggregate-context', id: loose.id, boundedContextId: ctx });
+      const looseAgg = aggById(sourceId) ?? aggById(targetId);
+      if (ctx && looseAgg && !looseAgg.boundedContextId) {
+        host.command({ kind: 'set-aggregate-context', id: looseAgg.id, boundedContextId: ctx });
+        return;
+      }
+      const looseUc = (host.model.looseUseCases ?? []).find((u) => u.id === sourceId || u.id === targetId);
+      if (ctx && looseUc) {
+        host.command({ kind: 'set-use-case-context', id: looseUc.id, boundedContextId: ctx });
+        return;
+      }
+      const agg = aggById(sourceId) ?? aggById(targetId);
+      const looseEnt = entById(sourceId) ?? entById(targetId);
+      if (agg && looseEnt && !looseEnt.aggregateId) {
+        host.command({ kind: 'set-entity-aggregate', id: looseEnt.id, aggregateId: agg.id });
         return;
       }
     }
