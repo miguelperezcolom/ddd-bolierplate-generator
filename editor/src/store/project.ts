@@ -44,7 +44,7 @@ export function projectedTypes(): string[] {
     'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'domainServices',
     'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
-    'scheduledTriggers', 'flows',
+    'scheduledTriggers', 'flows', 'looseElements',
     ...UI_PROJECTED_TYPES,
     ...ORCHESTRATION_PROJECTED_TYPES,
     ...CATALOG_PROJECTED_TYPES,
@@ -64,6 +64,14 @@ export function project(store: ModelStore): ModuxModel {
     boundedContexts: store.all('boundedContexts').map((bc) => boundedContext(store, bc, owner)),
     relations: store.all('contextMapRelations').map(relation),
     aggregates: store.all('aggregates').map((a) => aggregate(a, owner)),
+    // Use cases with no owning context: they only nest under a context, so they'd vanish. Surface
+    // them here for the canvas to draw top-level with a «sin asociar» badge until composed.
+    looseUseCases: store.all('useCases').filter((u) => !owner.of.get(u.id)).map(useCase),
+    looseElements: store.all('looseElements').map((e) => ({
+      id: e.id,
+      name: str(e.name) ?? '',
+      elementType: str(e.elementType) ?? '',
+    })),
     entities: store.all('entities').map(entity),
     valueObjects: store.all('valueObjects').map((vo) => valueObject(vo, owner)),
     externalSystems: store.all('externalSystems').map(named),
@@ -146,6 +154,8 @@ const isDrawable = (f: FlowRef) => Boolean(f.sourceId && f.targetId);
 interface OwnerIndex {
   /** element id → bounded context id */
   of: Map<string, string>;
+  /** value object id → aggregate id (a VO lives in an aggregate's valueObjectIds, not a context's). */
+  voAgg: Map<string, string>;
 }
 
 function ownerIndex(store: ModelStore): OwnerIndex {
@@ -163,7 +173,13 @@ function ownerIndex(store: ModelStore): OwnerIndex {
       if (declared) of.set(element.id, declared);
     }
   }
-  return { of };
+  // A value object's owner is the AGGREGATE that lists it — not a context. Resolved separately so
+  // vo.aggregateId is real (it was always '' before, which hid VO ownership and free-standing state).
+  const voAgg = new Map<string, string>();
+  for (const agg of store.all('aggregates')) {
+    for (const voId of asList(agg.valueObjectIds)) voAgg.set(voId, agg.id);
+  }
+  return { of, voAgg };
 }
 
 function boundedContext(store: ModelStore, bc: Element, owner: OwnerIndex): BoundedContextRef {
@@ -237,7 +253,7 @@ const entity = (ent: Element): EntityRef => ({
 const valueObject = (vo: Element, owner: OwnerIndex): ValueObjectRef => ({
   id: vo.id,
   name: name(vo),
-  aggregateId: owner.of.get(vo.id) ?? '',
+  aggregateId: owner.voAgg.get(vo.id) ?? '',
   type: str(vo.type),
   invariants: nestedNamed(vo.invariants),
 });

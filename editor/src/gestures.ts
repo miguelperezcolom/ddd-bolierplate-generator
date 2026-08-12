@@ -72,6 +72,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'ui-assignment', label: 'Asignación a la UI', hint: 'App o página ⇆ UI declarada: se le asigna (assignment)' },
   { id: 'ui-composition', label: 'Composición (expone la UI)', hint: 'Contexto ⇆ UI: el contexto la posee — la única relación posible entre ambos' },
   { id: 'ui-serving', label: 'Servidumbre (sirve al actor)', hint: 'UI ⇆ actor: la interfaz le sirve — la única relación posible entre ambos' },
+  { id: 'aggregate-composition', label: 'Composición (lo contiene)', hint: 'Contexto ⇆ agregado suelto: el contexto pasa a contenerlo' },
 ];
 
 /** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
@@ -200,18 +201,9 @@ export function connectionOptions(
   ) {
     offer('flow-materializes', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
   }
-  if (isActor(sourceId)) {
-    if (ucIds.has(targetId) || qsIds.has(targetId) || isAggregate(targetId) || isAgent(targetId)) {
-      offer('actor-use', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
-    }
-    if (isExternal(targetId)) {
-      offer('ext-dep', () => {
-        if (!(m.actorExternalDependencies ?? []).some((d) => d.actorId === sourceId && d.externalSystemId === targetId)) {
-          host.command({ kind: 'add-actor-external', sourceId, targetId });
-        }
-      });
-    }
-  }
+  // An actor is only ever SERVED — it never serves nor initiates. So it is never a source of a
+  // relationship (no «actor usa X»); the only edge it takes part in points INTO it (e.g. a UI serving
+  // it, handled in the ui⇆actor block above). Dragging from an actor offers nothing.
   if (isExternal(sourceId)) {
     if (isExternal(targetId) && sourceId !== targetId) {
       offer('ext-dep', () => {
@@ -242,6 +234,16 @@ export function connectionOptions(
   if (isContext(sourceId) && isAggregate(targetId)
       && (m.aggregates ?? []).find((a) => a.id === targetId)?.boundedContextId !== sourceId) {
     offer('context-crud', () => host.command({ kind: 'add-context-crud', sourceId, targetId }));
+  }
+  {
+    // contexto ⇆ agregado SUELTO: composición — el contexto pasa a contenerlo (fija su dueño).
+    // Solo para agregados sin dueño; los que ya pertenecen a un contexto usan context-crud arriba.
+    const ctx = isContext(sourceId) ? sourceId : isContext(targetId) ? targetId : null;
+    const agg = isAggregate(sourceId) ? sourceId : isAggregate(targetId) ? targetId : null;
+    if (ctx && agg && !(m.aggregates ?? []).find((a) => a.id === agg)?.boundedContextId) {
+      offer('aggregate-composition', () =>
+        host.command({ kind: 'set-aggregate-context', id: agg, boundedContextId: ctx }));
+    }
   }
   {
     // API (o el proxy que la fronteña) → contexto: dos sentidos muy distintos que NO
@@ -400,6 +402,59 @@ export function applyConnectionGesture(
         const other = isMockup(sourceId) ? targetId : sourceId;
         if (isPage(other)) {
           host.command({ kind: 'set-mockup-page', id: mockupId, pageId: other });
+          return;
+        }
+      }
+    }
+    // Composición de un elemento SUELTO: arrastrar desde su contenedor lo mete dentro (fija su
+    // dueño). Solo aplica a elementos sin dueño; los que ya pertenecen usan sus relaciones normales.
+    {
+      const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
+      const aggById = (id: string) => (host.model.aggregates ?? []).find((a) => a.id === id);
+      const entById = (id: string) => (host.model.entities ?? []).find((e) => e.id === id);
+      const voById = (id: string) => (host.model.valueObjects ?? []).find((v) => v.id === id);
+      const ctx = isCtx(sourceId) ? sourceId : isCtx(targetId) ? targetId : null;
+      const looseAgg = aggById(sourceId) ?? aggById(targetId);
+      if (ctx && looseAgg && !looseAgg.boundedContextId) {
+        host.command({ kind: 'set-aggregate-context', id: looseAgg.id, boundedContextId: ctx });
+        return;
+      }
+      const looseUc = (host.model.looseUseCases ?? []).find((u) => u.id === sourceId || u.id === targetId);
+      if (ctx && looseUc) {
+        host.command({ kind: 'set-use-case-context', id: looseUc.id, boundedContextId: ctx });
+        return;
+      }
+      const agg = aggById(sourceId) ?? aggById(targetId);
+      const looseEnt = entById(sourceId) ?? entById(targetId);
+      if (agg && looseEnt && !looseEnt.aggregateId) {
+        host.command({ kind: 'set-entity-aggregate', id: looseEnt.id, aggregateId: agg.id });
+        return;
+      }
+      const looseVo = voById(sourceId) ?? voById(targetId);
+      if (agg && looseVo && !looseVo.aggregateId) {
+        host.command({ kind: 'set-value-object-aggregate', id: looseVo.id, aggregateId: agg.id });
+        return;
+      }
+      // A loose nested element (operation/invariant/field/step) is adopted into a valid parent.
+      const looseEl = (host.model.looseElements ?? []).find((e) => e.id === sourceId || e.id === targetId);
+      if (looseEl) {
+        const other = looseEl.id === sourceId ? targetId : sourceId;
+        const entOf = (id: string) => (host.model.entities ?? []).find((e) => e.id === id);
+        let ownerId: string | null = null;
+        if (looseEl.elementType === 'operation') {
+          ownerId = aggById(other)?.id ?? null;
+        } else if (looseEl.elementType === 'invariant') {
+          ownerId = aggById(other)?.id ?? entOf(other)?.id ?? voById(other)?.id ?? null;
+        } else if (looseEl.elementType === 'field') {
+          const model = (host.model.models ?? []).find((mo) => mo.id === other);
+          ownerId = model?.id ?? aggById(other)?.modelId ?? entOf(other)?.modelId ?? null;
+        } else if (looseEl.elementType === 'use-case-step') {
+          const uc = host.model.boundedContexts.flatMap((bc) => bc.useCases ?? []).find((u) => u.id === other)
+            ?? (host.model.looseUseCases ?? []).find((u) => u.id === other);
+          ownerId = uc?.id ?? null;
+        }
+        if (ownerId) {
+          host.command({ kind: 'adopt-loose-element', id: looseEl.id, ownerId });
           return;
         }
       }
@@ -1359,41 +1414,10 @@ export function applyConnectionGesture(
       }
       if (!actorIds.has(sourceId)) return;
     }
-    if (actorIds.has(sourceId)) {
-      const actorUcIds = new Set(
-        host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
-      );
-      const actorQsIds = new Set(
-        host.model.boundedContexts.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
-      );
-      if (actorUcIds.has(targetId) || actorQsIds.has(targetId)) {
-        const already = (host.model.actorUses ?? []).some(
-          (u) => u.actorId === sourceId && u.targetId === targetId,
-        );
-        if (!already) host.command({ kind: 'add-actor-use', sourceId, targetId });
-        return;
-      }
-      if ((host.model.aggregates ?? []).some((a) => a.id === targetId)) {
-        host.command({ kind: 'add-actor-crud', sourceId, targetId });
-        return;
-      }
-      if (host.model.externalSystems.some((x) => x.id === targetId)) {
-        const exists = (host.model.actorExternalDependencies ?? []).some(
-          (d) => d.actorId === sourceId && d.externalSystemId === targetId,
-        );
-        if (!exists) host.command({ kind: 'add-actor-external', sourceId, targetId });
-        return;
-      }
-      // The person talks to the agent (a chat/supervision UI derives from it).
-      if ((host.model.aiAgents ?? []).some((a) => a.id === targetId)) {
-        const exists = (host.model.actorAgentUses ?? []).some(
-          (u) => u.actorId === sourceId && u.agentId === targetId,
-        );
-        if (!exists) host.command({ kind: 'add-actor-agent', sourceId, targetId });
-        return;
-      }
-      return;
-    }
+    // An actor never serves nor initiates — it is only ever served (see connectionOptions). So an
+    // edge dragged FROM an actor creates nothing; the only actor edge is one pointing into it (a UI
+    // serving it), handled by the ui-serving branch where the actor is the target.
+    if (actorIds.has(sourceId)) return;
     // Dragging an API operation onto its implementer wires the published contract to
     // the domain: a use case (or policy) is the fine wiring, a context the coarse one.
     const owningApi = host.owningApiOf(sourceId);

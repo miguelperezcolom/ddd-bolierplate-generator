@@ -855,6 +855,10 @@ export interface ModuxModel {
   pages?: UiPageRef[];
   /** Page mockups: the visual, kept apart from the page and linked to it by an edge. */
   mockups?: MockupRef[];
+  /** Free-standing use cases: created loose (no context yet), shown top-level until composed. */
+  looseUseCases?: UseCaseRef[];
+  /** Free-standing nested elements (operation/invariant/field/use-case-step) awaiting a parent. */
+  looseElements?: { id: string; name: string; elementType: string }[];
   /** Actor → app links (Role.uiAdapterIds). */
   actorAppUses?: ActorAppUseRef[];
   /** Data models with their fields — the mappings view edits them in place. */

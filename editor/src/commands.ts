@@ -78,7 +78,14 @@ export type ModuxCommand =
       kind: 'add-aggregate';
       id: string;
       name: string;
-      boundedContextId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-aggregate-context. */
+      boundedContextId?: string;
+    }
+  | {
+      /** Tie a free-standing aggregate to a context, or detach it (omit boundedContextId). */
+      kind: 'set-aggregate-context';
+      id: string;
+      boundedContextId?: string;
     }
   | {
       /** An invariant on its owner — an aggregate, value object OR entity. */
@@ -110,19 +117,21 @@ export type ModuxCommand =
       kind: 'add-entity';
       id: string;
       name: string;
-      aggregateId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-entity-aggregate. */
+      aggregateId?: string;
     }
-  | { kind: 'remove-entity'; id: string; aggregateId: string }
+  | { kind: 'remove-entity'; id: string; aggregateId?: string }
   | {
       /** A value object owned by an aggregate — its own shape, invariant-ready. */
       kind: 'add-value-object';
       id: string;
       name: string;
-      aggregateId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-value-object-aggregate. */
+      aggregateId?: string;
       /** Enum | Record | Wrapper (defaults to Record). */
       type?: string;
     }
-  | { kind: 'remove-value-object'; id: string; aggregateId: string }
+  | { kind: 'remove-value-object'; id: string; aggregateId?: string }
   | {
       /** An operation of an aggregate (input model → output model). */
       kind: 'add-operation';
@@ -671,9 +680,30 @@ export type ModuxCommand =
       kind: 'add-use-case';
       id: string;
       name: string;
-      boundedContextId: string;
+      /** Optional: omit to create it free-standing, then tie it with set-use-case-context. */
+      boundedContextId?: string;
       /** Reaction logic with use-case shape that expresses no business case. */
       policy?: boolean;
+    }
+  | {
+      /** Tie a free-standing use case to a context, or detach it (omit boundedContextId). */
+      kind: 'set-use-case-context';
+      id: string;
+      boundedContextId?: string;
+    }
+  | {
+      /** A free-standing nested element (operation/invariant/field/use-case-step) with no parent yet. */
+      kind: 'add-loose-element';
+      id: string;
+      name: string;
+      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step';
+    }
+  | { kind: 'remove-loose-element'; id: string }
+  | {
+      /** Compose a loose element into a parent: graft it into the parent's nested array. */
+      kind: 'adopt-loose-element';
+      id: string;
+      ownerId: string;
     }
   | {
       kind: 'remove-use-case';

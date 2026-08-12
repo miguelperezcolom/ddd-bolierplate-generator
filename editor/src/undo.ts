@@ -584,6 +584,11 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         const e = (host.model.entities ?? []).find((x) => x.id === c.id);
         return e ? [{ kind: 'set-entity-aggregate', id: c.id, aggregateId: e.aggregateId }] : null;
       }
+      case 'set-aggregate-context': {
+        const a = (host.model.aggregates ?? []).find((x) => x.id === c.id);
+        // boundedContextId is '' when free-standing; omit it so the inverse detaches again.
+        return a ? [{ kind: 'set-aggregate-context', id: c.id, boundedContextId: a.boundedContextId || undefined }] : null;
+      }
       case 'remove-model-field': {
         const f = fieldOwners(host).flatMap((o) => o.fields ?? []).find((x) => x.id === c.fieldId);
         return f
@@ -781,6 +786,30 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         return [{ kind: 'add-context-crud', sourceId: c.sourceId, targetId: c.targetId }];
       case 'add-use-case':
         return [{ kind: 'remove-use-case', id: c.id }];
+      case 'set-use-case-context': {
+        const owner = host.model.boundedContexts.find((mo) => (mo.useCases ?? []).some((u) => u.id === c.id));
+        return [{ kind: 'set-use-case-context', id: c.id, boundedContextId: owner?.id }];
+      }
+      case 'add-loose-element':
+        return [{ kind: 'remove-loose-element', id: c.id }];
+      case 'remove-loose-element': {
+        const le = (host.model.looseElements ?? []).find((e) => e.id === c.id);
+        return le
+          ? [{ kind: 'add-loose-element', id: le.id, name: le.name, elementType: le.elementType as 'operation' | 'invariant' | 'field' | 'use-case-step' }]
+          : null;
+      }
+      case 'adopt-loose-element': {
+        // Before adoption the loose record still holds name + type; the owner is on the command.
+        const le = (host.model.looseElements ?? []).find((e) => e.id === c.id);
+        if (!le) return null;
+        const t = le.elementType;
+        const remove: ModuxCommand =
+          t === 'operation' ? { kind: 'remove-operation', id: c.id, aggregateId: c.ownerId }
+            : t === 'use-case-step' ? { kind: 'remove-use-case-step', id: c.id, useCaseId: c.ownerId }
+            : t === 'field' ? { kind: 'remove-model-field', modelId: c.ownerId, fieldId: c.id }
+            : { kind: 'remove-invariant', id: c.id };
+        return [remove, { kind: 'add-loose-element', id: c.id, name: le.name, elementType: t as 'operation' | 'invariant' | 'field' | 'use-case-step' }];
+      }
       case 'remove-use-case': {
         for (const m of host.model.boundedContexts) {
           const u = (m.useCases ?? []).find((x) => x.id === c.id);

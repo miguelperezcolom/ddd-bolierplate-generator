@@ -1683,10 +1683,10 @@ export class ModuxEditor extends LitElement {
           .map((i) => this.memberIdOf(i.id, i.kind))
           .filter((m): m is string => !!m && view.memberIds.includes(m))
       : [];
-    this._deletePicker = {
-      items,
-      memberIds: memberIds.length === items.length ? memberIds : [],
-    };
+    // Offer «quitar de la vista» whenever ANY deleted item is a member of the active view — not only
+    // when every one is. Deleting a member and a non-member together still lets you pull the member
+    // out of the view without touching the model.
+    this._deletePicker = { items, memberIds };
   }
 
   /** Canvas node → the catalog id a view lists as member (null when not a member kind). */
@@ -1701,6 +1701,12 @@ export class ModuxEditor extends LitElement {
       case 'workflow':
       case 'page':
       case 'ui-app':
+      case 'actor':
+      case 'ai-agent':
+      case 'rag':
+      case 'mcp-gateway':
+      case 'api':
+      case 'proxy-api':
         return id;
       case 'flow':
         return id.replace(/^flow:/, '');
@@ -2013,16 +2019,11 @@ export class ModuxEditor extends LitElement {
 
   private createViewFromSelection(): void {
     const name = this._newViewName.trim();
-    // Selection → its catalog members. Only when NOTHING is selected does the
-    // whole diagram on screen become the vista; a selection that maps to no
-    // member (e.g. an edge) makes no view rather than silently grabbing all.
-    const selected = this.memberIdsFromSelection();
-    const memberIds = selected.length
-      ? selected
-      : this.viewSelection().length
-        ? []
-        : this.visibleMemberIds();
-    if (!name || !memberIds.length) return;
+    if (!name) return;
+    // A view is born curated and EMPTY unless a selection seeds it — you then fill it by dropping
+    // elements or checking members in the tree. (Before, an empty selection quietly grabbed the whole
+    // screen, so a "new view" was never actually empty — the friction we're removing here.)
+    const memberIds = this.memberIdsFromSelection();
     const id = crypto.randomUUID();
     this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
@@ -2041,19 +2042,6 @@ export class ModuxEditor extends LitElement {
     this.emit('create-view', { viewId: id, name, kind: this._view });
   }
 
-  /** The catalog members currently on stage as top-level nodes (vista candidates). */
-  private visibleMemberIds(): string[] {
-    const MEMBER_KINDS = new Set([
-      'boundedContext', 'external-system', 'process', 'workflow', 'actor', 'ai-agent',
-      'rag', 'mcp-gateway', 'api', 'proxy-api', 'ui-app', 'page', 'aggregate', 'entity',
-    ]);
-    return [...new Set(
-      this.sceneFor(this._view)
-        .nodes.filter((n) => !n.parentId && MEMBER_KINDS.has(n.kind))
-        .map((n) => n.id.replace(/^tgt:/, '')),
-    )];
-  }
-
   /** Model scoped to the active modux View (CURATED members + their context). */
   private filteredModel(): ModuxModel {
     if (!this._activeViewId) return this.model;
@@ -2068,6 +2056,15 @@ export class ModuxEditor extends LitElement {
       (a) => members.has(a.id) || boundedContextIds.has(a.boundedContextId),
     );
     const aggregateIds = new Set(aggregates.map((a) => a.id));
+    // Owned entities ride in with their aggregate; a free-standing one (no aggregate) rides in as a
+    // view member, like a loose aggregate does.
+    const entities = (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId) || members.has(e.id));
+    // Data models (the mappings collection) have no owner field of their own — an aggregate/entity
+    // points AT one via `modelId` (e.g. `model-<aggId>`). Without scoping them, every view — even an
+    // empty one — leaked every data model as a stray node. Keep only those an in-scope owner refers to.
+    const scopedModelIds = new Set<string>();
+    for (const a of aggregates) if (a.modelId) scopedModelIds.add(a.modelId);
+    for (const e of entities) if (e.modelId) scopedModelIds.add(e.modelId);
     const uiApps = (this.model.uiApps ?? []).filter((a) => members.has(a.id));
     const menuPageIds = new Set<string>();
     const collectMenuPages = (items?: UiMenuEntryRef[]) => {
@@ -2098,7 +2095,10 @@ export class ModuxEditor extends LitElement {
             (boundedContextIds.has(f.targetId) || externalIds.has(f.targetId))),
       ),
       aggregates,
-      entities: (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId)),
+      entities,
+      // Owned value objects ride with their aggregate; a free-standing one enters as a view member.
+      valueObjects: (this.model.valueObjects ?? []).filter((v) => aggregateIds.has(v.aggregateId) || members.has(v.id)),
+      models: (this.model.models ?? []).filter((dm) => scopedModelIds.has(dm.id)),
       aggregateReferences: (this.model.aggregateReferences ?? []).filter(
         (r) => aggregateIds.has(r.sourceAggregateId) && aggregateIds.has(r.targetAggregateId),
       ),
@@ -2107,6 +2107,9 @@ export class ModuxEditor extends LitElement {
       ),
       // Workflows have no owner boundedContext (they live outside the contexts): member-only.
       workflows: (this.model.workflows ?? []).filter((w) => members.has(w.id)),
+      // Free-standing use cases scope by membership too (a curated view shows only what it lists).
+      looseUseCases: (this.model.looseUseCases ?? []).filter((u) => members.has(u.id)),
+      looseElements: (this.model.looseElements ?? []).filter((e) => members.has(e.id)),
       // Top-level AI/strategic pieces scope by membership too — a curated view
       // about one subdomain should not drag every agent and gateway along.
       actors: (this.model.actors ?? []).filter((a) => members.has(a.id)),
@@ -3293,6 +3296,47 @@ export class ModuxEditor extends LitElement {
     if (!container && this._view === 'aggregates' && ['value-object', 'entity', 'invariant', 'field', 'operation'].includes(type)) {
       container = this.nearestAggregateTo(pos);
     }
+    // Free-standing creation: dropped on empty canvas, these are born without an owner and tied to
+    // their parent later by drawing a composition edge (they wear a «sin asociar» badge until then).
+    if (!container && ['aggregate', 'entity', 'value-object', 'use-case', 'policy'].includes(type)) {
+      const { id, name } = this.uniquePaletteName(def.label);
+      const cmd: ModuxCommand =
+        type === 'aggregate'
+          ? { kind: 'add-aggregate', id, name }
+          : type === 'entity'
+            ? { kind: 'add-entity', id, name }
+            : type === 'value-object'
+              ? { kind: 'add-value-object', id, name }
+              : { kind: 'add-use-case', id, name, ...(type === 'policy' ? { policy: true } : {}) };
+      issue(cmd, id);
+      const noun =
+        type === 'aggregate' ? 'Agregado'
+          : type === 'entity' ? 'Entidad'
+          : type === 'value-object' ? 'Value object'
+          : type === 'policy' ? 'Policy' : 'Caso de uso';
+      const parentNoun = type === 'entity' || type === 'value-object' ? 'un agregado' : 'un contexto';
+      this.emit('modux-notice', {
+        message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
+      });
+      return;
+    }
+    // Free-standing NESTED elements (operation/invariant/field/step): they can't live owner-less in
+    // their parent's array, so a loose one goes to the looseElements bucket and is adopted into the
+    // parent later by a composition edge. It wears a «sin asociar» badge until then.
+    if (!container && ['operation', 'invariant', 'field', 'use-case-step'].includes(type)) {
+      const { id, name } = this.uniquePaletteName(def.label);
+      issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' }, id);
+      const parentNoun =
+        type === 'operation' ? 'un agregado'
+          : type === 'invariant' ? 'un agregado, entidad o value object'
+          : type === 'field' ? 'un modelo'
+          : 'un caso de uso o policy';
+      const noun = type === 'operation' ? 'Operación' : type === 'invariant' ? 'Invariante' : type === 'field' ? 'Campo' : 'Paso';
+      this.emit('modux-notice', {
+        message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
+      });
+      return;
+    }
     if (!container) {
       this.emit('modux-notice', {
         message:
@@ -4228,7 +4272,7 @@ export class ModuxEditor extends LitElement {
                 placeholder="Nombre de la vista…"
                 title=${this.viewSelection().length
                   ? 'Crear una vista modux con la selección'
-                  : 'Crear una vista modux con lo que hay en pantalla — hereda esta geometría y expansión'}
+                  : 'Crear una vista modux vacía — luego añades elementos soltándolos o desde el árbol'}
                 .value=${this._newViewName}
                 @input=${(e: Event) => (this._newViewName = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
@@ -4237,7 +4281,7 @@ export class ModuxEditor extends LitElement {
                 class="tab"
                 title=${this.viewSelection().length
                   ? 'Crear una vista modux con la selección'
-                  : 'Crear una vista modux con lo que hay en pantalla — hereda esta geometría y expansión'}
+                  : 'Crear una vista modux vacía — luego añades elementos soltándolos o desde el árbol'}
                 @click=${this.createViewFromSelection}
               >
                 ⊞ Vista${this.viewSelection().length ? ` (${this.viewSelection().length})` : ''}
