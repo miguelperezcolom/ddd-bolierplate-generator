@@ -787,6 +787,13 @@ function buildScene(
       proxy: false,
       dataModel: true,
     }))),
+    ...(distributionLevel ? [] : (model.pages ?? []).map((pg) => ({
+      ref: pg,
+      external: false,
+      api: false,
+      proxy: false,
+      uiPage: true,
+    }))),
     // ETL flows without owner (legacy) still float; owned ones enter through their context.
     ...(distributionLevel ? [] : (model.etlFlows ?? [])
       .filter((f) => !f.ownerBoundedContextId)
@@ -920,6 +927,24 @@ function buildScene(
         h: NODE_H,
       });
       if (expanded) emitChildren(dm.id, 'model', dm.name, pos);
+      return;
+    }
+    if ('uiPage' in entry && entry.uiPage) {
+      const pg = entry.ref as NonNullable<ModuxModel['pages']>[number];
+      nodes.push({
+        id: pg.id,
+        label: pg.name,
+        kind: 'page',
+        symbol: 'page',
+        fill: '#f0f9ff',
+        stroke: '#0ea5e9',
+        badge: pg.type ? `PÁGINA · ${pg.type}` : 'PÁGINA',
+        tooltip: `${pg.name} — página${pg.route ? ` · ${pg.route}` : ''}${pg.type ? ` (${pg.type})` : ''}`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
       return;
     }
     if (entry.proxy) {
@@ -2023,12 +2048,15 @@ function buildScene(
     })),
   );
 
-  // A menu entry → what it drives (use case, aggregate CRUD, query listing, another app). The
-  // page it opens lights up once pages are nodes on the canvas (that comes with the mockup rework).
+  // A menu entry → what it drives (page, use case, aggregate CRUD, query listing, another app).
   const menuEdges: SceneEdge[] = (model.uiApps ?? []).flatMap((app) =>
     flattenMenu(app).flatMap(({ entry, path }): SceneEdge[] => {
       const src = menuNodeId(app.id, entry, path);
       const out: SceneEdge[] = [];
+      if (entry.pageId && (model.pages ?? []).some((p) => p.id === entry.pageId)) {
+        out.push({ id: `menupage:${src}->${entry.pageId}`, sourceId: src, targetId: entry.pageId,
+          kind: 'menu-page', color: '#64748b', markerStart: 'ball', markerEnd: 'arrow', tooltip: 'la página que abre' });
+      }
       if (entry.uiAdapterId && (model.uiApps ?? []).some((a) => a.id === entry.uiAdapterId)) {
         out.push({ id: `menuapp:${src}->${entry.uiAdapterId}`, sourceId: src, targetId: entry.uiAdapterId,
           kind: 'menu-app', color: '#64748b', arrow: true, tooltip: 'abre esta app' });
