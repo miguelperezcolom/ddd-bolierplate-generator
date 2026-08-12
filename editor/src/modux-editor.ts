@@ -280,6 +280,11 @@ export class ModuxEditor extends LitElement {
   @state() private _yugo = false;
   /** Whether machine-made stubs (derived elements, ✦) show in the diagram. */
   @state() private _showDerived = true;
+  /**
+   * Canvas render mode over the SAME model: the unified diagram, the distribution packaging lens,
+   * or the eventstorming narrative. They are alternate renders of one canvas, not separate views.
+   */
+  @state() private _canvasMode: 'unified' | 'distribution' | 'eventstorming' = 'unified';
 
   /** Mirrors mateu's <html theme="dark"> flag — set by the connected host. */
   @property({ type: Boolean, reflect: true }) dark = false;
@@ -4232,6 +4237,11 @@ export class ModuxEditor extends LitElement {
                   ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'distribution'
                   ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
+                // The unified canvas renders in the mode the toolbar toggles chose.
+                : view === 'context-map' && this._canvasMode === 'eventstorming'
+                  ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
+                : view === 'context-map' && this._canvasMode === 'distribution'
+                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
                 : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);
     if (view !== 'design') {
       this.withAreas(scene, view);
@@ -5075,6 +5085,26 @@ export class ModuxEditor extends LitElement {
           @click=${() => (this._showDerived = !this._showDerived)}
         >
           ✦ Inferidos: ${this._showDerived ? 'visibles' : 'ocultos'}
+        </button>
+        <button
+          class="tab"
+          ?disabled=${this._view === 'design'}
+          ?data-active=${this._canvasMode === 'distribution'}
+          title="Distribución: los contextos como empaquetadores de módulos, con servicios y despliegue — el mismo modelo, otra lente"
+          @click=${() =>
+            (this._canvasMode = this._canvasMode === 'distribution' ? 'unified' : 'distribution')}
+        >
+          ⛃ Distribución
+        </button>
+        <button
+          class="tab"
+          ?disabled=${this._view === 'design'}
+          ?data-active=${this._canvasMode === 'eventstorming'}
+          title="EventStorming: la narrativa comando → agregado → evento → policy → read model sobre el mismo modelo"
+          @click=${() =>
+            (this._canvasMode = this._canvasMode === 'eventstorming' ? 'unified' : 'eventstorming')}
+        >
+          ▦ EventStorming
         </button>
         <button
           class="tab"
