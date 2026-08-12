@@ -176,6 +176,8 @@ export class ModuxCanvas extends LitElement {
   private _t: ZoomTransform = zoomIdentity;
   /** Cached reference to the world <g> so the hot zoom path never hits querySelector. */
   private _viewportEl: SVGGElement | null = null;
+  /** True between a zoom/pan gesture's start and end — freezes hover so it can't re-render per frame. */
+  private _zoomingActive = false;
   /**
    * Minimap projection (scene→minimap), captured on render so the zoom path can move the minimap's
    * viewport box imperatively — without a full scene re-render. Null until the minimap is drawn.
@@ -438,6 +440,12 @@ export class ModuxCanvas extends LitElement {
       .on('start', () => {
         // Promote the group to its own compositor layer for the duration of the gesture.
         this._viewportEl?.classList.add('zooming');
+        // Freeze hover/spotlight while zooming. As the scene scales under a stationary cursor, nodes
+        // slide across it and fire pointerenter/leave every frame — each recomputes the spotlight and
+        // triggers a full re-render (and a visible dim/undim flicker). Clear any active spotlight once
+        // here; setFocusNode() then ignores hover until the gesture ends.
+        this._zoomingActive = true;
+        if (this._focusNodeId) this._focusNodeId = null;
       })
       .on('zoom', (event) => {
         this._t = event.transform;
@@ -448,6 +456,7 @@ export class ModuxCanvas extends LitElement {
         // re-rendering the whole scene on every pause in scrolling was a visible hitch. The minimap
         // is kept in sync imperatively (applyViewportTransform), so nothing else needs a re-render.
         this._viewportEl?.classList.remove('zooming');
+        this._zoomingActive = false;
       });
     select(svgEl).call(this._zoomBehavior);
     this._viewportEl = this.renderRoot.querySelector('svg.main > g.viewport') as SVGGElement | null;
@@ -695,7 +704,8 @@ export class ModuxCanvas extends LitElement {
       this._wpDrag ||
       this._resize ||
       this._rubber ||
-      this._spaceDown
+      this._spaceDown ||
+      this._zoomingActive
     );
   }
 
@@ -706,6 +716,7 @@ export class ModuxCanvas extends LitElement {
    * stay lit together. Passing null (pointer left) clears the spotlight.
    */
   private setFocusNode(id: string | null): void {
+    if (this._zoomingActive) return; // hover is frozen mid-zoom (see the zoom 'start' handler)
     if (id && this.gestureActive()) return;
     if (id === this._focusNodeId) return;
     this._focusNodeId = id;
