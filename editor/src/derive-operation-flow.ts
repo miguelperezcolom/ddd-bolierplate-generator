@@ -6,7 +6,7 @@
  * `docs/design/operation-body.md`) — and a process-design canvas is that read as a tree of nodes.
  * So the derivation is a pure function of the steps, which is why it belongs on the client: the
  * future drag-and-drop «diseño de proceso» view renders this, and gestures edit the steps beneath
- * it. Sibling of `derive-interaction.ts`.
+ * it.
  *
  * Control flow is structured nesting: an `If` yields `then`/`else` branches, a `ForEach` a `body`
  * branch — each a labelled list of child nodes, recursively. Ids are positional and stable, so the

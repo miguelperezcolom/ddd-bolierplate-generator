@@ -87,30 +87,6 @@ export const FLOW_COMMANDS: Record<string, Handler> = {
   },
 
   /**
-   * Create or REPLACE an interaction — a sequence of messages.
-   *
-   * The payload is the whole thing, but a save carrying no messages is a HEADER-ONLY save and
-   * keeps the stored ones. Two surfaces edit this element from different angles: the graphical
-   * one moves messages around, the ficha edits the header, and neither should erase the other's
-   * work by not mentioning it.
-   */
-  'save-interaction': (store, command) => {
-    const id = String(command.id ?? '').trim();
-    if (!id) throw new CommandError('La interacción necesita un id');
-    const current = store.get('interactions', id);
-    store.put('interactions', {
-      id,
-      name: command.name ?? null,
-      description: command.description ?? null,
-      triggerKind: command.triggerKind ?? null,
-      triggerRef: command.triggerRef ?? null,
-      messages: command.messages ?? current?.messages ?? [],
-    });
-  },
-
-  'remove-interaction': remove({ type: 'interactions' }),
-
-  /**
    * Edit a step's assignment fields. Deliberately narrow: who runs it, by when, and what undoes
    * it. Its name, type and use case are its identity and are not moved from here.
    */
@@ -143,4 +119,4 @@ function requireProcess(store: ModelStore, id: unknown): Element {
 }
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */
-export const FLOW_TYPES: string[] = ['flows', 'processes', 'interactions'];
+export const FLOW_TYPES: string[] = ['flows', 'processes'];

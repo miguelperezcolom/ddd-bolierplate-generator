@@ -492,7 +492,7 @@ describe('the block as a whole', () => {
       'add-aggregate-call', 'add-use-case-call', 'add-query-call', 'add-use-case-step',
       'add-flow', 'add-process', 'add-process-step', 'move-process-step', 'update-process-step',
       'add-context-crud', 'add-ui', 'add-ui-assignment', 'add-ui-serving', 'set-ui-context',
-      'add-ui-crud', 'rename-element', 'save-interaction', 'remove-interaction',
+      'add-ui-crud', 'rename-element',
     ];
 
     expect(kinds.filter((kind) => !supports(kind))).toEqual([]);

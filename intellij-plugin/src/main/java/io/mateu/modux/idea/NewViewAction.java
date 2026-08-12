@@ -12,9 +12,9 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Create a view document ({@code *.modux-view.yaml}) and open it (§12.2). The document references a
- * catalog view by id and adds a lens and geometry; it lives wherever the user runs the action. It
- * needs a catalog above it to resolve against — if there is none, it is still created, and opening
- * it is what reports the missing catalog.
+ * catalog view by id and carries geometry; there is a single unified canvas now, so no type is
+ * chosen. It lives wherever the user runs the action, and needs a catalog above it to resolve
+ * against — if there is none, it is still created, and opening it is what reports the missing one.
  */
 public final class NewViewAction extends AnAction {
 
@@ -27,13 +27,7 @@ public final class NewViewAction extends AnAction {
         var name = Messages.showInputDialog(project, "Nombre de la vista:", "Nueva vista Modux", null);
         if (name == null || name.isBlank()) return;
         var slug = ModuxActionSupport.slug(name);
-
-        // A view is exactly one type, chosen now and fixed forever — it lands in the filename.
-        var kindIndex = Messages.showChooseDialog(project, "Tipo de la vista:", "Nueva vista Modux",
-                null, ModuxProject.VIEW_KINDS, ModuxProject.VIEW_KINDS[0]);
-        if (kindIndex < 0) return;
-        var kind = ModuxProject.VIEW_KINDS[kindIndex];
-        var fileName = ModuxProject.viewFileName(slug, kind);
+        var fileName = ModuxProject.viewFileName(slug);
 
         if (dir.findChild(fileName) != null) {
             Messages.showErrorDialog(project, "Ya existe " + fileName + " en " + dir.getPath() + ".", "Modux");
@@ -43,8 +37,8 @@ public final class NewViewAction extends AnAction {
             Messages.showWarningDialog(project, "No hay un catálogo " + ModuxProject.CATALOG_DIR
                     + "/ por encima. La vista se crea, pero no abrirá hasta que exista uno.", "Modux");
         }
-        // A curated view seeded empty: the type is fixed in the filename, geometry fills in as you draw.
-        var content = "viewId: " + slug + "\nkind: " + kind + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
+        // A curated view seeded empty: geometry fills in as you draw on the unified canvas.
+        var content = "viewId: " + slug + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
         try {
             var view = WriteCommandAction.writeCommandAction(project)
                     .withName("New Modux View")

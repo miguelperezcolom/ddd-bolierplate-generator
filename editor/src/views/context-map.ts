@@ -1,7 +1,9 @@
 import type {
-  ModuxModel, ContextMapRelationType, FlowRef, FieldRef, ReferencedProject,
+  ModuxModel, ContextMapRelationType, FlowRef, FieldRef, ReferencedProject, UiComponentNodeRef,
 } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { menuNodeId, flattenMenu } from './ui.js';
+import { fieldNodeId } from './mappings.js';
 
 /**
  * How a referenced project's whereabouts read in a tooltip. A migrated model may know none —
@@ -199,6 +201,30 @@ export function ownershipIndex(
     if (px.publishedByExternalSystemId) owners.set(px.id, px.publishedByExternalSystemId);
     if (px.targetApiId) apiOps(px.targetApiId, px.id, px.id);
   }
+  // A workflow's steps roll up into it: a dependency edge between two folded steps folds away.
+  for (const w of model.workflows ?? []) {
+    for (const s of w.steps) owners.set(s.id, w.id);
+  }
+  // A process's steps roll up into it the same way.
+  for (const p of model.processes ?? []) {
+    for (const s of p.steps) owners.set(s.id, p.id);
+  }
+  // A UI app's menu entries roll up into the app (menu nodes carry synthetic ids).
+  for (const app of model.uiApps ?? []) {
+    for (const { entry, path } of flattenMenu(app)) owners.set(menuNodeId(app.id, entry, path), app.id);
+  }
+  // An ETL flow's steps roll up into the flow.
+  for (const f of model.etlFlows ?? []) {
+    for (const s of f.steps ?? []) owners.set(s.id, f.id);
+  }
+  // A data model's field chips roll up into the model.
+  for (const dm of model.models ?? []) {
+    for (const f of dm.fields ?? []) owners.set(fieldNodeId(dm.id, f.id), dm.id);
+  }
+  // A mockup's component chips roll up into the mockup.
+  for (const mk of model.mockups ?? []) {
+    for (const c of flattenComponents(mk.content)) owners.set(componentNodeId(mk.id, c.id), mk.id);
+  }
   return owners;
 }
 
@@ -242,6 +268,13 @@ interface ChildDesc {
     | 'ui'
     | 'ui-app'
     | 'external-system'
+    | 'workflow-step'
+    | 'process-step'
+    | 'menu-group'
+    | 'menu-item'
+    | 'etl-step'
+    | 'model-field'
+    | 'component'
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -277,6 +310,13 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   document: { symbol: 'readmodel', fill: '#f8fafc', stroke: '#475569' },
   'ui-app': { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
   ui: { symbol: 'interface', fill: '#f0f9ff', stroke: '#0ea5e9' },
+  'workflow-step': { symbol: 'gear', fill: '#ede9fe', stroke: '#6d28d9' },
+  'process-step': { symbol: 'gear', fill: '#f5f3ff', stroke: '#7c3aed' },
+  'menu-group': { symbol: 'process', fill: '#f0f9ff', stroke: '#7dd3fc' },
+  'menu-item': { symbol: 'process', fill: '#ffffff', stroke: '#7dd3fc' },
+  'etl-step': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
+  'model-field': { symbol: 'field', fill: '#faf5ff', stroke: '#a78bfa' },
+  component: { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -308,8 +348,33 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
   'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
   ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se asigna a apps y páginas',
+  'workflow-step': 'Paso de workflow — corre cuando sus dependencias completan',
+  'process-step': 'Paso de proceso — eslabón de la cadena (HUMAN o AUTOMÁTICO)',
+  'menu-group': 'Agrupador de menú — contiene un submenú, no abre nada',
+  'menu-item': 'Entrada de menú — abre una página, app, caso de uso o CRUD',
+  'etl-step': 'Paso ETL — fuente (pull/consumer) → transformación → escritura',
+  'model-field': 'Campo de modelo — arrastra su asa hasta el campo de otro modelo para mapearlos',
+  component: 'Componente del mockup — una pieza Mateu (layout, campo, botón…)',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
+
+/** `cmp:<hostId>:<componentId>` — the scene id of a mockup component chip. */
+function componentNodeId(hostId: string, componentId: string): string {
+  return `cmp:${hostId}:${componentId}`;
+}
+
+/** Every component in a content tree, flattened depth-first. */
+function flattenComponents(components: UiComponentNodeRef[] | undefined): UiComponentNodeRef[] {
+  const out: UiComponentNodeRef[] = [];
+  const walk = (items?: UiComponentNodeRef[]) => {
+    for (const c of items ?? []) {
+      out.push(c);
+      walk(c.children);
+    }
+  };
+  walk(components);
+  return out;
+}
 
 /** Default container size that fits `childCount` boxes in a grid. */
 function boundedContextElementDescs(
@@ -616,6 +681,51 @@ function buildScene(
             )
           : [];
       }
+      case 'workflow': {
+        // Its steps (joins/splits included) hang inside it; their dependency arrows are drawn
+        // between them (see workflowStepEdges) and roll up when the workflow is folded.
+        const w = (model.workflows ?? []).find((x) => x.id === id);
+        return (w?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'workflow-step' }));
+      }
+      case 'process': {
+        // A process is a linear chain of steps; the ordering arrows (processStepEdges) roll up
+        // with it when folded.
+        const p = (model.processes ?? []).find((x) => x.id === id);
+        return (p?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'process-step' }));
+      }
+      case 'ui-app': {
+        // The app's menu tree, flattened (like the UI lens): each entry a child, groups vs leaves;
+        // what each entry drives (use case / aggregate / query / app) is drawn by menuEdges.
+        const app = (model.uiApps ?? []).find((a) => a.id === id);
+        if (!app) return [];
+        return flattenMenu(app).map(({ entry, path }): ChildDesc => ({
+          id: menuNodeId(app.id, entry, path),
+          name: entry.label,
+          kind: entry.children?.length ? 'menu-group' : 'menu-item',
+        }));
+      }
+      case 'etl-flow': {
+        // The integrator's pipeline: source/transform/write steps hang inside it; the flow arrows
+        // between phases (etlPipeEdges) roll up with it.
+        const f = (model.etlFlows ?? []).find((x) => x.id === id);
+        return (f?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name ?? s.id, kind: 'etl-step' }));
+      }
+      case 'model': {
+        // A data model's fields (synthetic chip ids); the field-to-field mapping rules join them.
+        const dm = (model.models ?? []).find((x) => x.id === id);
+        return (dm?.fields ?? []).map((f): ChildDesc => ({
+          id: fieldNodeId(id, f.id), name: f.name, kind: 'model-field',
+        }));
+      }
+      case 'mockup': {
+        // A mockup's Mateu component tree, flattened (synthetic chip ids like the page designer).
+        const mk = (model.mockups ?? []).find((x) => x.id === id);
+        return flattenComponents(mk?.content).map((c): ChildDesc => ({
+          id: componentNodeId(id, c.id),
+          name: c.title || c.label || c.text || c.kind,
+          kind: 'component',
+        }));
+      }
       default:
         return [];
     }
@@ -697,6 +807,34 @@ function buildScene(
       proxy: false,
       workflow: true,
     }))),
+    ...(distributionLevel ? [] : (model.processes ?? []).map((p) => ({
+      ref: p,
+      external: false,
+      api: false,
+      proxy: false,
+      process: true,
+    }))),
+    ...(distributionLevel ? [] : (model.models ?? []).map((dm) => ({
+      ref: dm,
+      external: false,
+      api: false,
+      proxy: false,
+      dataModel: true,
+    }))),
+    ...(distributionLevel ? [] : (model.pages ?? []).map((pg) => ({
+      ref: pg,
+      external: false,
+      api: false,
+      proxy: false,
+      uiPage: true,
+    }))),
+    ...(distributionLevel ? [] : (model.mockups ?? []).map((mk) => ({
+      ref: mk,
+      external: false,
+      api: false,
+      proxy: false,
+      mockup: true,
+    }))),
     // ETL flows without owner (legacy) still float; owned ones enter through their context.
     ...(distributionLevel ? [] : (model.etlFlows ?? [])
       .filter((f) => !f.ownerBoundedContextId)
@@ -740,6 +878,8 @@ function buildScene(
     }
     if ('etl' in entry && entry.etl) {
       const f = entry.ref as NonNullable<ModuxModel['etlFlows']>[number];
+      const kids = ownedChildren(f.id, 'etl-flow');
+      const expanded = toggledIds.has(f.id) && kids.length > 0;
       nodes.push({
         id: f.id,
         label: f.name,
@@ -750,15 +890,20 @@ function buildScene(
         dashed: true,
         badge: 'ETL',
         tooltip: `${f.name} — integrador: fuentes (pull/consumidor) → transformación → escrituras (API/BD/evento)`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
       });
+      if (expanded) emitChildren(f.id, 'etl-flow', f.name, pos);
       return;
     }
     if ('workflow' in entry && entry.workflow) {
       const w = entry.ref as NonNullable<ModuxModel['workflows']>[number];
+      const kids = ownedChildren(w.id, 'workflow');
+      const expanded = toggledIds.has(w.id) && kids.length > 0;
       nodes.push({
         id: w.id,
         label: w.name,
@@ -769,11 +914,102 @@ function buildScene(
         dashed: true,
         badge: 'WORKFLOW',
         tooltip: `${w.name} — workflow${w.triggerEvent ? ` · arranca con ${w.triggerEvent}` : ''}`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
       });
+      if (expanded) emitChildren(w.id, 'workflow', w.name, pos);
+      return;
+    }
+    if ('process' in entry && entry.process) {
+      const p = entry.ref as NonNullable<ModuxModel['processes']>[number];
+      const kids = ownedChildren(p.id, 'process');
+      const expanded = toggledIds.has(p.id) && kids.length > 0;
+      nodes.push({
+        id: p.id,
+        label: p.name,
+        kind: 'process',
+        symbol: 'process',
+        fill: '#f5f3ff',
+        stroke: '#7c3aed',
+        badge: `PROCESS${p.sla ? ` · SLA ${p.sla}` : ''}`,
+        tooltip: `${p.name} — proceso${p.triggerEvent ? ` · arranca con ${p.triggerEvent}` : ''}`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      if (expanded) emitChildren(p.id, 'process', p.name, pos);
+      return;
+    }
+    if ('dataModel' in entry && entry.dataModel) {
+      const dm = entry.ref as NonNullable<ModuxModel['models']>[number];
+      const kids = ownedChildren(dm.id, 'model');
+      const expanded = toggledIds.has(dm.id) && kids.length > 0;
+      nodes.push({
+        id: dm.id,
+        label: dm.name,
+        kind: 'model',
+        symbol: 'readmodel',
+        fill: '#ffffff',
+        stroke: '#8b5cf6',
+        badge: 'MODEL',
+        tooltip: `${dm.name} — modelo de datos; arrastra el asa hasta otro modelo para mapearlo`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      if (expanded) emitChildren(dm.id, 'model', dm.name, pos);
+      return;
+    }
+    if ('uiPage' in entry && entry.uiPage) {
+      const pg = entry.ref as NonNullable<ModuxModel['pages']>[number];
+      nodes.push({
+        id: pg.id,
+        label: pg.name,
+        kind: 'page',
+        symbol: 'page',
+        fill: '#f0f9ff',
+        stroke: '#0ea5e9',
+        badge: pg.type ? `PÁGINA · ${pg.type}` : 'PÁGINA',
+        tooltip: `${pg.name} — página${pg.route ? ` · ${pg.route}` : ''}${pg.type ? ` (${pg.type})` : ''}`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      return;
+    }
+    if ('mockup' in entry && entry.mockup) {
+      const mk = entry.ref as NonNullable<ModuxModel['mockups']>[number];
+      const kids = ownedChildren(mk.id, 'mockup');
+      const expanded = toggledIds.has(mk.id) && kids.length > 0;
+      nodes.push({
+        id: mk.id,
+        label: mk.name,
+        kind: 'mockup',
+        symbol: 'interface',
+        fill: '#f0f9ff',
+        stroke: '#0ea5e9',
+        dashed: true,
+        badge: 'MOCKUP',
+        tooltip: `${mk.name} — mockup${mk.pageId ? ' de una página' : ' (arrastra su asa hasta una página)'}; suéltale componentes de la paleta`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      if (expanded) emitChildren(mk.id, 'mockup', mk.name, pos);
       return;
     }
     if (entry.proxy) {
@@ -1843,6 +2079,142 @@ function buildScene(
           })),
   );
 
+  // Inside a workflow: the step→step dependency DAG. Steps are children of the workflow, so these
+  // roll up with it when it is folded (both ends re-anchor to the workflow → the edge drops).
+  const workflowStepEdges: SceneEdge[] = (model.workflows ?? []).flatMap((w) => {
+    const stepIds = new Set(w.steps.map((s) => s.id));
+    const nameOf = new Map(w.steps.map((s) => [s.id, s.name]));
+    return w.steps.flatMap((step) =>
+      (step.dependsOnStepIds ?? [])
+        .filter((id) => stepIds.has(id))
+        .map((dep): SceneEdge => ({
+          id: `wfdep:${dep}->${step.id}`,
+          sourceId: dep,
+          targetId: step.id,
+          kind: 'workflow-dependency',
+          color: '#6d28d9',
+          arrow: true,
+          tooltip: `${step.name} espera a ${nameOf.get(dep) ?? dep}`,
+        })),
+    );
+  });
+
+  // Inside a process: the linear step→step chain. The first step hangs from the process by its
+  // `contains:` edge, so only the links BETWEEN steps are drawn here; they roll up when folded.
+  const processStepEdges: SceneEdge[] = (model.processes ?? []).flatMap((p) =>
+    p.steps.slice(1).map((step, i): SceneEdge => ({
+      id: `pseq:${p.steps[i].id}->${step.id}`,
+      sourceId: p.steps[i].id,
+      targetId: step.id,
+      kind: 'process-seq',
+      color: '#64748b',
+      arrow: true,
+      tooltip: `${step.name} sigue a ${p.steps[i].name}`,
+    })),
+  );
+
+  // A mockup stands for a page: the visual and the semantic page, tied by an edge.
+  const mockupEdges: SceneEdge[] = (model.mockups ?? [])
+    .filter((mk) => mk.pageId && (model.pages ?? []).some((p) => p.id === mk.pageId))
+    .map((mk): SceneEdge => ({
+      id: `mockupof:${mk.id}->${mk.pageId}`,
+      sourceId: mk.id,
+      targetId: mk.pageId!,
+      kind: 'mockup-of',
+      color: '#0ea5e9',
+      dashed: true,
+      arrow: true,
+      tooltip: 'el mockup de esta página',
+    }));
+
+  // A menu entry → what it drives (page, use case, aggregate CRUD, query listing, another app).
+  const menuEdges: SceneEdge[] = (model.uiApps ?? []).flatMap((app) =>
+    flattenMenu(app).flatMap(({ entry, path }): SceneEdge[] => {
+      const src = menuNodeId(app.id, entry, path);
+      const out: SceneEdge[] = [];
+      if (entry.pageId && (model.pages ?? []).some((p) => p.id === entry.pageId)) {
+        out.push({ id: `menupage:${src}->${entry.pageId}`, sourceId: src, targetId: entry.pageId,
+          kind: 'menu-page', color: '#64748b', markerStart: 'ball', markerEnd: 'arrow', tooltip: 'la página que abre' });
+      }
+      if (entry.uiAdapterId && (model.uiApps ?? []).some((a) => a.id === entry.uiAdapterId)) {
+        out.push({ id: `menuapp:${src}->${entry.uiAdapterId}`, sourceId: src, targetId: entry.uiAdapterId,
+          kind: 'menu-app', color: '#64748b', arrow: true, tooltip: 'abre esta app' });
+      }
+      if (entry.useCaseId) {
+        out.push({ id: `menuuc:${src}->${entry.useCaseId}`, sourceId: src, targetId: entry.useCaseId,
+          kind: 'menu-use-case', color: '#06b6d4', dashed: true, arrow: true, tooltip: 'lanza este caso de uso' });
+      }
+      if (entry.aggregateId) {
+        out.push({ id: `menuagg:${src}->${entry.aggregateId}`, sourceId: src, targetId: entry.aggregateId,
+          kind: 'menu-aggregate', label: 'CRUD', color: '#8b5cf6', dashed: true, arrow: true, tooltip: 'CRUD sobre este agregado' });
+      }
+      if (entry.queryOperationId) {
+        out.push({ id: `menuqop:${src}->${entry.queryOperationId}`, sourceId: src, targetId: entry.queryOperationId,
+          kind: 'menu-query-operation', label: 'listado', color: '#0284c7', dashed: true, arrow: true, tooltip: 'listado de esta consulta' });
+      }
+      return out;
+    }),
+  );
+
+  // Inside an ETL flow: the pipeline source → transform → write, paired by phase like the
+  // integrations lens. Rolls up with the flow when folded.
+  const etlPhaseOf = (type: string): 0 | 1 | 2 =>
+    type.startsWith('SOURCE') ? 0 : type === 'TRANSFORM' ? 1 : 2;
+  const etlPipeEdges: SceneEdge[] = (model.etlFlows ?? []).flatMap((f) => {
+    const steps = f.steps ?? [];
+    const byPhase: [typeof steps, typeof steps, typeof steps] = [[], [], []];
+    for (const s of steps) byPhase[etlPhaseOf(s.type)].push(s);
+    const out: SceneEdge[] = [];
+    for (const phase of [1, 2] as const) {
+      byPhase[phase].forEach((s, row) => {
+        const prevCol = byPhase[(phase - 1) as 0 | 1];
+        const prev = prevCol[Math.min(row, prevCol.length - 1)];
+        if (prev) {
+          out.push({
+            id: `etlpipe:${f.id}:${prev.id}->${s.id}`,
+            sourceId: prev.id,
+            targetId: s.id,
+            kind: 'etl-pipe',
+            color: '#0f766e',
+            arrow: true,
+            tooltip: 'el dato fluye por el pipeline',
+          });
+        }
+      });
+    }
+    return out;
+  });
+
+  // Model mappings: a labeled edge between two models, plus a thin field→field thread per rule
+  // (visible when both models are expanded; folds up to the mapping edge otherwise).
+  const mappingEdges: SceneEdge[] = (model.modelMappings ?? []).flatMap((mm): SceneEdge[] => {
+    if (!mm.sourceModelId || !mm.targetModelId) return [];
+    const out: SceneEdge[] = [{
+      id: `mapping:${mm.id}`,
+      sourceId: mm.sourceModelId,
+      targetId: mm.targetModelId,
+      kind: 'model-mapping',
+      color: '#7c3aed',
+      label: mm.name,
+      arrow: true,
+      tooltip: `${mm.name} — las reglas campo a campo son las líneas finas entre campos`,
+    }];
+    for (const r of mm.rules ?? []) {
+      if (!r.sourceFieldId || !r.targetFieldId) continue;
+      out.push({
+        id: `maprule:${mm.id}:${r.id}`,
+        sourceId: fieldNodeId(mm.sourceModelId, r.sourceFieldId),
+        targetId: fieldNodeId(mm.targetModelId, r.targetFieldId),
+        kind: 'mapping-rule',
+        color: '#a78bfa',
+        dashed: true,
+        arrow: true,
+        tooltip: `Regla de ${mm.name}`,
+      });
+    }
+    return out;
+  });
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -2262,6 +2634,12 @@ function buildScene(
       ...workflowCallEdges,
       ...workflowTriggerEdges,
       ...workflowChainEdges,
+      ...workflowStepEdges,
+      ...processStepEdges,
+      ...menuEdges,
+      ...mockupEdges,
+      ...etlPipeEdges,
+      ...mappingEdges,
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,

@@ -1,6 +1,5 @@
 import type { ModuxModel, UiMenuEntryRef, UiComponentNodeRef, FieldRef } from './model.js';
 import type { ModuxCommand } from './commands.js';
-import { saveInteractionCommand } from './interaction-utils.js';
 
 /** The elements that own fields — aggregates and entities (Record VOs join later). */
 function fieldOwners(host: { model: ModuxModel }): { id: string; fields?: FieldRef[] }[] {
@@ -80,6 +79,16 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       }
       case 'add-model':
         return [{ kind: 'remove-model', id: c.id }];
+      case 'add-mockup':
+        return [{ kind: 'delete-mockup', id: c.id }];
+      case 'delete-mockup': {
+        const mk = (host.model.mockups ?? []).find((x) => x.id === c.id);
+        return mk ? [{ kind: 'add-mockup', id: mk.id, name: mk.name, pageId: mk.pageId }] : null;
+      }
+      case 'set-mockup-page': {
+        const mk = (host.model.mockups ?? []).find((x) => x.id === c.id);
+        return mk ? [{ kind: 'set-mockup-page', id: c.id, pageId: mk.pageId ?? null }] : null;
+      }
       case 'add-model-mapping':
         return [{ kind: 'remove-model-mapping', id: c.id }];
       case 'remove-model-mapping': {
@@ -415,7 +424,9 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'set-page-component':
       case 'remove-page-component':
       case 'move-page-component': {
-        const page = (host.model.pages ?? []).find((x) => x.id === c.pageId);
+        const hostEl = c.mockupId
+          ? (host.model.mockups ?? []).find((x) => x.id === c.mockupId)
+          : (host.model.pages ?? []).find((x) => x.id === c.pageId);
         let node: UiComponentNodeRef | null = null;
         let parent: UiComponentNodeRef | null = null;
         let before: string | null = null;
@@ -430,13 +441,14 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
             walk(list[i].children, list[i]);
           }
         };
-        walk(page?.content, null);
+        walk(hostEl?.content, null);
         if (!node) return null;
         const found: UiComponentNodeRef = node;
         if (c.kind === 'set-page-component') {
           return [{
             kind: 'set-page-component',
             pageId: c.pageId,
+            mockupId: c.mockupId,
             componentId: c.componentId,
             title: found.title ?? null,
             text: found.text ?? null,
@@ -455,12 +467,17 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           return [{
             kind: 'move-page-component',
             pageId: c.pageId,
+            mockupId: c.mockupId,
             componentId: c.componentId,
             parentComponentId: parent === null ? null : (parent as UiComponentNodeRef).id,
             beforeComponentId: before,
           }];
         }
-        // remove: recreate the WHOLE subtree where it was
+        // remove: recreate the WHOLE subtree where it was (page hosts only for now).
+        if (!c.pageId) {
+          return [{ kind: 'add-page-component', mockupId: c.mockupId, componentId: found.id,
+            componentKind: found.kind, parentComponentId: parent === null ? undefined : (parent as UiComponentNodeRef).id }];
+        }
         return host.rebuildComponentOps(
           c.pageId,
           found,
@@ -1544,15 +1561,6 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
             dependsOnStepId: c.dependsOnStepId,
           },
         ];
-      case 'save-interaction': {
-        // Wholesale replace: undo restores the previous ref (or drops the newcomer).
-        const prev = (host.model.interactions ?? []).find((i) => i.id === c.id);
-        return prev ? [saveInteractionCommand(prev)] : [{ kind: 'remove-interaction', id: c.id }];
-      }
-      case 'remove-interaction': {
-        const prev = (host.model.interactions ?? []).find((i) => i.id === c.id);
-        return prev ? [saveInteractionCommand(prev)] : null;
-      }
     }
     return null;
 }

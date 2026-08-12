@@ -1328,6 +1328,9 @@ export type ModuxCommand =
     }
   | { kind: 'add-page-button'; pageId: string; useCaseId: string; label?: string; type?: string }
   | { kind: 'remove-page-button'; pageId: string; useCaseId: string }
+  | { kind: 'add-mockup'; id: string; name: string; pageId?: string }
+  | { kind: 'delete-mockup'; id: string }
+  | { kind: 'set-mockup-page'; id: string; pageId: string | null }
   | { kind: 'rename-ui-page'; pageId: string; name: string }
   | { kind: 'set-page-type'; pageId: string; pageType: string }
   | { kind: 'set-page-route'; pageId: string; path: string }
@@ -1340,15 +1343,18 @@ export type ModuxCommand =
     }
   | {
       kind: 'add-page-component';
-      pageId: string;
+      /** The host of the component tree: a page (`pageId`) or a mockup (`mockupId`). */
+      pageId?: string;
+      mockupId?: string;
       componentId: string;
       componentKind: string;
       parentComponentId?: string;
     }
-  | { kind: 'remove-page-component'; pageId: string; componentId: string }
+  | { kind: 'remove-page-component'; pageId?: string; mockupId?: string; componentId: string }
   | {
       kind: 'set-page-component';
-      pageId: string;
+      pageId?: string;
+      mockupId?: string;
       componentId: string;
       title?: string | null;
       text?: string | null;
@@ -1365,7 +1371,8 @@ export type ModuxCommand =
     }
   | {
       kind: 'move-page-component';
-      pageId: string;
+      pageId?: string;
+      mockupId?: string;
       componentId: string;
       parentComponentId?: string | null;
       beforeComponentId?: string | null;
@@ -1383,27 +1390,6 @@ export type ModuxCommand =
   | { kind: 'set-page-field-order'; pageId: string; fieldIds: string[] }
   | { kind: 'add-actor-app'; actorId: string; appId: string }
   | { kind: 'remove-actor-app'; actorId: string; appId: string }
-  | {
-      /** A sequence scenario — created or replaced. FLAT envelope (server contract):
-       *  `messages` omitted = the server keeps the stored ones (header-only save);
-       *  surface saves always carry the full list. Client-only fields (backed,
-       *  depth, participants, ephemeral) never travel. */
-      kind: 'save-interaction';
-      id: string;
-      name?: string;
-      description?: string;
-      triggerKind?: string | null;
-      triggerRef?: string | null;
-      messages?: {
-        id: string;
-        fromRef: string;
-        toRef: string;
-        kind: import('./model.js').InteractionMessageKind;
-        label?: string;
-        guard?: string;
-      }[];
-    }
-  | { kind: 'remove-interaction'; id: string }
   | {
       /** The step `id` starts only after `dependsOnStepId` completes. */
       kind: 'add-workflow-dependency';

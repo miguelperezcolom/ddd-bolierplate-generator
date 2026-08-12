@@ -63,14 +63,6 @@ export async function readView(bridge: Bridge): Promise<string> {
   return (await bridge({ op: 'readView' })) as string;
 }
 
-/**
- * The view document's filename. The view's TYPE lives in the name (`<slug>.<type>.modux-view.yaml`)
- * and is its source of truth, so the host reads the name to know which lens to open.
- */
-export async function readViewName(bridge: Bridge): Promise<string> {
-  return (await bridge({ op: 'viewName' })) as string;
-}
-
 /** Overwrite the view document. Its own undo step, apart from a catalog edit. */
 export async function writeView(bridge: Bridge, content: string): Promise<void> {
   await bridge({ op: 'writeView', content });
