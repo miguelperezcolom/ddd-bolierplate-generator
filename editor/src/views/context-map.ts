@@ -203,6 +203,10 @@ export function ownershipIndex(
   for (const w of model.workflows ?? []) {
     for (const s of w.steps) owners.set(s.id, w.id);
   }
+  // A process's steps roll up into it the same way.
+  for (const p of model.processes ?? []) {
+    for (const s of p.steps) owners.set(s.id, p.id);
+  }
   return owners;
 }
 
@@ -247,6 +251,7 @@ interface ChildDesc {
     | 'ui-app'
     | 'external-system'
     | 'workflow-step'
+    | 'process-step'
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -283,6 +288,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'ui-app': { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
   ui: { symbol: 'interface', fill: '#f0f9ff', stroke: '#0ea5e9' },
   'workflow-step': { symbol: 'gear', fill: '#ede9fe', stroke: '#6d28d9' },
+  'process-step': { symbol: 'gear', fill: '#f5f3ff', stroke: '#7c3aed' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -315,6 +321,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
   ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se asigna a apps y páginas',
   'workflow-step': 'Paso de workflow — corre cuando sus dependencias completan',
+  'process-step': 'Paso de proceso — eslabón de la cadena (HUMAN o AUTOMÁTICO)',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
@@ -629,6 +636,12 @@ function buildScene(
         const w = (model.workflows ?? []).find((x) => x.id === id);
         return (w?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'workflow-step' }));
       }
+      case 'process': {
+        // A process is a linear chain of steps; the ordering arrows (processStepEdges) roll up
+        // with it when folded.
+        const p = (model.processes ?? []).find((x) => x.id === id);
+        return (p?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'process-step' }));
+      }
       default:
         return [];
     }
@@ -709,6 +722,13 @@ function buildScene(
       api: false,
       proxy: false,
       workflow: true,
+    }))),
+    ...(distributionLevel ? [] : (model.processes ?? []).map((p) => ({
+      ref: p,
+      external: false,
+      api: false,
+      proxy: false,
+      process: true,
     }))),
     // ETL flows without owner (legacy) still float; owned ones enter through their context.
     ...(distributionLevel ? [] : (model.etlFlows ?? [])
@@ -792,6 +812,29 @@ function buildScene(
         h: NODE_H,
       });
       if (expanded) emitChildren(w.id, 'workflow', w.name, pos);
+      return;
+    }
+    if ('process' in entry && entry.process) {
+      const p = entry.ref as NonNullable<ModuxModel['processes']>[number];
+      const kids = ownedChildren(p.id, 'process');
+      const expanded = toggledIds.has(p.id) && kids.length > 0;
+      nodes.push({
+        id: p.id,
+        label: p.name,
+        kind: 'process',
+        symbol: 'process',
+        fill: '#f5f3ff',
+        stroke: '#7c3aed',
+        badge: `PROCESS${p.sla ? ` · SLA ${p.sla}` : ''}`,
+        tooltip: `${p.name} — proceso${p.triggerEvent ? ` · arranca con ${p.triggerEvent}` : ''}`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      if (expanded) emitChildren(p.id, 'process', p.name, pos);
       return;
     }
     if (entry.proxy) {
@@ -1881,6 +1924,20 @@ function buildScene(
     );
   });
 
+  // Inside a process: the linear step→step chain. The first step hangs from the process by its
+  // `contains:` edge, so only the links BETWEEN steps are drawn here; they roll up when folded.
+  const processStepEdges: SceneEdge[] = (model.processes ?? []).flatMap((p) =>
+    p.steps.slice(1).map((step, i): SceneEdge => ({
+      id: `pseq:${p.steps[i].id}->${step.id}`,
+      sourceId: p.steps[i].id,
+      targetId: step.id,
+      kind: 'process-seq',
+      color: '#64748b',
+      arrow: true,
+      tooltip: `${step.name} sigue a ${p.steps[i].name}`,
+    })),
+  );
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -2301,6 +2358,7 @@ function buildScene(
       ...workflowTriggerEdges,
       ...workflowChainEdges,
       ...workflowStepEdges,
+      ...processStepEdges,
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,
