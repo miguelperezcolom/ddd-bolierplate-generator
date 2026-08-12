@@ -3,6 +3,7 @@ import type {
 } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 import { menuNodeId, flattenMenu } from './ui.js';
+import { fieldNodeId } from './mappings.js';
 
 /**
  * How a referenced project's whereabouts read in a tooltip. A migrated model may know none —
@@ -216,6 +217,10 @@ export function ownershipIndex(
   for (const f of model.etlFlows ?? []) {
     for (const s of f.steps ?? []) owners.set(s.id, f.id);
   }
+  // A data model's field chips roll up into the model.
+  for (const dm of model.models ?? []) {
+    for (const f of dm.fields ?? []) owners.set(fieldNodeId(dm.id, f.id), dm.id);
+  }
   return owners;
 }
 
@@ -264,6 +269,7 @@ interface ChildDesc {
     | 'menu-group'
     | 'menu-item'
     | 'etl-step'
+    | 'model-field'
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -304,6 +310,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'menu-group': { symbol: 'process', fill: '#f0f9ff', stroke: '#7dd3fc' },
   'menu-item': { symbol: 'process', fill: '#ffffff', stroke: '#7dd3fc' },
   'etl-step': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
+  'model-field': { symbol: 'field', fill: '#faf5ff', stroke: '#a78bfa' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -340,6 +347,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'menu-group': 'Agrupador de menú — contiene un submenú, no abre nada',
   'menu-item': 'Entrada de menú — abre una página, app, caso de uso o CRUD',
   'etl-step': 'Paso ETL — fuente (pull/consumer) → transformación → escritura',
+  'model-field': 'Campo de modelo — arrastra su asa hasta el campo de otro modelo para mapearlos',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
 
@@ -677,6 +685,13 @@ function buildScene(
         const f = (model.etlFlows ?? []).find((x) => x.id === id);
         return (f?.steps ?? []).map((s): ChildDesc => ({ id: s.id, name: s.name ?? s.id, kind: 'etl-step' }));
       }
+      case 'model': {
+        // A data model's fields (synthetic chip ids); the field-to-field mapping rules join them.
+        const dm = (model.models ?? []).find((x) => x.id === id);
+        return (dm?.fields ?? []).map((f): ChildDesc => ({
+          id: fieldNodeId(id, f.id), name: f.name, kind: 'model-field',
+        }));
+      }
       default:
         return [];
     }
@@ -764,6 +779,13 @@ function buildScene(
       api: false,
       proxy: false,
       process: true,
+    }))),
+    ...(distributionLevel ? [] : (model.models ?? []).map((dm) => ({
+      ref: dm,
+      external: false,
+      api: false,
+      proxy: false,
+      dataModel: true,
     }))),
     // ETL flows without owner (legacy) still float; owned ones enter through their context.
     ...(distributionLevel ? [] : (model.etlFlows ?? [])
@@ -875,6 +897,29 @@ function buildScene(
         h: NODE_H,
       });
       if (expanded) emitChildren(p.id, 'process', p.name, pos);
+      return;
+    }
+    if ('dataModel' in entry && entry.dataModel) {
+      const dm = entry.ref as NonNullable<ModuxModel['models']>[number];
+      const kids = ownedChildren(dm.id, 'model');
+      const expanded = toggledIds.has(dm.id) && kids.length > 0;
+      nodes.push({
+        id: dm.id,
+        label: dm.name,
+        kind: 'model',
+        symbol: 'readmodel',
+        fill: '#ffffff',
+        stroke: '#8b5cf6',
+        badge: 'MODEL',
+        tooltip: `${dm.name} — modelo de datos; arrastra el asa hasta otro modelo para mapearlo`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      if (expanded) emitChildren(dm.id, 'model', dm.name, pos);
       return;
     }
     if (entry.proxy) {
@@ -2033,6 +2078,36 @@ function buildScene(
     return out;
   });
 
+  // Model mappings: a labeled edge between two models, plus a thin field→field thread per rule
+  // (visible when both models are expanded; folds up to the mapping edge otherwise).
+  const mappingEdges: SceneEdge[] = (model.modelMappings ?? []).flatMap((mm): SceneEdge[] => {
+    if (!mm.sourceModelId || !mm.targetModelId) return [];
+    const out: SceneEdge[] = [{
+      id: `mapping:${mm.id}`,
+      sourceId: mm.sourceModelId,
+      targetId: mm.targetModelId,
+      kind: 'model-mapping',
+      color: '#7c3aed',
+      label: mm.name,
+      arrow: true,
+      tooltip: `${mm.name} — las reglas campo a campo son las líneas finas entre campos`,
+    }];
+    for (const r of mm.rules ?? []) {
+      if (!r.sourceFieldId || !r.targetFieldId) continue;
+      out.push({
+        id: `maprule:${mm.id}:${r.id}`,
+        sourceId: fieldNodeId(mm.sourceModelId, r.sourceFieldId),
+        targetId: fieldNodeId(mm.targetModelId, r.targetFieldId),
+        kind: 'mapping-rule',
+        color: '#a78bfa',
+        dashed: true,
+        arrow: true,
+        tooltip: `Regla de ${mm.name}`,
+      });
+    }
+    return out;
+  });
+
   // The proxy → API wiring: teal, at every detail level, endpoints roll up too.
   const proxyTargetEdges: SceneEdge[] = [
     ...new Map(
@@ -2456,6 +2531,7 @@ function buildScene(
       ...processStepEdges,
       ...menuEdges,
       ...etlPipeEdges,
+      ...mappingEdges,
       ...agentApiEdges,
       ...ragTableEdges,
       ...ragApiEdges,
