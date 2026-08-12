@@ -1343,15 +1343,18 @@ export type ModuxCommand =
     }
   | {
       kind: 'add-page-component';
-      pageId: string;
+      /** The host of the component tree: a page (`pageId`) or a mockup (`mockupId`). */
+      pageId?: string;
+      mockupId?: string;
       componentId: string;
       componentKind: string;
       parentComponentId?: string;
     }
-  | { kind: 'remove-page-component'; pageId: string; componentId: string }
+  | { kind: 'remove-page-component'; pageId?: string; mockupId?: string; componentId: string }
   | {
       kind: 'set-page-component';
-      pageId: string;
+      pageId?: string;
+      mockupId?: string;
       componentId: string;
       title?: string | null;
       text?: string | null;
@@ -1368,7 +1371,8 @@ export type ModuxCommand =
     }
   | {
       kind: 'move-page-component';
-      pageId: string;
+      pageId?: string;
+      mockupId?: string;
       componentId: string;
       parentComponentId?: string | null;
       beforeComponentId?: string | null;

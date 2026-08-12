@@ -424,7 +424,9 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'set-page-component':
       case 'remove-page-component':
       case 'move-page-component': {
-        const page = (host.model.pages ?? []).find((x) => x.id === c.pageId);
+        const hostEl = c.mockupId
+          ? (host.model.mockups ?? []).find((x) => x.id === c.mockupId)
+          : (host.model.pages ?? []).find((x) => x.id === c.pageId);
         let node: UiComponentNodeRef | null = null;
         let parent: UiComponentNodeRef | null = null;
         let before: string | null = null;
@@ -439,13 +441,14 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
             walk(list[i].children, list[i]);
           }
         };
-        walk(page?.content, null);
+        walk(hostEl?.content, null);
         if (!node) return null;
         const found: UiComponentNodeRef = node;
         if (c.kind === 'set-page-component') {
           return [{
             kind: 'set-page-component',
             pageId: c.pageId,
+            mockupId: c.mockupId,
             componentId: c.componentId,
             title: found.title ?? null,
             text: found.text ?? null,
@@ -464,12 +467,17 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           return [{
             kind: 'move-page-component',
             pageId: c.pageId,
+            mockupId: c.mockupId,
             componentId: c.componentId,
             parentComponentId: parent === null ? null : (parent as UiComponentNodeRef).id,
             beforeComponentId: before,
           }];
         }
-        // remove: recreate the WHOLE subtree where it was
+        // remove: recreate the WHOLE subtree where it was (page hosts only for now).
+        if (!c.pageId) {
+          return [{ kind: 'add-page-component', mockupId: c.mockupId, componentId: found.id,
+            componentKind: found.kind, parentComponentId: parent === null ? undefined : (parent as UiComponentNodeRef).id }];
+        }
         return host.rebuildComponentOps(
           c.pageId,
           found,

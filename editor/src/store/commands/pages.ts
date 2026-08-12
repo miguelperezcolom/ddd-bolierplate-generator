@@ -10,9 +10,9 @@
  * Ported from `UiEditorCommands`.
  */
 
-import { asList, nested, type Element } from '../store.js';
+import { asList, nested, type Element, type ModelStore } from '../store.js';
 import { byId, find, insert, insertUnder, remove, replace, type Node } from '../forest.js';
-import { CommandError, type Handler } from '../spec.js';
+import { CommandError, type Command, type Handler } from '../spec.js';
 import { blank, mustGet } from './models.js';
 
 /** A tabLayout is born with two tabs, so it is usable the moment it is dropped. */
@@ -105,30 +105,30 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   // ---- the content tree ----------------------------------------------------
 
   'add-page-component': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const { type, el } = contentHost(store, command);
     const kind = String(command.componentKind);
     const node = newComponent(String(command.componentId), kind);
-    const content = contentOf(page);
+    const content = contentOf(el);
 
     if (blank(command.parentComponentId)) {
       requireTabRules(kind, undefined);
-      store.patch('pages', page.id, { content: insert(content, node) });
+      store.patch(type, el.id, { content: insert(content, node) });
       return;
     }
     const parentId = String(command.parentComponentId);
     const parent = find(content, byId(parentId));
     if (!parent) throw new CommandError(`Componente desconocido: ${parentId}`);
     requireTabRules(kind, String(parent.kind));
-    store.patch('pages', page.id, {
+    store.patch(type, el.id, {
       content: insertUnder(content, byId(parentId), node)!,
     });
   },
 
   'remove-page-component': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
-    const pruned = remove(contentOf(page), byId(String(command.componentId)));
+    const { type, el } = contentHost(store, command);
+    const pruned = remove(contentOf(el), byId(String(command.componentId)));
     if (!pruned) throw new CommandError(`Componente desconocido: ${command.componentId}`);
-    store.patch('pages', page.id, { content: pruned });
+    store.patch(type, el.id, { content: pruned });
   },
 
   /**
@@ -137,7 +137,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
    * nobody can see any more.
    */
   'set-page-component': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const host = contentHost(store, command);
     for (const [field, type, label] of [
       ['useCaseId', 'useCases', 'Caso de uso'],
       ['modelId', 'models', 'Modelo'],
@@ -147,7 +147,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
     ] as const) {
       if (command[field]) mustGet(store, type, command[field], label);
     }
-    const updated = replace(contentOf(page), byId(String(command.componentId)), (node) => ({
+    const updated = replace(contentOf(host.el), byId(String(command.componentId)), (node) => ({
       ...node,
       title: command.title ?? null,
       text: command.text ?? null,
@@ -163,12 +163,12 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
       detailPageId: command.detailPageId ?? null,
     }));
     if (!updated) throw new CommandError(`Componente desconocido: ${command.componentId}`);
-    store.patch('pages', page.id, { content: updated });
+    store.patch(host.type, host.el.id, { content: updated });
   },
 
   'move-page-component': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
-    const content = contentOf(page);
+    const { type, el } = contentHost(store, command);
+    const content = contentOf(el);
     const componentId = String(command.componentId);
     const node = find(content, byId(componentId));
     if (!node) throw new CommandError(`Componente desconocido: ${componentId}`);
@@ -184,13 +184,13 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
 
     if (!toParentId) {
       requireTabRules(String(node.kind), undefined);
-      store.patch('pages', page.id, { content: insert(pruned, node, before) });
+      store.patch(type, el.id, { content: insert(pruned, node, before) });
       return;
     }
     const parent = find(pruned, byId(toParentId));
     if (!parent) throw new CommandError(`Componente desconocido: ${toParentId}`);
     requireTabRules(String(node.kind), String(parent.kind));
-    store.patch('pages', page.id, {
+    store.patch(type, el.id, {
       content: insertUnder(pruned, byId(toParentId), node, before)!,
     });
   },
@@ -392,8 +392,18 @@ function requireTabRules(kind: string, parentKind: string | undefined): void {
   }
 }
 
-const contentOf = (page: Element) => nested(page.content) as Node[];
+const contentOf = (host: Element) => nested(host.content) as Node[];
 const menuOf = (app: Element) => nested(app.menuItems) as Node[];
+
+/**
+ * A component command targets a mockup (by `mockupId`) or a page (by `pageId`) — both hold a
+ * `content` tree of the same shape, so the tree ops are shared.
+ */
+function contentHost(store: ModelStore, command: Command): { type: string; el: Element } {
+  return !blank(command.mockupId)
+    ? { type: 'mockups', el: mustGet(store, 'mockups', command.mockupId, 'Mockup') }
+    : { type: 'pages', el: mustGet(store, 'pages', command.pageId, 'Página') };
+}
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */
 export const PAGE_TYPES: string[] = ['pages'];

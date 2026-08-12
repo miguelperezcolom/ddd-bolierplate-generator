@@ -1,5 +1,5 @@
 import type {
-  ModuxModel, ContextMapRelationType, FlowRef, FieldRef, ReferencedProject,
+  ModuxModel, ContextMapRelationType, FlowRef, FieldRef, ReferencedProject, UiComponentNodeRef,
 } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 import { menuNodeId, flattenMenu } from './ui.js';
@@ -221,6 +221,10 @@ export function ownershipIndex(
   for (const dm of model.models ?? []) {
     for (const f of dm.fields ?? []) owners.set(fieldNodeId(dm.id, f.id), dm.id);
   }
+  // A mockup's component chips roll up into the mockup.
+  for (const mk of model.mockups ?? []) {
+    for (const c of flattenComponents(mk.content)) owners.set(componentNodeId(mk.id, c.id), mk.id);
+  }
   return owners;
 }
 
@@ -270,6 +274,7 @@ interface ChildDesc {
     | 'menu-item'
     | 'etl-step'
     | 'model-field'
+    | 'component'
     | 'module';
   /** Policies keep use-case behaviour (gestures, CRUD) but wear the lilac sticky. */
   policy?: boolean;
@@ -311,6 +316,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'menu-item': { symbol: 'process', fill: '#ffffff', stroke: '#7dd3fc' },
   'etl-step': { symbol: 'gear', fill: '#f0fdfa', stroke: '#0f766e' },
   'model-field': { symbol: 'field', fill: '#faf5ff', stroke: '#a78bfa' },
+  component: { symbol: 'component', fill: '#f0f9ff', stroke: '#0ea5e9' },
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
@@ -348,8 +354,27 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'menu-item': 'Entrada de menú — abre una página, app, caso de uso o CRUD',
   'etl-step': 'Paso ETL — fuente (pull/consumer) → transformación → escritura',
   'model-field': 'Campo de modelo — arrastra su asa hasta el campo de otro modelo para mapearlos',
+  component: 'Componente del mockup — una pieza Mateu (layout, campo, botón…)',
   module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
 };
+
+/** `cmp:<hostId>:<componentId>` — the scene id of a mockup component chip. */
+function componentNodeId(hostId: string, componentId: string): string {
+  return `cmp:${hostId}:${componentId}`;
+}
+
+/** Every component in a content tree, flattened depth-first. */
+function flattenComponents(components: UiComponentNodeRef[] | undefined): UiComponentNodeRef[] {
+  const out: UiComponentNodeRef[] = [];
+  const walk = (items?: UiComponentNodeRef[]) => {
+    for (const c of items ?? []) {
+      out.push(c);
+      walk(c.children);
+    }
+  };
+  walk(components);
+  return out;
+}
 
 /** Default container size that fits `childCount` boxes in a grid. */
 function boundedContextElementDescs(
@@ -692,6 +717,15 @@ function buildScene(
           id: fieldNodeId(id, f.id), name: f.name, kind: 'model-field',
         }));
       }
+      case 'mockup': {
+        // A mockup's Mateu component tree, flattened (synthetic chip ids like the page designer).
+        const mk = (model.mockups ?? []).find((x) => x.id === id);
+        return flattenComponents(mk?.content).map((c): ChildDesc => ({
+          id: componentNodeId(id, c.id),
+          name: c.title || c.label || c.text || c.kind,
+          kind: 'component',
+        }));
+      }
       default:
         return [];
     }
@@ -956,6 +990,8 @@ function buildScene(
     }
     if ('mockup' in entry && entry.mockup) {
       const mk = entry.ref as NonNullable<ModuxModel['mockups']>[number];
+      const kids = ownedChildren(mk.id, 'mockup');
+      const expanded = toggledIds.has(mk.id) && kids.length > 0;
       nodes.push({
         id: mk.id,
         label: mk.name,
@@ -965,12 +1001,15 @@ function buildScene(
         stroke: '#0ea5e9',
         dashed: true,
         badge: 'MOCKUP',
-        tooltip: `${mk.name} — mockup${mk.pageId ? ' de una página' : ' (arrastra su asa hasta una página)'}`,
+        tooltip: `${mk.name} — mockup${mk.pageId ? ' de una página' : ' (arrastra su asa hasta una página)'}; suéltale componentes de la paleta`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
         h: NODE_H,
       });
+      if (expanded) emitChildren(mk.id, 'mockup', mk.name, pos);
       return;
     }
     if (entry.proxy) {

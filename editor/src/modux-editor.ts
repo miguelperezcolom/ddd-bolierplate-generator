@@ -3079,6 +3079,18 @@ export class ModuxEditor extends LitElement {
     if (type.startsWith('cmp:')) {
       const componentKind = type.slice(4);
       const m = targetId ? /^cmp:([^:]+):(.+)$/.exec(targetId) : null;
+      // Mockup host: dropped on the mockup node (bare id) or on one of its component chips (nest
+      // under it). Simpler than the page designer — no tab/slot machinery yet.
+      const mockupHostId = m ? m[1] : targetId;
+      if (mockupHostId && (this.model.mockups ?? []).some((mk) => mk.id === mockupHostId)) {
+        const componentId = this.newComponentId(componentKind);
+        this.command({
+          kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind,
+          parentComponentId: m ? m[2] : undefined,
+        }, false);
+        this.pushUndoEntry([{ kind: 'remove-page-component', mockupId: mockupHostId, componentId }]);
+        return;
+      }
       const pageId = m ? m[1] : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
       if (!pageId) {
         this.emit('modux-notice', { message: 'Suelta el layout/componente sobre una página' });
@@ -3984,7 +3996,7 @@ export class ModuxEditor extends LitElement {
                 ? ['etl-flow', 'etl-transform', 'external-system', 'external-table'].includes(k.type)
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
-                : !['page', 'menu-item', 'model-field', 'transformation', 'custom-code', 'ui-button'].includes(k.type) && !k.type.startsWith('cmp:')) &&
+                : !['page', 'menu-item', 'model-field', 'transformation', 'ui-button'].includes(k.type)) &&
         (!needle || k.label.toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
