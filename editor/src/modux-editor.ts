@@ -2056,6 +2056,13 @@ export class ModuxEditor extends LitElement {
       (a) => members.has(a.id) || boundedContextIds.has(a.boundedContextId),
     );
     const aggregateIds = new Set(aggregates.map((a) => a.id));
+    const entities = (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId));
+    // Data models (the mappings collection) have no owner field of their own — an aggregate/entity
+    // points AT one via `modelId` (e.g. `model-<aggId>`). Without scoping them, every view — even an
+    // empty one — leaked every data model as a stray node. Keep only those an in-scope owner refers to.
+    const scopedModelIds = new Set<string>();
+    for (const a of aggregates) if (a.modelId) scopedModelIds.add(a.modelId);
+    for (const e of entities) if (e.modelId) scopedModelIds.add(e.modelId);
     const uiApps = (this.model.uiApps ?? []).filter((a) => members.has(a.id));
     const menuPageIds = new Set<string>();
     const collectMenuPages = (items?: UiMenuEntryRef[]) => {
@@ -2086,7 +2093,8 @@ export class ModuxEditor extends LitElement {
             (boundedContextIds.has(f.targetId) || externalIds.has(f.targetId))),
       ),
       aggregates,
-      entities: (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId)),
+      entities,
+      models: (this.model.models ?? []).filter((dm) => scopedModelIds.has(dm.id)),
       aggregateReferences: (this.model.aggregateReferences ?? []).filter(
         (r) => aggregateIds.has(r.sourceAggregateId) && aggregateIds.has(r.targetAggregateId),
       ),
