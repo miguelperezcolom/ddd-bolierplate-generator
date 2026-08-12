@@ -200,18 +200,9 @@ export function connectionOptions(
   ) {
     offer('flow-materializes', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
   }
-  if (isActor(sourceId)) {
-    if (ucIds.has(targetId) || qsIds.has(targetId) || isAggregate(targetId) || isAgent(targetId)) {
-      offer('actor-use', () => applyConnectionGesture(host, 'context-map', sourceId, targetId, undefined, undefined, '__classic'));
-    }
-    if (isExternal(targetId)) {
-      offer('ext-dep', () => {
-        if (!(m.actorExternalDependencies ?? []).some((d) => d.actorId === sourceId && d.externalSystemId === targetId)) {
-          host.command({ kind: 'add-actor-external', sourceId, targetId });
-        }
-      });
-    }
-  }
+  // An actor is only ever SERVED — it never serves nor initiates. So it is never a source of a
+  // relationship (no «actor usa X»); the only edge it takes part in points INTO it (e.g. a UI serving
+  // it, handled in the ui⇆actor block above). Dragging from an actor offers nothing.
   if (isExternal(sourceId)) {
     if (isExternal(targetId) && sourceId !== targetId) {
       offer('ext-dep', () => {
@@ -1359,41 +1350,10 @@ export function applyConnectionGesture(
       }
       if (!actorIds.has(sourceId)) return;
     }
-    if (actorIds.has(sourceId)) {
-      const actorUcIds = new Set(
-        host.model.boundedContexts.flatMap((m) => (m.useCases ?? []).map((u) => u.id)),
-      );
-      const actorQsIds = new Set(
-        host.model.boundedContexts.flatMap((m) => (m.queryServices ?? []).map((q) => q.id)),
-      );
-      if (actorUcIds.has(targetId) || actorQsIds.has(targetId)) {
-        const already = (host.model.actorUses ?? []).some(
-          (u) => u.actorId === sourceId && u.targetId === targetId,
-        );
-        if (!already) host.command({ kind: 'add-actor-use', sourceId, targetId });
-        return;
-      }
-      if ((host.model.aggregates ?? []).some((a) => a.id === targetId)) {
-        host.command({ kind: 'add-actor-crud', sourceId, targetId });
-        return;
-      }
-      if (host.model.externalSystems.some((x) => x.id === targetId)) {
-        const exists = (host.model.actorExternalDependencies ?? []).some(
-          (d) => d.actorId === sourceId && d.externalSystemId === targetId,
-        );
-        if (!exists) host.command({ kind: 'add-actor-external', sourceId, targetId });
-        return;
-      }
-      // The person talks to the agent (a chat/supervision UI derives from it).
-      if ((host.model.aiAgents ?? []).some((a) => a.id === targetId)) {
-        const exists = (host.model.actorAgentUses ?? []).some(
-          (u) => u.actorId === sourceId && u.agentId === targetId,
-        );
-        if (!exists) host.command({ kind: 'add-actor-agent', sourceId, targetId });
-        return;
-      }
-      return;
-    }
+    // An actor never serves nor initiates — it is only ever served (see connectionOptions). So an
+    // edge dragged FROM an actor creates nothing; the only actor edge is one pointing into it (a UI
+    // serving it), handled by the ui-serving branch where the actor is the target.
+    if (actorIds.has(sourceId)) return;
     // Dragging an API operation onto its implementer wires the published contract to
     // the domain: a use case (or policy) is the fine wiring, a context the coarse one.
     const owningApi = host.owningApiOf(sourceId);
