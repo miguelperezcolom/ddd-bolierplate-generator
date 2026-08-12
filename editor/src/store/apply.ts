@@ -16,6 +16,7 @@ import { CORE_COMMANDS } from './commands/core.js';
 import { CRUD_COMMANDS } from './commands/crud.js';
 import { EXTERNAL_COMMANDS } from './commands/externals.js';
 import { FLOW_COMMANDS } from './commands/flows.js';
+import { LOOSE_COMMANDS } from './commands/loose.js';
 import { MODEL_COMMANDS } from './commands/models.js';
 import { PAGE_COMMANDS } from './commands/pages.js';
 import { PLATFORM_COMMANDS } from './commands/platform.js';
@@ -46,6 +47,7 @@ export const HANDLERS: Record<string, Handler> = {
   // orchestration and agents
   ...WORKFLOW_COMMANDS,
   ...AGENT_COMMANDS,
+  ...LOOSE_COMMANDS,
 };
 
 export { CommandError };

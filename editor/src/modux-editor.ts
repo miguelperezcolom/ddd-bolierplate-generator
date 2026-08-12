@@ -2109,6 +2109,7 @@ export class ModuxEditor extends LitElement {
       workflows: (this.model.workflows ?? []).filter((w) => members.has(w.id)),
       // Free-standing use cases scope by membership too (a curated view shows only what it lists).
       looseUseCases: (this.model.looseUseCases ?? []).filter((u) => members.has(u.id)),
+      looseElements: (this.model.looseElements ?? []).filter((e) => members.has(e.id)),
       // Top-level AI/strategic pieces scope by membership too — a curated view
       // about one subdomain should not drag every agent and gateway along.
       actors: (this.model.actors ?? []).filter((a) => members.has(a.id)),
@@ -3314,6 +3315,23 @@ export class ModuxEditor extends LitElement {
           : type === 'value-object' ? 'Value object'
           : type === 'policy' ? 'Policy' : 'Caso de uso';
       const parentNoun = type === 'entity' || type === 'value-object' ? 'un agregado' : 'un contexto';
+      this.emit('modux-notice', {
+        message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
+      });
+      return;
+    }
+    // Free-standing NESTED elements (operation/invariant/field/step): they can't live owner-less in
+    // their parent's array, so a loose one goes to the looseElements bucket and is adopted into the
+    // parent later by a composition edge. It wears a «sin asociar» badge until then.
+    if (!container && ['operation', 'invariant', 'field', 'use-case-step'].includes(type)) {
+      const { id, name } = this.uniquePaletteName(def.label);
+      issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' }, id);
+      const parentNoun =
+        type === 'operation' ? 'un agregado'
+          : type === 'invariant' ? 'un agregado, entidad o value object'
+          : type === 'field' ? 'un modelo'
+          : 'un caso de uso o policy';
+      const noun = type === 'operation' ? 'Operación' : type === 'invariant' ? 'Invariante' : type === 'field' ? 'Campo' : 'Paso';
       this.emit('modux-notice', {
         message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
       });

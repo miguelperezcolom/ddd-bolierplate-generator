@@ -1201,6 +1201,35 @@ function buildScene(
         if (expanded) emitChildren(el.id, group.kind, el.name, pos);
       }
     }
+    // Free-standing nested elements (operation/invariant/field/step): loose until adopted into a
+    // parent. They have no children to expand — just the box with its badge.
+    const looseKindOf: Record<string, ChildDesc['kind']> = {
+      operation: 'operation', invariant: 'invariant', field: 'field', 'use-case-step': 'operation',
+    };
+    const looseNounOf: Record<string, string> = {
+      operation: 'operación', invariant: 'invariante', field: 'campo', 'use-case-step': 'paso',
+    };
+    for (const el of model.looseElements ?? []) {
+      const kind = looseKindOf[el.elementType] ?? 'operation';
+      const style = CHILD_STYLE[kind];
+      const pos = layout[el.id] ?? { x: 60 + (looseIdx % 5) * 200, y: 60 + Math.floor(looseIdx / 5) * 120 };
+      looseIdx++;
+      nodes.push({
+        id: el.id,
+        label: el.name,
+        kind,
+        symbol: style.symbol,
+        fill: style.fill,
+        stroke: style.stroke,
+        badge: 'sin asociar',
+        dashed: true,
+        tooltip: `${el.name} — ${looseNounOf[el.elementType] ?? 'elemento'} sin asociar; arrastra una composición desde su contenedor`,
+        x: pos.x,
+        y: pos.y,
+        w: sizes[el.id]?.w ?? childBoxWidth(el.name),
+        h: sizes[el.id]?.h ?? CHILD_H + 4,
+      });
+    }
   }
   // Business actors, AI agents, knowledge bases and MCP gateways live outside every
   // context — and outside the distribution lens, which is about packaging.

@@ -44,7 +44,7 @@ export function projectedTypes(): string[] {
     'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'domainServices',
     'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
-    'scheduledTriggers', 'flows',
+    'scheduledTriggers', 'flows', 'looseElements',
     ...UI_PROJECTED_TYPES,
     ...ORCHESTRATION_PROJECTED_TYPES,
     ...CATALOG_PROJECTED_TYPES,
@@ -67,6 +67,11 @@ export function project(store: ModelStore): ModuxModel {
     // Use cases with no owning context: they only nest under a context, so they'd vanish. Surface
     // them here for the canvas to draw top-level with a «sin asociar» badge until composed.
     looseUseCases: store.all('useCases').filter((u) => !owner.of.get(u.id)).map(useCase),
+    looseElements: store.all('looseElements').map((e) => ({
+      id: e.id,
+      name: str(e.name) ?? '',
+      elementType: str(e.elementType) ?? '',
+    })),
     entities: store.all('entities').map(entity),
     valueObjects: store.all('valueObjects').map((vo) => valueObject(vo, owner)),
     externalSystems: store.all('externalSystems').map(named),

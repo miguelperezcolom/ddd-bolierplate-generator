@@ -692,6 +692,20 @@ export type ModuxCommand =
       boundedContextId?: string;
     }
   | {
+      /** A free-standing nested element (operation/invariant/field/use-case-step) with no parent yet. */
+      kind: 'add-loose-element';
+      id: string;
+      name: string;
+      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step';
+    }
+  | { kind: 'remove-loose-element'; id: string }
+  | {
+      /** Compose a loose element into a parent: graft it into the parent's nested array. */
+      kind: 'adopt-loose-element';
+      id: string;
+      ownerId: string;
+    }
+  | {
       kind: 'remove-use-case';
       id: string;
     }

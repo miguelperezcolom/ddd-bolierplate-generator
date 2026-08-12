@@ -790,6 +790,26 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         const owner = host.model.boundedContexts.find((mo) => (mo.useCases ?? []).some((u) => u.id === c.id));
         return [{ kind: 'set-use-case-context', id: c.id, boundedContextId: owner?.id }];
       }
+      case 'add-loose-element':
+        return [{ kind: 'remove-loose-element', id: c.id }];
+      case 'remove-loose-element': {
+        const le = (host.model.looseElements ?? []).find((e) => e.id === c.id);
+        return le
+          ? [{ kind: 'add-loose-element', id: le.id, name: le.name, elementType: le.elementType as 'operation' | 'invariant' | 'field' | 'use-case-step' }]
+          : null;
+      }
+      case 'adopt-loose-element': {
+        // Before adoption the loose record still holds name + type; the owner is on the command.
+        const le = (host.model.looseElements ?? []).find((e) => e.id === c.id);
+        if (!le) return null;
+        const t = le.elementType;
+        const remove: ModuxCommand =
+          t === 'operation' ? { kind: 'remove-operation', id: c.id, aggregateId: c.ownerId }
+            : t === 'use-case-step' ? { kind: 'remove-use-case-step', id: c.id, useCaseId: c.ownerId }
+            : t === 'field' ? { kind: 'remove-model-field', modelId: c.ownerId, fieldId: c.id }
+            : { kind: 'remove-invariant', id: c.id };
+        return [remove, { kind: 'add-loose-element', id: c.id, name: le.name, elementType: t as 'operation' | 'invariant' | 'field' | 'use-case-step' }];
+      }
       case 'remove-use-case': {
         for (const m of host.model.boundedContexts) {
           const u = (m.useCases ?? []).find((x) => x.id === c.id);

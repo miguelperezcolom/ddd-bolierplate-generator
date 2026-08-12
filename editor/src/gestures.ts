@@ -435,6 +435,29 @@ export function applyConnectionGesture(
         host.command({ kind: 'set-value-object-aggregate', id: looseVo.id, aggregateId: agg.id });
         return;
       }
+      // A loose nested element (operation/invariant/field/step) is adopted into a valid parent.
+      const looseEl = (host.model.looseElements ?? []).find((e) => e.id === sourceId || e.id === targetId);
+      if (looseEl) {
+        const other = looseEl.id === sourceId ? targetId : sourceId;
+        const entOf = (id: string) => (host.model.entities ?? []).find((e) => e.id === id);
+        let ownerId: string | null = null;
+        if (looseEl.elementType === 'operation') {
+          ownerId = aggById(other)?.id ?? null;
+        } else if (looseEl.elementType === 'invariant') {
+          ownerId = aggById(other)?.id ?? entOf(other)?.id ?? voById(other)?.id ?? null;
+        } else if (looseEl.elementType === 'field') {
+          const model = (host.model.models ?? []).find((mo) => mo.id === other);
+          ownerId = model?.id ?? aggById(other)?.modelId ?? entOf(other)?.modelId ?? null;
+        } else if (looseEl.elementType === 'use-case-step') {
+          const uc = host.model.boundedContexts.flatMap((bc) => bc.useCases ?? []).find((u) => u.id === other)
+            ?? (host.model.looseUseCases ?? []).find((u) => u.id === other);
+          ownerId = uc?.id ?? null;
+        }
+        if (ownerId) {
+          host.command({ kind: 'adopt-loose-element', id: looseEl.id, ownerId });
+          return;
+        }
+      }
     }
     // On the unified canvas the caller passes 'context-map'; read the real meaning from the
     // endpoints. Distribution/eventstorming MODES arrive as their own view and keep it; the
