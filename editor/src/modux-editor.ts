@@ -2661,9 +2661,13 @@ export class ModuxEditor extends LitElement {
           .nodeIdNearClient(clientX, clientY)
           ?.replace(/^(tgt:|flow:)/, '') ?? null;
     }
-    if (payload.new) this.createFromPalette(payload.new, pos, targetId, null);
+    // Over a mockup component chip, the vertical position decides before/after/into.
+    const slot = 'dropSlotAtClient' in surface
+      ? (surface as import('./modux-canvas.js').ModuxCanvas).dropSlotAtClient(clientX, clientY)
+      : null;
+    if (payload.new) this.createFromPalette(payload.new, pos, targetId, slot);
     else if (payload.existing) {
-      this.placeExistingFromPalette(payload.existing, pos, targetId, clientX, clientY, null);
+      this.placeExistingFromPalette(payload.existing, pos, targetId, clientX, clientY, slot);
     }
   }
 
@@ -2836,7 +2840,7 @@ export class ModuxEditor extends LitElement {
     type: string,
     pos: Point,
     targetId: string | null,
-    slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null = null,
+    slot: { nodeId: string; pos: 'before' | 'after' | 'into' } | null = null,
   ): void {
     const def = PALETTE_NEW.find((k) => k.type === type);
     if (!def) return;
@@ -2873,12 +2877,28 @@ export class ModuxEditor extends LitElement {
           return;
         }
         let parentComponentId = dropOn;
-        if (dropOn) {
+        let beforeComponentId: string | null = null;
+        if (dropOn && slot && slot.pos !== 'into') {
+          // Sibling slot: land beside the hovered component (before it, or before its next sibling).
+          const hovered = this.mockupComponentIn(mockupHostId, dropOn);
+          if (hovered) {
+            const siblings = hovered.parentId
+              ? (this.mockupComponent(mockupHostId, hovered.parentId)?.children ?? [])
+              : ((this.model.mockups ?? []).find((mk) => mk.id === mockupHostId)?.content ?? []);
+            const idx = siblings.findIndex((c) => c.id === dropOn);
+            parentComponentId = hovered.parentId ?? undefined;
+            beforeComponentId = slot.pos === 'before' ? dropOn : (siblings[idx + 1]?.id ?? null);
+          }
+        } else if (dropOn) {
+          // «into» (or no slot): nest inside; a tabLayout takes it in its first tab.
           const found = this.mockupComponent(mockupHostId, dropOn);
           if (found?.kind === 'tabLayout') parentComponentId = (found.children ?? [])[0]?.id ?? dropOn;
         }
         const componentId = this.newComponentId(componentKind);
         this.command({ kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind, parentComponentId }, false);
+        if (beforeComponentId !== null) {
+          this.command({ kind: 'move-page-component', mockupId: mockupHostId, componentId, parentComponentId: parentComponentId ?? null, beforeComponentId }, false);
+        }
         this.pushUndoEntry([{ kind: 'remove-page-component', mockupId: mockupHostId, componentId }]);
         return;
       }
@@ -2912,17 +2932,7 @@ export class ModuxEditor extends LitElement {
         this.pushUndoEntry([{ kind: 'remove-page-component', pageId, componentId }]);
         return;
       }
-      if (slot?.componentId && slot.pos !== 'into') {
-        // the drop opened a sibling slot: land beside the hovered node, not inside it
-        const hovered = this.componentIn(pageId, slot.componentId);
-        if (hovered && hovered.node.kind === 'tab') {
-          // nothing slots BETWEEN tabs (headers reorder them): land inside the tab
-          parentComponentId = hovered.node.id;
-        } else if (hovered) {
-          parentComponentId = hovered.parentId ?? undefined;
-          beforeComponentId = slot.pos === 'before' ? slot.componentId : hovered.beforeId;
-        }
-      } else if (parentComponentId) {
+      if (parentComponentId) {
         // a tabLayout holds only tabs: dropping on it lands in its active (first) tab
         const found = this.componentIn(pageId, parentComponentId)?.node ?? null;
         if (found?.kind === 'tabLayout' && (found.children ?? [])[0]) {
@@ -3468,7 +3478,7 @@ export class ModuxEditor extends LitElement {
     targetId: string | null,
     clientX: number,
     clientY: number,
-    slot: { pageId: string; componentId: string | null; pos: 'before' | 'after' | 'into' } | null = null,
+    slot: { nodeId: string; pos: 'before' | 'after' | 'into' } | null = null,
   ): void {
     void slot;
     if (targetId && targetId !== id) {
