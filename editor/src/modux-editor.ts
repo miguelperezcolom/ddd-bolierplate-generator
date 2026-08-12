@@ -57,7 +57,7 @@ const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string
 
 const RELATION_TYPES = Object.keys(RELATION_META) as ContextMapRelationType[];
 
-import { VIEW_IDS, VIEW_LABELS, type ViewId } from './view-kind.js';
+import { type ViewId } from './view-kind.js';
 export type { ViewId };
 
 
@@ -344,8 +344,6 @@ export class ModuxEditor extends LitElement {
   @state() private _editStepAwaits = '';
   @state() private _multi: string[] = [];
   @state() private _newViewName = '';
-  /** The TYPE chosen for a view being created — a view is one type, fixed at birth (§8). */
-  @state() private _newViewKind: ViewId = 'context-map';
 
   // ── Secuencias (interactions) ──────────────────────────────────────────
   /** Authored interaction open in the Secuencias view (null = none chosen). */
@@ -375,7 +373,6 @@ export class ModuxEditor extends LitElement {
   @state() private _activeViewId = '';
   @state() private _newRagSourceType = 'WEB';
   @state() private _newRagSourceUri = '';
-  @state() private _addMemberKey = '';
   /** Catalog tree panel: curate the active view's members with checkboxes. */
   @state() private _treeOpen = false;
   /** Pending node deletion awaiting confirmation; memberIds non-empty offers «quitar de la vista». */
@@ -2159,37 +2156,6 @@ export class ModuxEditor extends LitElement {
     this._newRagSourceUri = '';
   }
 
-  /** Candidates for the add-to-view search: catalog elements not yet in the view. */
-  private viewMemberCandidates(): { id: string; name: string; kind: string }[] {
-    const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
-    if (!view) return [];
-    const members = new Set(view.memberIds);
-    return [
-      ...this.model.boundedContexts.map((m) => ({ id: m.id, name: m.name, kind: 'contexto' })),
-      ...this.model.externalSystems.map((x) => ({ id: x.id, name: x.name, kind: 'externo' })),
-      ...(this.model.aggregates ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'agregado' })),
-      ...this.model.flows.map((f) => ({ id: f.id, name: f.name, kind: 'flow' })),
-      ...(this.model.processes ?? []).map((p) => ({ id: p.id, name: p.name, kind: 'proceso' })),
-      ...(this.model.workflows ?? []).map((w) => ({ id: w.id, name: w.name, kind: 'workflow' })),
-      ...(this.model.actors ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'actor' })),
-      ...(this.model.aiAgents ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'agente' })),
-      ...(this.model.mcpGateways ?? []).map((g) => ({ id: g.id, name: g.name, kind: 'gateway' })),
-      ...(this.model.rags ?? []).map((r) => ({ id: r.id, name: r.name, kind: 'rag' })),
-      ...(this.model.apis ?? []).map((a) => ({ id: a.id, name: a.name, kind: 'api' })),
-    ].filter((c) => !members.has(c.id));
-  }
-
-  private addMemberFromToolbar(): void {
-    const key = this._addMemberKey.trim();
-    if (!key || !this._activeViewId) return;
-    const candidate = this.viewMemberCandidates().find(
-      (c) => `${c.name} (${c.id})` === key || c.id === key || c.name === key,
-    );
-    if (!candidate) return;
-    this.command({ kind: 'add-view-member', id: this._activeViewId, targetId: candidate.id });
-    this._addMemberKey = '';
-  }
-
   /** Check/uncheck in the catalog tree: view membership only — never touches the element. */
   private toggleViewMember(targetId: string, checked: boolean): void {
     if (!this._activeViewId) return;
@@ -2373,11 +2339,13 @@ export class ModuxEditor extends LitElement {
 
   /**
    * The entity is in the catalog; now surface the view as a document (§12): the host writes and
-   * opens it. The view's TYPE is the one chosen for it and fixed forever — it lands in the filename
-   * (`<slug>.<type>.modux-view.yaml`), the source of truth. There is no lens to rotate afterwards.
+   * opens it. The view's TYPE is the LENS you are on — you selected what this lens draws, so the new
+   * view draws it too (a context-map selection makes a context-map view). It is fixed at birth and
+   * lands in the filename (`<slug>.<type>.modux-view.yaml`), the source of truth; there is no lens
+   * to rotate afterwards, and no chooser to get wrong (a mismatched lens rendered an empty view).
    */
   private afterViewCreated(id: string, name: string): void {
-    this.emit('create-view', { viewId: id, name, kind: this._newViewKind });
+    this.emit('create-view', { viewId: id, name, kind: this._view });
   }
 
   /** The catalog members currently on stage as top-level nodes (vista candidates). */
@@ -5038,23 +5006,6 @@ export class ModuxEditor extends LitElement {
         </button>
         ${this._activeViewId
           ? html`
-              <input
-                class="new-name"
-                list="view-member-options"
-                placeholder="Añadir a la vista…"
-                title="Busca un elemento existente del catálogo y añádelo a la vista activa"
-                .value=${this._addMemberKey}
-                @input=${(e: Event) => (this._addMemberKey = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addMemberFromToolbar()}
-              />
-              <datalist id="view-member-options">
-                ${this.viewMemberCandidates().map(
-                  (c) => html`<option value="${c.name} (${c.id})">${c.kind}</option>`,
-                )}
-              </datalist>
-              <button class="tab" title="Añadir el elemento a la vista" @click=${this.addMemberFromToolbar}>
-                ＋ Añadir
-              </button>
               <button
                 class="tab"
                 ?data-active=${this._treeOpen}
@@ -5080,18 +5031,6 @@ export class ModuxEditor extends LitElement {
                 @input=${(e: Event) => (this._newViewName = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
               />
-              <select
-                class="new-kind"
-                title="Tipo de la vista — se fija al crearla y queda en el nombre del fichero"
-                @change=${(e: Event) =>
-                  (this._newViewKind = (e.target as HTMLSelectElement).value as ViewId)}
-              >
-                ${VIEW_IDS.map(
-                  (k) => html`<option value=${k} ?selected=${k === this._newViewKind}>
-                    ${VIEW_LABELS[k]}
-                  </option>`,
-                )}
-              </select>
               <button
                 class="tab"
                 title=${this.viewSelection().length
