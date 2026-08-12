@@ -2056,7 +2056,9 @@ export class ModuxEditor extends LitElement {
       (a) => members.has(a.id) || boundedContextIds.has(a.boundedContextId),
     );
     const aggregateIds = new Set(aggregates.map((a) => a.id));
-    const entities = (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId));
+    // Owned entities ride in with their aggregate; a free-standing one (no aggregate) rides in as a
+    // view member, like a loose aggregate does.
+    const entities = (this.model.entities ?? []).filter((e) => aggregateIds.has(e.aggregateId) || members.has(e.id));
     // Data models (the mappings collection) have no owner field of their own — an aggregate/entity
     // points AT one via `modelId` (e.g. `model-<aggId>`). Without scoping them, every view — even an
     // empty one — leaked every data model as a stray node. Keep only those an in-scope owner refers to.
