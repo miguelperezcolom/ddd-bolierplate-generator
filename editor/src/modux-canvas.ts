@@ -429,6 +429,20 @@ export class ModuxCanvas extends LitElement {
     const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement;
     this._zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 4])
+      .wheelDelta((event: WheelEvent) => {
+        // Map a wheel/trackpad event to a zoom step (used as the exponent of 2). d3's default is a
+        // plain linear 0.002·deltaY, which does not survive a macOS trackpad: JBR delivers the
+        // two-finger *pinch* not as a pinch (ctrlKey is never set) but as ordinary wheel events with
+        // momentum spikes up to ~2600, so a single event became a ~38× jump ("da un salto"), while a
+        // gentle two-finger scroll emits deltas of ~0–4 that barely zoomed ("empieza lento").
+        // Clamping the delta kills the lurch (no event can move the zoom by more than one clamped
+        // step); the higher factor keeps gentle scrolls responsive. Non-pixel modes (a real mouse
+        // wheel) are normalized to pixels first so a notch still zooms.
+        const px =
+          event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * 400 : event.deltaY;
+        const clamped = Math.max(-40, Math.min(40, px));
+        return -clamped * 0.005;
+      })
       .filter((event: Event) => {
         // Wheel zooms anywhere. Panning is a deliberate gesture: hold space and
         // drag with the left button. A plain drag is a rubber-band selection,
