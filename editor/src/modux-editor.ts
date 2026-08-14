@@ -230,7 +230,10 @@ export class ModuxEditor extends LitElement {
    * Deep link from the IDE host (§12): open at a given lens and curated scope. Applied once — the
    * user is free to switch views afterwards — so a model round-trip does not snap them back.
    */
-  @property({ attribute: false }) open: { activeViewId?: string } | null = null;
+  @property({ attribute: false }) open: {
+    activeViewId?: string;
+    mode?: 'unified' | 'distribution' | 'eventstorming';
+  } | null = null;
 
   /**
    * True inside the IDE plugin, where a view is a document file (§12): creating one opens its
@@ -1003,6 +1006,9 @@ export class ModuxEditor extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     if (this.open && !this._opened && (changed.has('open') || changed.has('model'))) {
       this._activeViewId = this.open.activeViewId ?? '';
+      // Restore the lens the view was saved in (unified / distribution / eventstorming), so a C4
+      // container view opens straight into distribution instead of the flat unified canvas.
+      if (this.open.mode) this._canvasMode = this.open.mode;
       this._opened = true;
     }
     if (changed.has('model')) this._pendingNames.clear();
@@ -1517,6 +1523,12 @@ export class ModuxEditor extends LitElement {
     });
   }
 
+
+  /** Switch the canvas lens and persist it with the view document, so it reopens in the same lens. */
+  private setCanvasMode(mode: 'unified' | 'distribution' | 'eventstorming'): void {
+    this._canvasMode = mode;
+    this.emit('canvas-mode-changed', { mode });
+  }
 
   /** Expansion is a sheet preference (persisted with the vista, not undoable). */
   private onNodeCollapseToggled(e: CustomEvent): void {
@@ -4485,7 +4497,7 @@ export class ModuxEditor extends LitElement {
           ?data-active=${this._canvasMode === 'distribution'}
           title="Distribución: los contextos como empaquetadores de módulos, con servicios y despliegue — el mismo modelo, otra lente"
           @click=${() =>
-            (this._canvasMode = this._canvasMode === 'distribution' ? 'unified' : 'distribution')}
+            this.setCanvasMode(this._canvasMode === 'distribution' ? 'unified' : 'distribution')}
         >
           ⛃ Distribución
         </button>
@@ -4494,7 +4506,7 @@ export class ModuxEditor extends LitElement {
           ?data-active=${this._canvasMode === 'eventstorming'}
           title="EventStorming: la narrativa comando → agregado → evento → policy → read model sobre el mismo modelo"
           @click=${() =>
-            (this._canvasMode = this._canvasMode === 'eventstorming' ? 'unified' : 'eventstorming')}
+            this.setCanvasMode(this._canvasMode === 'eventstorming' ? 'unified' : 'eventstorming')}
         >
           ▦ EventStorming
         </button>

@@ -26,6 +26,8 @@ import '../modux-editor.js';
 interface ViewDoc {
   viewId?: string;
   geometry?: ViewLayout | DiagramLayout;
+  /** The lens the view opens in — so a C4 container view reopens in distribution, not unified. */
+  mode?: 'unified' | 'distribution' | 'eventstorming';
 }
 
 /**
@@ -59,7 +61,7 @@ export class ModuxEditorIde extends LitElement {
   @state() private error: string | null = null;
   @state() private notice: string | null = null;
   /** The lens + scope to open at, handed to the editor once the catalog is in. */
-  @state() private open: { activeViewId?: string } | null = null;
+  @state() private open: { activeViewId?: string; mode?: ViewDoc['mode'] } | null = null;
 
   private store = new ModelStore();
   private fs: IdeFileSystem | null = null;
@@ -98,7 +100,8 @@ export class ModuxEditorIde extends LitElement {
       this.store = await loadTree(this.fs, ROOT);
       await this.ensureView();
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
-      this.open = { activeViewId: this.doc.viewId };
+      this.open = { activeViewId: this.doc.viewId, mode: this.doc.mode };
+      this.canvasMode = this.doc.mode;
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
@@ -185,13 +188,27 @@ export class ModuxEditorIde extends LitElement {
     this.layoutTimer = window.setTimeout(() => this.flushLayout(), 400);
   }
 
+  /** The lens changed in the editor — remember it and persist it with the document. */
+  private onCanvasModeChanged(event: CustomEvent): void {
+    this.canvasMode = event.detail.mode as ViewDoc['mode'];
+    this.flushLayout();
+  }
+
+  /** The lens the view is currently in, persisted with the document (undefined ⇒ unified). */
+  private canvasMode: ViewDoc['mode'];
+
   private flushLayout(): void {
     const bridge = hostBridge();
     if (!bridge) return;
     this.chain = this.chain.then(async () => {
       try {
         // One canvas, one geometry blob; a legacy `kind:` is dropped by rewriting only these keys.
-        this.doc = { viewId: this.doc.viewId, geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} } };
+        // The lens rides along so the view reopens in it (omitted when unified — the default).
+        this.doc = {
+          viewId: this.doc.viewId,
+          geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} },
+          ...(this.canvasMode && this.canvasMode !== 'unified' ? { mode: this.canvasMode } : {}),
+        };
         await writeView(bridge, stringify(this.doc));
       } catch (e) {
         this.error = `No se pudo guardar la geometría: ${message(e)}`;
@@ -240,6 +257,7 @@ export class ModuxEditorIde extends LitElement {
         .hosted=${true}
         @modux-command=${this.onCommand}
         @layout-changed=${this.onLayoutChanged}
+        @canvas-mode-changed=${this.onCanvasModeChanged}
         @create-view=${this.onCreateView}
       ></modux-editor>
     `;
