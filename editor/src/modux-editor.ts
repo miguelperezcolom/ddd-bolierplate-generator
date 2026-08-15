@@ -692,6 +692,13 @@ export class ModuxEditor extends LitElement {
       max-height: 70vh;
       overflow-y: auto;
     }
+    /* The relation-type picker can be long; center it so it always fits, whatever the click point. */
+    .relation-picker--centered {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      max-width: min(420px, 90vw);
+    }
     .picker-title {
       font-size: 11px;
       font-weight: 600;
@@ -4928,8 +4935,7 @@ export class ModuxEditor extends LitElement {
     return html`
       <div class="picker-backdrop" @pointerdown=${() => (this._connectPicker = null)}></div>
       <div
-        class="relation-picker"
-        style="left:${p.x}px; top:${p.y}px"
+        class="relation-picker relation-picker--centered"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
         <div class="picker-title">¿Qué relación es esta línea?</div>
