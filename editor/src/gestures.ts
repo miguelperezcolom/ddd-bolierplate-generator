@@ -1945,22 +1945,10 @@ export function applyConnectionGesture(
     }
     if (relationExternalIds.has(targetId)) return;
     if (actorIds.has(targetId)) return;
-    // Two bounded contexts: the derived relation carries the mechanics, but the
-    // TYPE is an annotation — the traced line asks for it (or retypes a declared one).
-    const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
-    if (isCtx(sourceId) && isCtx(targetId) && sourceId !== targetId) {
-      const declared = host.model.relations.find(
-        (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
-      );
-      host.openRelationPicker({
-        sourceId,
-        targetId,
-        mode: declared ? 'edit' : 'create',
-        x: x ?? 0,
-        y: y ?? 0,
-      });
-      return;
-    }
+    // Context↔context relations use the ArchiMate vocabulary (serving, composition…), like every
+    // other strategic pair — not the DDD context-map types. So this falls through to the ArchiMate
+    // picker below. (The old CUSTOMER_SUPPLIER/ACL picker survives only for retyping a relation that
+    // was already declared, via double-click.)
     // Nothing modux meant anything for this pair: ArchiMate is the last word —
     // any two elements admit its eleven relationship types (documentation intent).
     if (sourceId !== targetId && connectKind === undefined) {
