@@ -1695,6 +1695,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'application-event' ||
             node.kind === 'external-use-case' ||
             node.kind === 'external-system' ||
+            node.kind === 'system' ||
+            node.kind === 'boundedContext' ||
             node.kind === 'external-table' ||
             node.kind === 'api-operation' ||
             node.kind === 'api-op-occurrence' ||
@@ -1706,6 +1708,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'identity-provider' ||
             node.kind === 'etl-flow' ||
             node.kind === 'boundedContext' ||
+            node.kind === 'system' ||
             node.kind === 'ui' ||
             node.kind === 'ui-app' ||
             node.kind === 'external-system' ||
