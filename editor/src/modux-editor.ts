@@ -845,12 +845,15 @@ export class ModuxEditor extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.addEventListener('keydown', this.hostKeydown);
+    // Listen at the WINDOW, not the element: inside the IDE the canvas rarely holds DOM focus, so an
+    // element-scoped keydown never fires (Ctrl+Z lands on <body> and is lost). Window-level keydown
+    // works whenever the webview has OS focus — the same reason space-to-pan already works.
+    window.addEventListener('keydown', this.hostKeydown);
     this.ownerDocument.addEventListener('fullscreenchange', this.onFullscreenChange);
   }
 
   disconnectedCallback(): void {
-    this.removeEventListener('keydown', this.hostKeydown);
+    window.removeEventListener('keydown', this.hostKeydown);
     this.ownerDocument.removeEventListener('fullscreenchange', this.onFullscreenChange);
     super.disconnectedCallback();
   }
@@ -1333,11 +1336,6 @@ export class ModuxEditor extends LitElement {
     this._undoStack = [];
     this._redoStack = [];
   }
-
-  /** Undo/redo entry points for the IDE host, which routes Ctrl+Z there (IntelliJ eats the key
-   * before it reaches the webview, so the plugin re-dispatches it via these). */
-  hostUndo(): void { this.undo(); }
-  hostRedo(): void { this.redo(); }
 
   private undo(): void {
     const inverse = this._undoStack[this._undoStack.length - 1];

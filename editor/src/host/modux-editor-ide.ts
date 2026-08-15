@@ -104,14 +104,8 @@ export class ModuxEditorIde extends LitElement {
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
       this.open = { activeViewId: this.doc.viewId, mode: this.doc.mode };
       this.canvasMode = this.doc.mode;
-      // The IDE host routes Ctrl+S / Ctrl+Z / Ctrl+Shift+Z here (IntelliJ eats those keys before the
-      // webview sees them, so the plugin re-dispatches them through these globals).
-      const w = window as unknown as { __moduxSave?: () => void; __moduxUndo?: () => void; __moduxRedo?: () => void };
-      const editorEl = () => this.renderRoot.querySelector('modux-editor') as
-        (Element & { hostUndo(): void; hostRedo(): void }) | null;
-      w.__moduxSave = this.boundSave;
-      w.__moduxUndo = () => editorEl()?.hostUndo();
-      w.__moduxRedo = () => editorEl()?.hostRedo();
+      // The IDE host calls this on Ctrl+S (native save). Registered here, once the fs is ready.
+      (window as unknown as { __moduxSave?: () => void }).__moduxSave = this.boundSave;
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
@@ -271,11 +265,8 @@ export class ModuxEditorIde extends LitElement {
     // Flush anything still pending before the element goes (the debounce may not have fired yet).
     window.clearTimeout(this.autosaveTimer);
     if (this.dirty) void this.save();
-    const w = window as unknown as { __moduxSave?: unknown; __moduxUndo?: unknown; __moduxRedo?: unknown };
-    if (w.__moduxSave === this.boundSave) {
-      delete w.__moduxSave;
-      delete w.__moduxUndo;
-      delete w.__moduxRedo;
+    if ((window as unknown as { __moduxSave?: unknown }).__moduxSave === this.boundSave) {
+      delete (window as unknown as { __moduxSave?: unknown }).__moduxSave;
     }
     super.disconnectedCallback();
   }

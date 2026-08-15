@@ -5,10 +5,6 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.intellij.AppTopics;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.ActionManager;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
@@ -91,7 +87,6 @@ public final class EditorBridge implements Disposable {
                 });
 
         silenceGitAddPrompt();
-        installUndoRedo();
 
         if (!EditorResources.isBundled()) {
             LOG.error("the modux editor bundle is missing from the plugin: build editor/ first");
@@ -247,27 +242,6 @@ public final class EditorBridge implements Disposable {
         this.modified = request.has("modified") && request.get("modified").getAsBoolean();
         if (onModified != null) onModified.accept(this.modified);
         return JsonNull.INSTANCE;
-    }
-
-    /**
-     * IntelliJ eats Ctrl+Z / Ctrl+Shift+Z (its own global Undo/Redo) before the webview sees them.
-     * Register component-scoped actions carrying the SAME shortcuts (whatever the user has bound):
-     * when the editor is focused they win, and forward to the webview's own undo/redo history.
-     */
-    private void installUndoRedo() {
-        var mgr = ActionManager.getInstance();
-        forward(mgr.getAction(IdeActions.ACTION_UNDO), "window.__moduxUndo && window.__moduxUndo();");
-        forward(mgr.getAction(IdeActions.ACTION_REDO), "window.__moduxRedo && window.__moduxRedo();");
-    }
-
-    private void forward(AnAction platform, String js) {
-        if (platform == null) return;
-        new AnAction() {
-            @Override
-            public void actionPerformed(AnActionEvent e) {
-                browser.getCefBrowser().executeJavaScript(js, browser.getCefBrowser().getURL(), 0);
-            }
-        }.registerCustomShortcutSet(platform.getShortcutSet(), browser.getComponent(), this);
     }
 
     /** Ask the webview to flush its buffered edits to disk (native save routes here). */
