@@ -2220,6 +2220,8 @@ export class ModuxEditor extends LitElement {
       boundedContexts,
       systems,
       externalSystems,
+      // A CDC shows only in the views that list it (a member), like every other top-level node.
+      cdcs: (this.model.cdcs ?? []).filter((c) => members.has(c.id)),
       relations: this.model.relations.filter(
         (r) => boundedContextIds.has(r.sourceId) && boundedContextIds.has(r.targetId),
       ),
