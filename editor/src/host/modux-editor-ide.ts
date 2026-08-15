@@ -196,24 +196,31 @@ export class ModuxEditorIde extends LitElement {
 
   /** Unsaved work lives in memory (the store + `ideFileSystem`'s write buffer) until save(). */
   private dirty = false;
+  /** Debounced auto-save to disk — the safety net so work is never lost. Git stays manual. */
+  private autosaveTimer: number | undefined;
 
-  /** Mark the editor dirty and tell the IDE host, so the modified indicator and Ctrl+S light up. */
+  /** Mark dirty, tell the host (modified indicator), and arm the debounced auto-save. */
   private markDirty(): void {
     if (!this.dirty) {
       this.dirty = true;
       const bridge = hostBridge();
       if (bridge) void bridge({ op: 'setModified', modified: true });
     }
+    // Auto-save to disk shortly after edits settle; Ctrl+S still forces an immediate save. Only
+    // files are written — never git — so the user keeps full control of what gets committed.
+    window.clearTimeout(this.autosaveTimer);
+    this.autosaveTimer = window.setTimeout(() => void this.save(), 1500);
   }
 
   /**
-   * Explicit save (Ctrl+S, routed here by the IDE host): the ONLY place edits reach disk. Commands
-   * and drags have queued their writes in `ideFileSystem`'s buffer; here we add the view document
-   * and flush the whole batch at once. Nothing auto-saves — the user decides when.
+   * Save to disk: the buffered writes (commands + drags queued in `ideFileSystem`) plus the view
+   * document, flushed as one batch. Fired by the debounce, by Ctrl+S, and by the close safety net.
+   * Writes files only — git is left to the user.
    */
   private async save(): Promise<void> {
+    window.clearTimeout(this.autosaveTimer);
     const bridge = hostBridge();
-    if (!this.fs || !bridge) return;
+    if (!this.fs || !bridge || !this.dirty) return;
     await this.chain; // let any queued command land in the buffer first
     try {
       // One canvas, one geometry blob; the lens rides along so the view reopens in it.
@@ -232,8 +239,9 @@ export class ModuxEditorIde extends LitElement {
   }
 
   override disconnectedCallback(): void {
-    // No auto-save on close: unsaved work is the user's to keep or drop (the IDE prompts via
-    // isModified). Clearing the global avoids a stale editor answering a later save.
+    // Flush anything still pending before the element goes (the debounce may not have fired yet).
+    window.clearTimeout(this.autosaveTimer);
+    if (this.dirty) void this.save();
     if ((window as unknown as { __moduxSave?: unknown }).__moduxSave === this.boundSave) {
       delete (window as unknown as { __moduxSave?: unknown }).__moduxSave;
     }
