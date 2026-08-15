@@ -879,6 +879,18 @@ export class ModuxEditor extends LitElement {
     const target = e.composedPath()[0] as HTMLElement | undefined;
     const tag = (target?.tagName ?? '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    // Undo/redo from anywhere in the editor (not only when the canvas has focus), so the keyboard
+    // shortcut is enough and no toolbar button is needed.
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) this.redo(); else this.undo();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      this.redo();
+      return;
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const canvas = this.renderRoot.querySelector('modux-canvas');
     switch (e.key) {
@@ -1583,12 +1595,6 @@ export class ModuxEditor extends LitElement {
     });
   }
 
-
-  /** Switch the canvas lens and persist it with the view document, so it reopens in the same lens. */
-  private setCanvasMode(mode: 'unified' | 'distribution' | 'eventstorming'): void {
-    this._canvasMode = mode;
-    this.emit('canvas-mode-changed', { mode });
-  }
 
   /** Expansion is a sheet preference (persisted with the vista, not undoable). */
   private onNodeCollapseToggled(e: CustomEvent): void {
@@ -4511,23 +4517,6 @@ export class ModuxEditor extends LitElement {
           : ''}
         <button
           class="tab"
-          title="Deshacer el último cambio (Ctrl+Z)"
-          ?disabled=${this._undoStack.length === 0}
-          @click=${this.undo}
-        >
-          ↶ Deshacer
-        </button>
-        <button
-          class="tab"
-          title="Rehacer (Ctrl+Shift+Z / Ctrl+Y)"
-          ?disabled=${this._redoStack.length === 0}
-          @click=${this.redo}
-        >
-          ↷ Rehacer
-        </button>
-
-        <button
-          class="tab"
           title="Ajustar la vista a la selección (o a todo el diagrama, si no hay selección)"
           @click=${() => {
             this.renderRoot.querySelector('modux-canvas')?.fit();
@@ -4647,24 +4636,6 @@ export class ModuxEditor extends LitElement {
           @click=${() => (this._showDerived = !this._showDerived)}
         >
           ✦ Inferidos: ${this._showDerived ? 'visibles' : 'ocultos'}
-        </button>
-        <button
-          class="tab"
-          ?data-active=${this._canvasMode === 'distribution'}
-          title="Distribución: los contextos como empaquetadores de módulos, con servicios y despliegue — el mismo modelo, otra lente"
-          @click=${() =>
-            this.setCanvasMode(this._canvasMode === 'distribution' ? 'unified' : 'distribution')}
-        >
-          ⛃ Distribución
-        </button>
-        <button
-          class="tab"
-          ?data-active=${this._canvasMode === 'eventstorming'}
-          title="EventStorming: la narrativa comando → agregado → evento → policy → read model sobre el mismo modelo"
-          @click=${() =>
-            this.setCanvasMode(this._canvasMode === 'eventstorming' ? 'unified' : 'eventstorming')}
-        >
-          ▦ EventStorming
         </button>
         <button
           class="tab"
