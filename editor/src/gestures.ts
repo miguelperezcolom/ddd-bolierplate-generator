@@ -524,6 +524,8 @@ export function applyConnectionGesture(
           ownerId = host.model.boundedContexts.find((b) => b.id === other)?.id ?? aggById(other)?.id ?? null;
         } else if (looseEl.elementType === 'external-table') {
           ownerId = host.model.externalSystems.find((x) => x.id === other)?.id ?? null;
+        } else if (looseEl.elementType === 'integration-event') {
+          ownerId = host.model.boundedContexts.find((b) => b.id === other)?.id ?? null;
         }
         if (ownerId) {
           host.command({ kind: 'adopt-loose-element', id: looseEl.id, ownerId });

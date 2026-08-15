@@ -3533,19 +3533,20 @@ export class ModuxEditor extends LitElement {
     // Free-standing NESTED elements (operation/invariant/field/step): they can't live owner-less in
     // their parent's array, so a loose one goes to the looseElements bucket and is adopted into the
     // parent later by a composition edge. It wears a «sin asociar» badge until then.
-    if (!container && ['operation', 'invariant', 'field', 'use-case-step', 'read-model', 'external-table'].includes(type)) {
+    if (!container && ['operation', 'invariant', 'field', 'use-case-step', 'read-model', 'external-table', 'integration-event'].includes(type)) {
       const { id, name } = this.uniquePaletteName(def.label);
-      issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table' }, id);
+      issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table' | 'integration-event' }, id);
       const parentNoun =
         type === 'operation' ? 'un agregado'
           : type === 'invariant' ? 'un agregado, entidad o value object'
           : type === 'field' ? 'un modelo'
           : type === 'read-model' ? 'un contexto o agregado'
           : type === 'external-table' ? 'un sistema externo'
+          : type === 'integration-event' ? 'un contexto'
           : 'un caso de uso o policy';
       const noun = type === 'operation' ? 'Operación' : type === 'invariant' ? 'Invariante'
         : type === 'field' ? 'Campo' : type === 'read-model' ? 'Read model'
-        : type === 'external-table' ? 'Tabla' : 'Paso';
+        : type === 'external-table' ? 'Tabla' : type === 'integration-event' ? 'Evento de integración' : 'Paso';
       this.emit('modux-notice', {
         message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
       });

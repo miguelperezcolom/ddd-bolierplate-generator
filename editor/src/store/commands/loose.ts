@@ -71,6 +71,9 @@ function graft(store: ModelStore, id: string, name: string, elementType: string,
     if (!tables.some((t) => t.id === id)) {
       store.patch('externalSystems', ext.id, { tables: [...tables, { id, name }] });
     }
+  } else if (elementType === 'integration-event') {
+    mustGet(store, 'boundedContexts', ownerId, 'Contexto');
+    store.put('integrationEvents', { id, name, boundedContextId: ownerId });
   } else {
     throw new CommandError(`Tipo suelto desconocido: ${elementType}`);
   }

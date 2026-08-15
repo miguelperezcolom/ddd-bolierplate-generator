@@ -743,7 +743,7 @@ export type ModuxCommand =
       kind: 'add-loose-element';
       id: string;
       name: string;
-      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table';
+      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table' | 'integration-event';
     }
   | { kind: 'remove-loose-element'; id: string }
   | {
