@@ -1071,12 +1071,15 @@ export function applyConnectionGesture(
     // rest (sentinel: '__classic').
     if (connectKind !== '__classic' && connectKind === undefined) {
       const typed = connectionOptions(host, sourceId, targetId);
-      if (typed.length === 1) {
+      // Composition-into-a-system must never auto-apply: a system↔system/context line is just as
+      // likely serving or another ArchiMate type, so it always asks (composition + the vocabulary).
+      const autoApply = typed.length === 1 && typed[0].id !== 'system-composition';
+      if (autoApply) {
         // one meaning: no question, no detour — the trace IS that relation
         typed[0].apply();
         return;
       }
-      if (typed.length > 1) {
+      if (typed.length >= 1) {
         host.openConnectPicker({
           x: x ?? 0,
           y: y ?? 0,
@@ -2773,14 +2776,21 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-system', id });
       return;
     }
-    // Deleting the composition edge from a system to a context ungroups the context (keeps both).
+    // Deleting the composition edge from a system to what it groups ungroups it (keeps both):
+    // a context detaches via set-context-system, a nested subsystem via set-system-parent.
     if (elementType === 'edge' && kind === 'contains') {
       const m = /^contains:(.+)->(.+)$/.exec(id);
-      const child = m ? host.model.boundedContexts.find((b) => b.id === m[2]) : null;
-      if (m && child && (host.model.systems ?? []).some((s) => s.id === m[1])) {
-        host.clearSelection();
-        host.command({ kind: 'set-context-system', id: child.id, parentSystemId: null });
-        return;
+      if (m && (host.model.systems ?? []).some((s) => s.id === m[1])) {
+        if (host.model.boundedContexts.some((b) => b.id === m[2])) {
+          host.clearSelection();
+          host.command({ kind: 'set-context-system', id: m[2], parentSystemId: null });
+          return;
+        }
+        if ((host.model.systems ?? []).some((s) => s.id === m[2])) {
+          host.clearSelection();
+          host.command({ kind: 'set-system-parent', id: m[2], parentSystemId: null });
+          return;
+        }
       }
     }
     if (elementType === 'node' && kind === 'aggregate') {
