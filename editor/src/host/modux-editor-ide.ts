@@ -11,10 +11,10 @@ import { LitElement, css, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import type { ModuxModel } from '../model.js';
 import type { DiagramLayout, EditorLayout, ViewLayout } from '../scene.js';
-import { apply, applyAll, CommandError } from '../store/apply.js';
+import { applyAll, CommandError } from '../store/apply.js';
 import { snapshotOf } from '../store/project-snapshot.js';
 import { project, unprojectedTypes } from '../store/project.js';
-import { ModelStore } from '../store/store.js';
+import { asList, ModelStore } from '../store/store.js';
 import { flush, loadTree } from '../store/tree.js';
 import {
   hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, readView, writeView,
@@ -22,9 +22,16 @@ import {
 } from './ide-fs.js';
 import '../modux-editor.js';
 
-/** The view document (§12): geometry over a catalog view, referenced by id. No type anymore. */
+/**
+ * The view document — now SELF-CONTAINED: it carries its own members and geometry, so a view is
+ * one file. There is no `.modux/views/` catalog entry anymore; copying the file gives a fully
+ * independent view, and renaming it is harmless. (Legacy docs without `memberIds` fall back to the
+ * old catalog entry once, then migrate on save.)
+ */
 interface ViewDoc {
   viewId?: string;
+  name?: string;
+  memberIds?: string[];
   geometry?: ViewLayout | DiagramLayout;
   /** The lens the view opens in — so a C4 container view reopens in distribution, not unified. */
   mode?: 'unified' | 'distribution' | 'eventstorming';
@@ -93,7 +100,7 @@ export class ModuxEditorIde extends LitElement {
       this.doc = (parse(await readView(bridge)) as ViewDoc) ?? {};
       this.viewKey = layoutKeyFor(this.doc.viewId);
       this.store = await loadTree(this.fs, ROOT);
-      await this.ensureView();
+      this.seedView();
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
       this.open = { activeViewId: this.doc.viewId, mode: this.doc.mode };
       this.canvasMode = this.doc.mode;
@@ -125,16 +132,20 @@ export class ModuxEditorIde extends LitElement {
   }
 
   /**
-   * A view opens scoped and empty, not showing the whole catalog: if the document names a view the
-   * catalog does not hold yet — as a freshly created `*.modux-view.yaml` does — create it as an
-   * empty curated entity (§12, born-empty). The user then fills it by adding members.
+   * Author the active view in memory FROM ITS DOCUMENT (the self-contained source of truth). It is
+   * never written to `.modux/views/` — flush skips views. A legacy doc without `memberIds` falls
+   * back to its old catalog entry (loaded from `.modux/views/`), then migrates to the doc on save.
    */
-  private async ensureView(): Promise<void> {
+  private seedView(): void {
     const id = this.doc.viewId;
-    if (!id || !this.fs || this.store.has('views', id)) return;
-    apply(this.store, { kind: 'add-view', id, name: id, memberIds: [] } as never);
-    await flush(this.fs, ROOT, this.store);
-    await this.fs.commit();
+    if (!id) return;
+    const legacy = asList(this.store.get('views', id)?.memberIds as string[] | undefined);
+    this.store.put('views', {
+      id,
+      name: this.doc.name ?? id,
+      kind: 'CURATED',
+      memberIds: this.doc.memberIds ?? legacy,
+    });
   }
 
   /**
@@ -146,8 +157,10 @@ export class ModuxEditorIde extends LitElement {
   private onCreateView(event: CustomEvent): void {
     const bridge = hostBridge();
     if (!bridge) return;
-    const { viewId, name } = event.detail as { viewId: string; name: string };
-    this.chain = this.chain.then(() => bridge({ op: 'createView', viewId, name }) as Promise<unknown>)
+    const { viewId, name, memberIds } = event.detail as { viewId: string; name: string; memberIds?: string[] };
+    // A view is self-contained: seed the new document with its members so the selection survives the
+    // hop to the freshly-opened file (there is no `.modux/views/` entry to read them back from).
+    this.chain = this.chain.then(() => bridge({ op: 'createView', viewId, name, memberIds: memberIds ?? [] }) as Promise<unknown>)
       .then(() => undefined);
   }
 
@@ -223,13 +236,23 @@ export class ModuxEditorIde extends LitElement {
     if (!this.fs || !bridge || !this.dirty) return;
     await this.chain; // let any queued command land in the buffer first
     try {
-      // One canvas, one geometry blob; the lens rides along so the view reopens in it.
+      // The document is self-contained: its members (from the in-memory view) and geometry, plus
+      // the lens. Written as one file — no `.modux/views/` entry.
+      const id = this.doc.viewId;
+      const view = id ? this.store.get('views', id) : undefined;
       this.doc = {
-        viewId: this.doc.viewId,
+        viewId: id,
+        ...(view?.name ? { name: String(view.name) } : {}),
+        memberIds: asList(view?.memberIds as string[] | undefined),
         geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} },
         ...(this.canvasMode && this.canvasMode !== 'unified' ? { mode: this.canvasMode } : {}),
       };
       await writeView(bridge, stringify(this.doc));
+      // Migration: the members live in the doc now — drop the legacy `.modux/views/` entry if any.
+      if (id) {
+        const legacy = `views/${id}.yaml`;
+        if (await this.fs.exists(legacy)) await this.fs.delete(legacy);
+      }
       await this.fs.commit();
       this.dirty = false;
       void bridge({ op: 'setModified', modified: false });

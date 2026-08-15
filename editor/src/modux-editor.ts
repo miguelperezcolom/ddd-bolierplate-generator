@@ -2123,7 +2123,7 @@ export class ModuxEditor extends LitElement {
     this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
     this._multi = [];
-    this.afterViewCreated(id, name);
+    this.afterViewCreated(id, name, memberIds);
   }
 
   /**
@@ -2133,8 +2133,10 @@ export class ModuxEditor extends LitElement {
    * lands in the filename (`<slug>.<type>.modux-view.yaml`), the source of truth; there is no lens
    * to rotate afterwards, and no chooser to get wrong (a mismatched lens rendered an empty view).
    */
-  private afterViewCreated(id: string, name: string): void {
-    this.emit('create-view', { viewId: id, name, kind: this._view });
+  private afterViewCreated(id: string, name: string, memberIds: string[] = []): void {
+    // A view is a self-contained document now — its members travel WITH it, so the newly opened
+    // file already shows the selection (they are not read back from a `.modux/views/` entry).
+    this.emit('create-view', { viewId: id, name, kind: this._view, memberIds });
   }
 
   /** Model scoped to the active modux View (CURATED members + their context). */
@@ -4709,7 +4711,7 @@ export class ModuxEditor extends LitElement {
               // Members are the VIEW-able kinds; finer elements ride along with
               // their (also visible) owning container, like in canvas selections.
               const MEMBER_KINDS = new Set([
-                'boundedContext', 'external-system', 'aggregate', 'entity', 'process', 'workflow',
+                'boundedContext', 'system', 'external-system', 'aggregate', 'entity', 'process', 'workflow',
                 'actor', 'ai-agent', 'rag', 'mcp-gateway', 'api', 'page', 'ui-app',
               ]);
               const memberIds = [...new Set(
@@ -4721,7 +4723,7 @@ export class ModuxEditor extends LitElement {
               }
               const id = crypto.randomUUID();
               this.command({ kind: 'add-view', id, name: e.detail.name, memberIds });
-              this.afterViewCreated(id, e.detail.name);
+              this.afterViewCreated(id, e.detail.name, memberIds);
               this.emit('modux-notice', {
                 message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
               });

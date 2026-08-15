@@ -355,7 +355,15 @@ public final class EditorBridge implements Disposable {
         // One unified canvas: the document carries no type, just the slug in `<slug>.modux-view.yaml`.
         var fileName = ModuxProject.viewFileName(
                 ModuxActionSupport.slug(name != null && !name.isBlank() ? name : viewId));
-        var content = "viewId: " + viewId + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
+        // A view is self-contained: name + members + geometry live in the doc (no `.modux/views/`).
+        var members = new StringBuilder();
+        if (request.has("memberIds") && request.get("memberIds").isJsonArray()) {
+            for (var el : request.getAsJsonArray("memberIds")) members.append("  - ").append(el.getAsString()).append('\n');
+        }
+        var content = "viewId: " + viewId + "\n"
+                + (name != null && !name.isBlank() ? "name: " + name + "\n" : "")
+                + (members.length() > 0 ? "memberIds:\n" + members : "memberIds: []\n")
+                + "geometry:\n  nodes: {}\n  edges: {}\n";
         var created = WriteCommandAction.writeCommandAction(project)
                 .withName("New Modux View")
                 .<VirtualFile, IOException>compute(() -> {
