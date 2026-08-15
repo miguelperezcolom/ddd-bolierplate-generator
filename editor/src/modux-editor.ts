@@ -1923,7 +1923,19 @@ export class ModuxEditor extends LitElement {
       clearSelection: () => {
         this._selectedId = null;
       },
+      expandNode: (id) => this.expandNode(id),
     };
+  }
+
+  /** Expand a container in the current view (idempotent) — used after composing an element into it. */
+  private expandNode(id: string): void {
+    const view = this._view;
+    const current = this.viewLayout(view);
+    const set = new Set(current.expanded ?? []);
+    if (set.has(id)) return;
+    set.add(id);
+    this.writeViewLayout(view, { ...current, expanded: [...set] });
+    this.declumpView(view);
   }
 
   private owningProcessOf(stepId: string) {

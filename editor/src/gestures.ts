@@ -46,6 +46,8 @@ export interface GestureHost {
   /** Screen rect of a canvas node (menu drops slot by vertical position). */
   nodeClientRect(nodeId: string): DOMRect | null | undefined;
   clearSelection(): void;
+  /** Expand a container in the current view — so an element just composed INTO it stays visible. */
+  expandNode(id: string): void;
 }
 
 /** The relation palette (Archi style): pick a type, trace, done. */
@@ -74,6 +76,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'ui-serving', label: 'Servidumbre (sirve al actor)', hint: 'UI ⇆ actor: la interfaz le sirve — la única relación posible entre ambos' },
   { id: 'aggregate-composition', label: 'Composición (lo contiene)', hint: 'Contexto ⇆ agregado suelto: el contexto pasa a contenerlo' },
   { id: 'system-composition', label: 'Composición (lo contiene)', hint: 'Sistema ⇆ contexto/subsistema: el sistema pasa a contenerlo' },
+  { id: 'projection', label: 'Proyección', hint: 'Tabla externa ⇆ read model: el read model se proyecta de la tabla — la única relación posible entre ambos' },
 ];
 
 /** A readable name for a node id, scanning the strategic/domain collections. */
@@ -258,8 +261,10 @@ export function connectionOptions(
     const ctx = isContext(sourceId) ? sourceId : isContext(targetId) ? targetId : null;
     const agg = isAggregate(sourceId) ? sourceId : isAggregate(targetId) ? targetId : null;
     if (ctx && agg && !(m.aggregates ?? []).find((a) => a.id === agg)?.boundedContextId) {
-      offer('aggregate-composition', () =>
-        host.command({ kind: 'set-aggregate-context', id: agg, boundedContextId: ctx }));
+      offer('aggregate-composition', () => {
+        host.command({ kind: 'set-aggregate-context', id: agg, boundedContextId: ctx });
+        host.expandNode(ctx);
+      });
     }
   }
   {
@@ -271,13 +276,32 @@ export function connectionOptions(
       const other = sys === sourceId ? targetId : sourceId;
       if (isContext(other)
         && m.boundedContexts.find((mo) => mo.id === other)?.parentSystemId !== sys) {
-        offer('system-composition', () =>
-          host.command({ kind: 'set-context-system', id: other, parentSystemId: sys }));
+        offer('system-composition', () => {
+          host.command({ kind: 'set-context-system', id: other, parentSystemId: sys });
+          host.expandNode(sys);
+        });
       } else if (isSystem(sourceId) && isSystem(targetId) && sourceId !== targetId
         && (m.systems ?? []).find((s) => s.id === targetId)?.parentSystemId !== sourceId) {
-        offer('system-composition', () =>
-          host.command({ kind: 'set-system-parent', id: targetId, parentSystemId: sourceId }));
+        offer('system-composition', () => {
+          host.command({ kind: 'set-system-parent', id: targetId, parentSystemId: sourceId });
+          host.expandNode(sourceId);
+        });
       }
+    }
+  }
+  {
+    // tabla externa ⇆ read model: la ÚNICA relación es una PROYECCIÓN (el read model se proyecta de
+    // la tabla). Cualquier sentido; el read model puede estar suelto o dentro de un contexto.
+    const isReadModel = (id: string) =>
+      m.boundedContexts.some((bc) => (bc.readModels ?? []).some((rm) => rm.id === id));
+    const extTableOf = (id: string) => m.externalSystems.find((x) => (x.tables ?? []).some((t) => t.id === id));
+    const rmId = isReadModel(sourceId) ? sourceId : isReadModel(targetId) ? targetId : null;
+    const tblId = extTableOf(sourceId) ? sourceId : extTableOf(targetId) ? targetId : null;
+    if (rmId && tblId && !(m.projections ?? []).some((p) => p.readModelId === rmId)) {
+      offer('projection', () => host.command({
+        kind: 'add-projection', id: `proj-${tblId}-${rmId}`, name: 'Proyección',
+        externalTableId: tblId, targetId: rmId,
+      }));
     }
   }
   {
@@ -452,22 +476,26 @@ export function applyConnectionGesture(
       const looseAgg = aggById(sourceId) ?? aggById(targetId);
       if (ctx && looseAgg && !looseAgg.boundedContextId) {
         host.command({ kind: 'set-aggregate-context', id: looseAgg.id, boundedContextId: ctx });
+        host.expandNode(ctx);
         return;
       }
       const looseUc = (host.model.looseUseCases ?? []).find((u) => u.id === sourceId || u.id === targetId);
       if (ctx && looseUc) {
         host.command({ kind: 'set-use-case-context', id: looseUc.id, boundedContextId: ctx });
+        host.expandNode(ctx);
         return;
       }
       const agg = aggById(sourceId) ?? aggById(targetId);
       const looseEnt = entById(sourceId) ?? entById(targetId);
       if (agg && looseEnt && !looseEnt.aggregateId) {
         host.command({ kind: 'set-entity-aggregate', id: looseEnt.id, aggregateId: agg.id });
+        host.expandNode(agg.id);
         return;
       }
       const looseVo = voById(sourceId) ?? voById(targetId);
       if (agg && looseVo && !looseVo.aggregateId) {
         host.command({ kind: 'set-value-object-aggregate', id: looseVo.id, aggregateId: agg.id });
+        host.expandNode(agg.id);
         return;
       }
       // A loose nested element (operation/invariant/field/step) is adopted into a valid parent.
@@ -494,6 +522,7 @@ export function applyConnectionGesture(
         }
         if (ownerId) {
           host.command({ kind: 'adopt-loose-element', id: looseEl.id, ownerId });
+          host.expandNode(ownerId); // keep the just-adopted child visible
           return;
         }
       }
