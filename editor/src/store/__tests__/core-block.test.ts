@@ -22,6 +22,39 @@ function model(extra: Record<string, Element[]> = {}): ModelStore {
   });
 }
 
+describe('systems (C4 grouping)', () => {
+  it('creates a system, nests a context and a subsystem, and refuses to leave while occupied', () => {
+    const store = model();
+    applyAll(store, [
+      { kind: 'add-system', id: 'sys-riu', name: 'RIU' },
+      { kind: 'add-system', id: 'sys-net', name: 'RumboNet' },
+      { kind: 'set-system-parent', id: 'sys-net', parentSystemId: 'sys-riu' },
+      { kind: 'set-context-system', id: 'bc-res', parentSystemId: 'sys-riu' },
+    ] as never);
+    expect(store.get('systems', 'sys-net')?.parentSystemId).toBe('sys-riu');
+    expect(store.get('boundedContexts', 'bc-res')?.parentSystemId).toBe('sys-riu');
+
+    // a system does not leave while it still groups contexts / subsystems
+    expect(() => apply(store, { kind: 'remove-system', id: 'sys-riu' } as never)).toThrow(CommandError);
+
+    // detach both, then it goes
+    applyAll(store, [
+      { kind: 'set-system-parent', id: 'sys-net', parentSystemId: null },
+      { kind: 'set-context-system', id: 'bc-res', parentSystemId: null },
+      { kind: 'remove-system', id: 'sys-riu' },
+    ] as never);
+    expect(store.has('systems', 'sys-riu')).toBe(false);
+    expect(store.get('boundedContexts', 'bc-res')?.parentSystemId).toBeFalsy(); // detached
+  });
+
+  it('rejects an unknown system and self-parenting', () => {
+    const store = model();
+    apply(store, { kind: 'add-system', id: 'sys-a', name: 'A' } as never);
+    expect(() => apply(store, { kind: 'set-context-system', id: 'bc-res', parentSystemId: 'nope' } as never)).toThrow(CommandError);
+    expect(() => apply(store, { kind: 'set-system-parent', id: 'sys-a', parentSystemId: 'sys-a' } as never)).toThrow(CommandError);
+  });
+});
+
 describe('actors', () => {
   it('routes a use to the right list by what the target turns out to be', () => {
     const store = model({

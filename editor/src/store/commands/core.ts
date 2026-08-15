@@ -127,6 +127,18 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     },
   }),
 
+  // Nest a system inside another (parentSystemId: null detaches it). No self-parenting.
+  'set-system-parent': setField({
+    type: 'systems',
+    field: 'parentSystemId',
+    from: 'parentSystemId',
+    map: (value, command, store) => {
+      if (value && value === command.id) throw new CommandError('Un sistema no puede contenerse a sí mismo');
+      if (value && !store.has('systems', value)) throw new CommandError(`Sistema desconocido: ${value}`);
+      return value ?? null;
+    },
+  }),
+
   // ---- aggregates and their contents -------------------------------------
 
   'add-aggregate': add({

@@ -73,6 +73,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'ui-composition', label: 'Composición (expone la UI)', hint: 'Contexto ⇆ UI: el contexto la posee — la única relación posible entre ambos' },
   { id: 'ui-serving', label: 'Servidumbre (sirve al actor)', hint: 'UI ⇆ actor: la interfaz le sirve — la única relación posible entre ambos' },
   { id: 'aggregate-composition', label: 'Composición (lo contiene)', hint: 'Contexto ⇆ agregado suelto: el contexto pasa a contenerlo' },
+  { id: 'system-composition', label: 'Composición (lo contiene)', hint: 'Sistema ⇆ contexto/subsistema: el sistema pasa a contenerlo' },
 ];
 
 /** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
@@ -125,6 +126,7 @@ export function connectionOptions(
   const isActor = (id: string) => (m.actors ?? []).some((a) => a.id === id);
   const isExternal = (id: string) => m.externalSystems.some((x) => x.id === id);
   const isContext = (id: string) => m.boundedContexts.some((mo) => mo.id === id);
+  const isSystem = (id: string) => (m.systems ?? []).some((s) => s.id === id);
   const isAggregate = (id: string) => (m.aggregates ?? []).some((a) => a.id === id);
 
   const uiIds = new Set((m.uis ?? []).map((u) => u.id));
@@ -243,6 +245,24 @@ export function connectionOptions(
     if (ctx && agg && !(m.aggregates ?? []).find((a) => a.id === agg)?.boundedContextId) {
       offer('aggregate-composition', () =>
         host.command({ kind: 'set-aggregate-context', id: agg, boundedContextId: ctx }));
+    }
+  }
+  {
+    // sistema ⇆ contexto o sistema ⇆ sistema: composición — el sistema pasa a contenerlo.
+    // Un contexto entra por tipo (cualquier sentido); un sistema entra por dirección (el ORIGEN,
+    // el «todo», contiene al DESTINO, la «parte») — como marca la notación ArchiMate.
+    if (isSystem(sourceId) || isSystem(targetId)) {
+      const sys = isSystem(sourceId) ? sourceId : targetId;
+      const other = sys === sourceId ? targetId : sourceId;
+      if (isContext(other)
+        && m.boundedContexts.find((mo) => mo.id === other)?.parentSystemId !== sys) {
+        offer('system-composition', () =>
+          host.command({ kind: 'set-context-system', id: other, parentSystemId: sys }));
+      } else if (isSystem(sourceId) && isSystem(targetId) && sourceId !== targetId
+        && (m.systems ?? []).find((s) => s.id === targetId)?.parentSystemId !== sourceId) {
+        offer('system-composition', () =>
+          host.command({ kind: 'set-system-parent', id: targetId, parentSystemId: sourceId }));
+      }
     }
   }
   {

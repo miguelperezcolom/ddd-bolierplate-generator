@@ -1404,6 +1404,32 @@ export class ModuxEditor extends LitElement {
       this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
       return;
     }
+    // A system shift-dropped on another nests as its subsystem; on the bare canvas, back to top.
+    const sys = (this.model.systems ?? []).find((s) => s.id === id);
+    if (sys) {
+      const target = targetId ? (this.model.systems ?? []).find((s) => s.id === targetId) : null;
+      if (targetId && !target) return;
+      // no cycles: the new parent must not live inside the dragged system
+      for (let cur = target; cur; ) {
+        if (cur.id === id) return;
+        const up = cur.parentSystemId;
+        cur = up ? (this.model.systems ?? []).find((s) => s.id === up) ?? null : null;
+      }
+      const next = target?.id ?? null;
+      if ((sys.parentSystemId ?? null) === next) return;
+      const view = this._view;
+      const layout = this.viewLayout(view);
+      const scene = this.sceneFor(view);
+      const parent = next ? scene.nodes.find((n) => n.id === next) : undefined;
+      const pos = parent ? { x: x - parent.x, y: y - parent.y } : { x, y };
+      this.pushUndoEntry([
+        { kind: 'set-system-parent', id, parentSystemId: sys.parentSystemId ?? null },
+        { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
+      ]);
+      this.command({ kind: 'set-system-parent', id, parentSystemId: next }, false);
+      this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
+      return;
+    }
     // A bounded context shift-dropped on a system joins it (C4 grouping); dropped on the bare
     // canvas, it leaves its system and returns to the top level.
     const ctx = this.model.boundedContexts.find((m) => m.id === id);

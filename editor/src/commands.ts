@@ -215,6 +215,12 @@ export type ModuxCommand =
       parentSystemId: string | null;
     }
   | {
+      /** Nest a system inside another system (null detaches it back to top level). */
+      kind: 'set-system-parent';
+      id: string;
+      parentSystemId: string | null;
+    }
+  | {
       /** An AI agent; external = someone else's, entering only through MCP gateways. */
       kind: 'add-ai-agent';
       id: string;

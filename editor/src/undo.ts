@@ -561,6 +561,10 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         const m = host.model.boundedContexts.find((x) => x.id === c.id);
         return m ? [{ kind: 'set-context-system', id: c.id, parentSystemId: m.parentSystemId ?? null }] : null;
       }
+      case 'set-system-parent': {
+        const s = (host.model.systems ?? []).find((x) => x.id === c.id);
+        return s ? [{ kind: 'set-system-parent', id: c.id, parentSystemId: s.parentSystemId ?? null }] : null;
+      }
       case 'add-aggregate':
         return [{ kind: 'remove-aggregate', id: c.id }];
       case 'remove-aggregate': {

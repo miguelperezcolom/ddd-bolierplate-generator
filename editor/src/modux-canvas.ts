@@ -854,7 +854,9 @@ export class ModuxCanvas extends LitElement {
     const freeDrag = (ev: PointerEvent) =>
       ((ev.shiftKey || ev.ctrlKey) && (node.kind === 'api' || node.kind === 'proxy-api') && !group)
       // A top-level external system shift-drags INTO another one (subsystem) or out.
-      || (ev.shiftKey && node.kind === 'external-system' && !group);
+      || (ev.shiftKey && node.kind === 'external-system' && !group)
+      // A system nests into another system, and a context into a system, by shift-drag (or out).
+      || (ev.shiftKey && (node.kind === 'system' || node.kind === 'boundedContext') && !group);
     // Row nodes drag FREE, landing on explicit slots between their siblings: menu
     // entries travel across apps; wizard steps reorder inside their own wizard.
     const rowFamily = group
