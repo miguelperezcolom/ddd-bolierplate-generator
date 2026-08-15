@@ -260,6 +260,15 @@ export function rollupOwnershipIndex(
     if (api?.publishedByExternalSystemId) continue;
     if (!owners.has(impl.apiId)) owners.set(impl.apiId, impl.boundedContextId);
   }
+  // A hand-drawn composition/aggregation is whole→part (diamond at the source): the PART rolls up
+  // into the WHOLE. So when the part is hidden or dropped from a view, its relations re-anchor to
+  // the whole — the same way a real nesting would. A real owner (parentSystemId…) still wins.
+  for (const r of model.archimateRelations ?? []) {
+    if ((r.type === 'composition' || r.type === 'aggregation') && r.sourceId !== r.targetId
+      && !owners.has(r.targetId)) {
+      owners.set(r.targetId, r.sourceId);
+    }
+  }
   return owners;
 }
 
