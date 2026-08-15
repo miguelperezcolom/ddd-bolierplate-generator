@@ -11,6 +11,9 @@ import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.vcs.ProjectLevelVcsManager;
+import com.intellij.openapi.vcs.VcsConfiguration;
+import com.intellij.openapi.vcs.VcsShowConfirmationOption;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.jcef.JBCefBrowser;
@@ -82,6 +85,8 @@ public final class EditorBridge implements Disposable {
                         if (modified) requestSave();
                     }
                 });
+
+        silenceGitAddPrompt();
 
         if (!EditorResources.isBundled()) {
             LOG.error("the modux editor bundle is missing from the plugin: build editor/ first");
@@ -208,6 +213,23 @@ public final class EditorBridge implements Disposable {
                 + "svg.dispatchEvent(new WheelEvent('wheel',{deltaY:" + deltaY
                 + ",clientX:" + x + ",clientY:" + y + ",bubbles:true,cancelable:true}));})()";
         browser.getCefBrowser().executeJavaScript(js, browser.getCefBrowser().getURL(), 0);
+    }
+
+    /**
+     * The editor writes many small files as its normal operation; IntelliJ's "add to Git?" prompt on
+     * each is pure noise. Silence it — files stay unversioned until the user stages them, which
+     * matches modux's explicit-save, decide-when-to-commit model. Best-effort: no VCS, no-op.
+     */
+    private void silenceGitAddPrompt() {
+        try {
+            var vcs = ProjectLevelVcsManager.getInstance(project);
+            var confirm = vcs.getStandardConfirmation(VcsConfiguration.StandardConfirmation.ADD, null);
+            if (confirm.getValue() == VcsShowConfirmationOption.Value.SHOW_CONFIRMATION) {
+                confirm.setValue(VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY);
+            }
+        } catch (Exception e) {
+            LOG.warn("could not silence the git add prompt", e);
+        }
     }
 
     /** Wire the FileEditor so it learns the webview's dirty state (modified indicator, close prompt). */

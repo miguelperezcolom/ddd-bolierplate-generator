@@ -25,6 +25,7 @@ interface Nested {
 
 const TOP_LEVEL: Record<string, TopLevel> = {
   'boundedContext': { type: 'boundedContexts' },
+  'system': { type: 'systems' },
   // a note IS its text: it has nothing else to be called
   'note': { type: 'notes', field: 'text' },
   'url': { type: 'urls' },

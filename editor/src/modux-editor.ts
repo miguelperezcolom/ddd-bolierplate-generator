@@ -182,7 +182,7 @@ function drawerTypeLabel(type: string): string {
  * gate on this — a kind not here has no rename affordance rather than a command that no-ops.
  */
 const RENAMEABLE_KINDS = new Set([
-  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'aggregate', 'entity',
+  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'system', 'aggregate', 'entity',
   'value-object', 'operation', 'process-step', 'workflow', 'workflow-step', 'domain-event',
   'read-model', 'domain-service', 'query-service', 'use-case', 'external-use-case',
   'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'external-system',
@@ -1825,7 +1825,7 @@ export class ModuxEditor extends LitElement {
         this._connectPicker = {
           x: x ?? this.clientWidth / 2,
           y: y ?? 120,
-          options: archimateOptions(this.gestureHost(), sourceId, targetId),
+          options: archimateOptions(this.gestureHost(), sourceId, targetId, true),
         };
       }
     }

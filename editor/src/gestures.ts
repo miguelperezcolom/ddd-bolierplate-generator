@@ -76,26 +76,56 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'system-composition', label: 'Composición (lo contiene)', hint: 'Sistema ⇆ contexto/subsistema: el sistema pasa a contenerlo' },
 ];
 
-/** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
+/** ArchiMate relations that read only one way; the rest (association) are symmetric. */
+const ARCHIMATE_DIRECTIONAL = new Set([
+  'composition', 'aggregation', 'assignment', 'realization', 'specialization',
+  'serving', 'access', 'influence', 'triggering', 'flow',
+]);
+
+/** A readable name for a node id, scanning the strategic/domain collections. */
+function nodeName(host: GestureHost, id: string): string {
+  const m = host.model;
+  const hit =
+    m.boundedContexts.find((e) => e.id === id) ??
+    (m.systems ?? []).find((e) => e.id === id) ??
+    m.externalSystems.find((e) => e.id === id) ??
+    (m.actors ?? []).find((e) => e.id === id) ??
+    (m.aggregates ?? []).find((e) => e.id === id) ??
+    (m.apis ?? []).find((e) => e.id === id) ??
+    (m.proxyApis ?? []).find((e) => e.id === id);
+  return hit?.name ?? id;
+}
+
+/**
+ * The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. With `includeReverse`
+ * (the connect gesture), each directional type is offered BOTH ways — so the drag direction never
+ * locks the relation's sense; you pick it. The forward option keeps the id `archimate:<type>` the
+ * retype picker matches on, so reverse options only ever appear when creating.
+ */
 export function archimateOptions(
   host: GestureHost,
   sourceId: string,
   targetId: string,
+  includeReverse = false,
 ): { id: string; label: string; hint: string; apply(): void }[] {
-  return Object.entries(ARCHIMATE_LABEL).map(([type, label]) => ({
-    id: `archimate:${type}`,
-    label: `${label} — ArchiMate`,
-    hint: `Relación ArchiMate «${label}» de documentación entre estos dos elementos`,
+  const src = nodeName(host, sourceId);
+  const tgt = nodeName(host, targetId);
+  const out: { id: string; label: string; hint: string; apply(): void }[] = [];
+  const make = (id: string, label: string, from: string, to: string, type: string) => ({
+    id,
+    label,
+    hint: `Relación ArchiMate «${ARCHIMATE_LABEL[type]}»: ${nodeName(host, from)} → ${nodeName(host, to)}`,
     apply() {
-      host.command({
-        kind: 'add-archimate-relation',
-        id: `ar-${sourceId}-${targetId}-${type}`,
-        sourceId,
-        targetId,
-        type,
-      });
+      host.command({ kind: 'add-archimate-relation', id: `ar-${from}-${to}-${type}`, sourceId: from, targetId: to, type });
     },
-  }));
+  });
+  for (const [type, label] of Object.entries(ARCHIMATE_LABEL)) {
+    const twoWay = includeReverse && ARCHIMATE_DIRECTIONAL.has(type);
+    // Forward keeps the plain id so the retype picker (which matches `archimate:<type>`) still works.
+    out.push(make(`archimate:${type}`, twoWay ? `${label} — ${src} → ${tgt}` : `${label} — ArchiMate`, sourceId, targetId, type));
+    if (twoWay) out.push(make(`archimate:${type}:rev`, `${label} — ${tgt} → ${src}`, targetId, sourceId, type));
+  }
+  return out;
 }
 
 /**
@@ -1065,7 +1095,7 @@ export function applyConnectionGesture(
         host.openConnectPicker({
           x: x ?? 0,
           y: y ?? 0,
-          options: [...typed, ...archimateOptions(host, sourceId, targetId)],
+          options: [...typed, ...archimateOptions(host, sourceId, targetId, true)],
         });
         return;
       }
@@ -1949,7 +1979,7 @@ export function applyConnectionGesture(
       host.openConnectPicker({
         x: x ?? 0,
         y: y ?? 0,
-        options: archimateOptions(host, sourceId, targetId),
+        options: archimateOptions(host, sourceId, targetId, true),
       });
       return;
     }
