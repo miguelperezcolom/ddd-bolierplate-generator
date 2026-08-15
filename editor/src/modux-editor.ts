@@ -1337,6 +1337,11 @@ export class ModuxEditor extends LitElement {
     this._redoStack = [];
   }
 
+  /** Undo/redo entry points the IDE host calls: on macOS IntelliJ grabs Cmd+Z before the webview,
+   * so the plugin intercepts the key and re-dispatches it here. */
+  hostUndo(): void { this.undo(); }
+  hostRedo(): void { this.redo(); }
+
   private undo(): void {
     const inverse = this._undoStack[this._undoStack.length - 1];
     if (!inverse) return;

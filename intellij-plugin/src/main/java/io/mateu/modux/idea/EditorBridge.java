@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.intellij.AppTopics;
+import com.intellij.ide.IdeEventQueue;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
@@ -25,6 +26,10 @@ import org.cef.handler.CefDisplayHandlerAdapter;
 import org.cef.handler.CefLoadHandlerAdapter;
 
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
+import java.awt.AWTEvent;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -87,6 +92,10 @@ public final class EditorBridge implements Disposable {
                 });
 
         silenceGitAddPrompt();
+        // On macOS IntelliJ's Undo (Cmd+Z) grabs the key before the webview ever sees it. Intercept
+        // it at the event queue (which runs before action dispatch) while OUR editor holds focus, and
+        // route it to the editor's own undo/redo history instead.
+        IdeEventQueue.getInstance().addDispatcher(this::interceptUndoRedo, this);
 
         if (!EditorResources.isBundled()) {
             LOG.error("the modux editor bundle is missing from the plugin: build editor/ first");
@@ -242,6 +251,24 @@ public final class EditorBridge implements Disposable {
         this.modified = request.has("modified") && request.get("modified").getAsBoolean();
         if (onModified != null) onModified.accept(this.modified);
         return JsonNull.INSTANCE;
+    }
+
+    /**
+     * Grab Cmd/Ctrl+Z (and Ctrl+Y / Cmd+Shift+Z) before IntelliJ's own Undo, but only while THIS
+     * editor's webview has focus, and forward to the webview's undo/redo. Returns true to consume.
+     */
+    private boolean interceptUndoRedo(AWTEvent e) {
+        if (!(e instanceof KeyEvent ke) || ke.getID() != KeyEvent.KEY_PRESSED) return false;
+        int code = ke.getKeyCode();
+        if (code != KeyEvent.VK_Z && code != KeyEvent.VK_Y) return false;
+        if ((ke.getModifiersEx() & (KeyEvent.META_DOWN_MASK | KeyEvent.CTRL_DOWN_MASK)) == 0) return false;
+        var focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        if (focus == null || !SwingUtilities.isDescendingFrom(focus, browser.getComponent())) return false;
+        boolean redo = code == KeyEvent.VK_Y || (ke.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) != 0;
+        browser.getCefBrowser().executeJavaScript(
+                redo ? "window.__moduxRedo && window.__moduxRedo();" : "window.__moduxUndo && window.__moduxUndo();",
+                browser.getCefBrowser().getURL(), 0);
+        return true;
     }
 
     /** Ask the webview to flush its buffered edits to disk (native save routes here). */
