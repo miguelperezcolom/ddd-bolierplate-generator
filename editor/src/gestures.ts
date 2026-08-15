@@ -2028,6 +2028,14 @@ export function performDeleteGesture(
   kind: string,
 ): void {
   if (view === 'context-map') view = resolveDeleteLens(id, kind);
+  // A loose node (read model, external table, operation… dropped free-standing) lives in the
+  // looseElements bucket, not in its would-be parent — so the type-specific remove finds nothing.
+  // Delete it as what it is. Checked first, before the by-kind handlers below.
+  if (elementType === 'node' && (host.model.looseElements ?? []).some((e) => e.id === id)) {
+    host.clearSelection();
+    host.command({ kind: 'remove-loose-element', id });
+    return;
+  }
   // A mockup, or its link to a page (kind is unique, so no lens needed).
   if (kind === 'mockup-of') {
     const m = /^mockupof:(.+)->(.+)$/.exec(id);
