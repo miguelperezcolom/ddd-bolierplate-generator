@@ -1,9 +1,13 @@
 package io.mateu.modux.idea;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.intellij.AppTopics;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
@@ -21,6 +25,7 @@ import javax.swing.JComponent;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 /**
  * Hosts the editor web component and answers its file requests.
@@ -41,6 +46,10 @@ public final class EditorBridge implements Disposable {
     private final Project project;
     private final VirtualFile catalogRoot;
     private final VirtualFile viewFile;
+    /** Told the editor's dirty state (from the webview's setModified op) — wired to the FileEditor. */
+    private Consumer<Boolean> onModified;
+    /** Latest dirty state, so the Ctrl+S hook only bothers the webview when there is work to save. */
+    private volatile boolean modified;
 
     /**
      * Two roots, by §12: the catalog (`.modux/`) that owns the elements — where {@code list}/
@@ -62,6 +71,17 @@ public final class EditorBridge implements Disposable {
         Disposer.register(this, query);
         instrument();
         installPinchZoom();
+
+        // Native save: Ctrl+S (Save All) asks every editor to persist. The webview holds the unsaved
+        // work in memory; here we route the request into it, which flushes and clears the dirty flag.
+        ApplicationManager.getApplication().getMessageBus().connect(this).subscribe(
+                AppTopics.FILE_DOCUMENT_SYNC,
+                new FileDocumentManagerListener() {
+                    @Override
+                    public void beforeAllDocumentsSaving() {
+                        if (modified) requestSave();
+                    }
+                });
 
         if (!EditorResources.isBundled()) {
             LOG.error("the modux editor bundle is missing from the plugin: build editor/ first");
@@ -190,6 +210,24 @@ public final class EditorBridge implements Disposable {
         browser.getCefBrowser().executeJavaScript(js, browser.getCefBrowser().getURL(), 0);
     }
 
+    /** Wire the FileEditor so it learns the webview's dirty state (modified indicator, close prompt). */
+    void onModified(Consumer<Boolean> callback) {
+        this.onModified = callback;
+    }
+
+    /** The webview reports its dirty state; remember it and tell the FileEditor. */
+    private com.google.gson.JsonElement setModified(JsonObject request) {
+        this.modified = request.has("modified") && request.get("modified").getAsBoolean();
+        if (onModified != null) onModified.accept(this.modified);
+        return JsonNull.INSTANCE;
+    }
+
+    /** Ask the webview to flush its buffered edits to disk (native save routes here). */
+    private void requestSave() {
+        browser.getCefBrowser().executeJavaScript(
+                "window.__moduxSave && window.__moduxSave();", browser.getCefBrowser().getURL(), 0);
+    }
+
     /** Serve one request from the editor. Errors come back as data, never as a dead promise. */
     private JBCefJSQuery.Response handle(String raw) {
         try {
@@ -206,6 +244,7 @@ public final class EditorBridge implements Disposable {
                 case "writeView" -> writeView(request);
                 case "createView" -> createView(request);
                 case "resolveProject" -> GSON.toJsonTree(resolveProject(request));
+                case "setModified" -> setModified(request);
                 default -> throw new IllegalArgumentException("unknown op: " + op);
             };
             var envelope = new JsonObject();

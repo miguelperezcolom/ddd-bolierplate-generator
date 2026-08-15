@@ -11,7 +11,7 @@ import { LitElement, css, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import type { ModuxModel } from '../model.js';
 import type { DiagramLayout, EditorLayout, ViewLayout } from '../scene.js';
-import { apply, CommandError } from '../store/apply.js';
+import { apply, applyAll, CommandError } from '../store/apply.js';
 import { snapshotOf } from '../store/project-snapshot.js';
 import { project, unprojectedTypes } from '../store/project.js';
 import { ModelStore } from '../store/store.js';
@@ -73,11 +73,6 @@ export class ModuxEditorIde extends LitElement {
   /** Serializes edits: a command must land before the next one reads the store. */
   private chain: Promise<void> = Promise.resolve();
 
-  /**
-   * Dragging emits a position per frame. Writing each one would put a commit per pixel in the
-   * IDE's undo stack and a diff per pixel in git, so the geometry lands once the hand stops.
-   */
-  private layoutTimer: number | undefined;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -102,6 +97,8 @@ export class ModuxEditorIde extends LitElement {
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
       this.open = { activeViewId: this.doc.viewId, mode: this.doc.mode };
       this.canvasMode = this.doc.mode;
+      // The IDE host calls this on Ctrl+S (native save). Registered here, once the fs is ready.
+      (window as unknown as { __moduxSave?: () => void }).__moduxSave = this.boundSave;
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
@@ -184,62 +181,84 @@ export class ModuxEditorIde extends LitElement {
    */
   private onLayoutChanged(event: CustomEvent): void {
     this.layout = event.detail.layout as EditorLayout;
-    window.clearTimeout(this.layoutTimer);
-    this.layoutTimer = window.setTimeout(() => this.flushLayout(), 400);
+    // Geometry now rides in the in-memory buffer; nothing hits disk until the user saves.
+    this.markDirty();
   }
 
-  /** The lens changed in the editor — remember it and persist it with the document. */
+  /** The lens changed in the editor — remember it (persisted with the document on save). */
   private onCanvasModeChanged(event: CustomEvent): void {
     this.canvasMode = event.detail.mode as ViewDoc['mode'];
-    this.flushLayout();
+    this.markDirty();
   }
 
   /** The lens the view is currently in, persisted with the document (undefined ⇒ unified). */
   private canvasMode: ViewDoc['mode'];
 
-  private flushLayout(): void {
-    const bridge = hostBridge();
-    if (!bridge) return;
-    this.chain = this.chain.then(async () => {
-      try {
-        // One canvas, one geometry blob; a legacy `kind:` is dropped by rewriting only these keys.
-        // The lens rides along so the view reopens in it (omitted when unified — the default).
-        this.doc = {
-          viewId: this.doc.viewId,
-          geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} },
-          ...(this.canvasMode && this.canvasMode !== 'unified' ? { mode: this.canvasMode } : {}),
-        };
-        await writeView(bridge, stringify(this.doc));
-      } catch (e) {
-        this.error = `No se pudo guardar la geometría: ${message(e)}`;
-      }
-    });
-  }
+  /** Unsaved work lives in memory (the store + `ideFileSystem`'s write buffer) until save(). */
+  private dirty = false;
 
-  /** Closing inside the debounce window must not lose the last drag. */
-  override disconnectedCallback(): void {
-    window.clearTimeout(this.layoutTimer);
-    this.flushLayout();
-    super.disconnectedCallback();
+  /** Mark the editor dirty and tell the IDE host, so the modified indicator and Ctrl+S light up. */
+  private markDirty(): void {
+    if (!this.dirty) {
+      this.dirty = true;
+      const bridge = hostBridge();
+      if (bridge) void bridge({ op: 'setModified', modified: true });
+    }
   }
 
   /**
-   * Apply, write, show. A failed command changes nothing: the applier rolls the
-   * store back before throwing, and nothing has reached disk yet.
+   * Explicit save (Ctrl+S, routed here by the IDE host): the ONLY place edits reach disk. Commands
+   * and drags have queued their writes in `ideFileSystem`'s buffer; here we add the view document
+   * and flush the whole batch at once. Nothing auto-saves — the user decides when.
+   */
+  private async save(): Promise<void> {
+    const bridge = hostBridge();
+    if (!this.fs || !bridge) return;
+    await this.chain; // let any queued command land in the buffer first
+    try {
+      // One canvas, one geometry blob; the lens rides along so the view reopens in it.
+      this.doc = {
+        viewId: this.doc.viewId,
+        geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} },
+        ...(this.canvasMode && this.canvasMode !== 'unified' ? { mode: this.canvasMode } : {}),
+      };
+      await writeView(bridge, stringify(this.doc));
+      await this.fs.commit();
+      this.dirty = false;
+      void bridge({ op: 'setModified', modified: false });
+    } catch (e) {
+      this.error = `No se pudo guardar: ${message(e)}`;
+    }
+  }
+
+  override disconnectedCallback(): void {
+    // No auto-save on close: unsaved work is the user's to keep or drop (the IDE prompts via
+    // isModified). Clearing the global avoids a stale editor answering a later save.
+    if ((window as unknown as { __moduxSave?: unknown }).__moduxSave === this.boundSave) {
+      delete (window as unknown as { __moduxSave?: unknown }).__moduxSave;
+    }
+    super.disconnectedCallback();
+  }
+
+  /** Stable reference so the IDE host can call save() and disconnect can clear exactly it. */
+  private readonly boundSave = () => this.save();
+
+  /**
+   * Apply and buffer — do NOT touch disk. A failed command changes nothing: applyAll rolls the
+   * store back atomically, so the in-memory buffer of earlier (unsaved) work is preserved (we must
+   * not reload from disk, which is now behind the buffer).
    */
   private async run(command: unknown): Promise<void> {
     if (!this.fs) return;
     try {
       const enriched = await this.enrich(command as Record<string, unknown>);
-      apply(this.store, enriched as never);
-      await flush(this.fs, ROOT, this.store);
-      await this.fs.commit();
+      applyAll(this.store, [enriched as never]);
+      await flush(this.fs, ROOT, this.store); // queues the writes; commit happens on save()
       this.error = null;
       this.refresh();
+      this.markDirty();
     } catch (e) {
-      this.error = e instanceof CommandError ? e.message : `No se pudo guardar: ${message(e)}`;
-      // whatever was queued belongs to a command that did not land
-      await this.load();
+      this.error = e instanceof CommandError ? e.message : `No se pudo aplicar: ${message(e)}`;
     }
   }
 
