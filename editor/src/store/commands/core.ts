@@ -127,6 +127,9 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     },
   }),
 
+  'add-cdc': add({ type: 'cdcs' }),
+  'remove-cdc': remove({ type: 'cdcs' }),
+
   // Nest a system inside another (parentSystemId: null detaches it). No self-parenting.
   'set-system-parent': setField({
     type: 'systems',
@@ -400,7 +403,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */
 export const CORE_TYPES: string[] = [
-  'boundedContexts', 'systems', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
+  'boundedContexts', 'systems', 'cdcs', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
   'domainEvents', 'applicationEvents', 'domainServices', 'readModels', 'useCases',
   'contextMapRelations', 'archimateRelations', 'notes', 'areas', 'urls',
 ];

@@ -42,7 +42,7 @@ export function projectedTypes(): string[] {
   return [
     'projects', 'services', 'modules', 'boundedContexts', 'aggregates', 'entities',
     'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'domainServices',
-    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems', 'systems',
+    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems', 'systems', 'cdcs',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
     'scheduledTriggers', 'flows', 'looseElements',
     ...UI_PROJECTED_TYPES,
@@ -80,6 +80,7 @@ export function project(store: ModelStore): ModuxModel {
       name: name(s),
       parentSystemId: str(s.parentSystemId),
     })),
+    cdcs: store.all('cdcs').map(named),
     services: store.all('services').map((s) => ({
       id: s.id,
       name: name(s),

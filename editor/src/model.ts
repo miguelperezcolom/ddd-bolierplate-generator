@@ -403,6 +403,16 @@ export interface SystemRef {
   parentSystemId?: string;
 }
 
+/**
+ * A CDC (Change Data Capture) connector: streams changes from a source (a table, a system) to a
+ * target (a read model, a system, a context). A first-class integration node; its ends are drawn
+ * as relations from/to it.
+ */
+export interface CdcRef {
+  id: string;
+  name: string;
+}
+
 /** An external system calls one of our use cases in (INBOUND ACL). */
 export interface ExternalCallRef {
   externalSystemId: string;
@@ -926,6 +936,8 @@ export interface ModuxModel {
   externalSystems: ExternalSystemRef[];
   /** Systems: our own grouping of bounded contexts (C4 landscape → system → containers). */
   systems?: SystemRef[];
+  /** CDC connectors: stream changes from a source to a target (data integration). */
+  cdcs?: CdcRef[];
   /** Sticky notes: free commentary pointing at elements (targetIds) and/or relations (edgeRefs). */
   notes?: NoteRef[];
   /** Areas: named rectangles that group elements geometrically and anchor notes. */

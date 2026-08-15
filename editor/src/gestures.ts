@@ -2708,6 +2708,11 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-external-table', id });
       return;
     }
+    if (elementType === 'node' && kind === 'cdc') {
+      host.clearSelection();
+      host.command({ kind: 'remove-cdc', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'mcp-server') {
       host.clearSelection();
       host.command({ kind: 'remove-mcp-server', id });

@@ -85,6 +85,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
       return { elementType: 'boundedContext', id: id.replace(/^tgt:/, '') };
     case 'system':
       return { elementType: 'system', id: id.replace(/^tgt:/, '') };
+    case 'cdc':
+      return { elementType: 'cdc', id };
     case 'aggregate':
       return { elementType: 'aggregate', id };
     case 'use-case':
@@ -182,7 +184,7 @@ function drawerTypeLabel(type: string): string {
  * gate on this — a kind not here has no rename affordance rather than a command that no-ops.
  */
 const RENAMEABLE_KINDS = new Set([
-  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'system', 'aggregate', 'entity',
+  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'system', 'cdc', 'aggregate', 'entity',
   'value-object', 'operation', 'process-step', 'workflow', 'workflow-step', 'domain-event',
   'read-model', 'domain-service', 'query-service', 'use-case', 'external-use-case',
   'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'external-system',
@@ -1794,6 +1796,7 @@ export class ModuxEditor extends LitElement {
       case 'mcp-gateway':
       case 'api':
       case 'proxy-api':
+      case 'cdc':
         return id;
       case 'flow':
         return id.replace(/^flow:/, '');
@@ -2110,6 +2113,7 @@ export class ModuxEditor extends LitElement {
         case 'api':
         case 'page':
         case 'ui-app':
+        case 'cdc':
           members.add(id);
           break;
         case 'menu-item':
@@ -2620,6 +2624,12 @@ export class ModuxEditor extends LitElement {
         symbol: 'component',
         color: '#475569',
         items: (m.systems ?? []).map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
+        label: 'CDC',
+        symbol: 'flow',
+        color: '#0891b2',
+        items: (m.cdcs ?? []).map((x) => ({ id: x.id, name: x.name })),
       },
       {
         label: 'Contextos',
@@ -3169,6 +3179,8 @@ export class ModuxEditor extends LitElement {
           ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
           : type === 'system'
             ? { kind: 'add-system', id, name }
+          : type === 'cdc'
+            ? { kind: 'add-cdc', id, name }
           : type === 'note'
             ? { kind: 'add-note', id, name }
           : type === 'area'

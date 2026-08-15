@@ -565,6 +565,12 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         const s = (host.model.systems ?? []).find((x) => x.id === c.id);
         return s ? [{ kind: 'set-system-parent', id: c.id, parentSystemId: s.parentSystemId ?? null }] : null;
       }
+      case 'add-cdc':
+        return [{ kind: 'remove-cdc', id: c.id }];
+      case 'remove-cdc': {
+        const cdc = (host.model.cdcs ?? []).find((x) => x.id === c.id);
+        return cdc ? [{ kind: 'add-cdc', id: cdc.id, name: cdc.name }] : null;
+      }
       case 'add-aggregate':
         return [{ kind: 'remove-aggregate', id: c.id }];
       case 'remove-aggregate': {

@@ -1709,6 +1709,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'etl-flow' ||
             node.kind === 'boundedContext' ||
             node.kind === 'system' ||
+            node.kind === 'cdc' ||
             node.kind === 'ui' ||
             node.kind === 'ui-app' ||
             node.kind === 'external-system' ||

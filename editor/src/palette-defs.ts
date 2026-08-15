@@ -55,6 +55,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'api-operation', label: 'Operación de API', child: true, symbol: 'usecase', color: '#4f46e5', group: 'APIs' },
   { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b', group: 'Sistema externo' },
   { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
+  { type: 'cdc', label: 'CDC', symbol: 'flow', color: '#0891b2', group: 'Sistema externo' },
   { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea', group: 'Sistema externo' },
   { type: 'service', label: 'Servicio (despliegue)', symbol: 'gear', color: '#334155', group: 'Distribución' },
   { type: 'module', label: 'Módulo', child: true, symbol: 'component', color: '#334155', group: 'Distribución' },

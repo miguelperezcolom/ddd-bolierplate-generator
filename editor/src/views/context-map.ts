@@ -972,10 +972,35 @@ function buildScene(
       proxy: false,
       idp: true,
     })),
+    ...(distributionLevel ? [] : (model.cdcs ?? []).map((c) => ({
+      ref: c,
+      external: false,
+      api: false,
+      proxy: false,
+      cdc: true,
+    }))),
   ];
 
   allNodes.forEach((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
+    if ('cdc' in entry && entry.cdc) {
+      const c = entry.ref as NonNullable<ModuxModel['cdcs']>[number];
+      nodes.push({
+        id: c.id,
+        label: c.name,
+        kind: 'cdc',
+        symbol: 'flow',
+        fill: '#ecfeff',
+        stroke: '#0891b2',
+        badge: 'CDC',
+        tooltip: `${c.name} — Change Data Capture: arrastra una relación desde la fuente y otra hacia el destino`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      return;
+    }
     if ('idp' in entry && entry.idp) {
       const idp = entry.ref as NonNullable<ModuxModel['identityProviders']>[number];
       const federated = !!idp.publishedByExternalSystemId;

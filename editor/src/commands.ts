@@ -215,6 +215,13 @@ export type ModuxCommand =
       parentSystemId: string | null;
     }
   | {
+      /** A CDC connector (Change Data Capture): streams changes source → target. */
+      kind: 'add-cdc';
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-cdc'; id: string }
+  | {
       /** Nest a system inside another system (null detaches it back to top level). */
       kind: 'set-system-parent';
       id: string;
