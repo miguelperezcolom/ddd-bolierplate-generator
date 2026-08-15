@@ -41,7 +41,7 @@ import { asList, type Element, type ModelStore } from './store.js';
 export function projectedTypes(): string[] {
   return [
     'projects', 'services', 'modules', 'boundedContexts', 'aggregates', 'entities',
-    'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'domainServices',
+    'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices',
     'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems', 'systems', 'cdcs',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
     'scheduledTriggers', 'flows', 'looseElements',
@@ -173,7 +173,7 @@ function ownerIndex(store: ModelStore): OwnerIndex {
     }
   }
   // the other direction: elements that name their context themselves
-  for (const type of ['useCases', 'domainEvents', 'applicationEvents', 'domainServices', 'readModels',
+  for (const type of ['useCases', 'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices', 'readModels',
     'queryServices', 'projections', 'scheduledTriggers']) {
     for (const element of store.all(type)) {
       const declared = str(element.boundedContextId);
@@ -203,6 +203,7 @@ function boundedContext(store: ModelStore, bc: Element, owner: OwnerIndex): Boun
     useCases: store.all('useCases').filter(owns).map(useCase),
     domainEvents: store.all('domainEvents').filter(owns).map(domainEvent),
     applicationEvents: store.all('applicationEvents').filter(owns).map(named) as ApplicationEventRef[],
+    integrationEvents: store.all('integrationEvents').filter(owns).map(named) as ApplicationEventRef[],
     domainServices: store.all('domainServices').filter(owns).map(named) as DomainServiceRef[],
     readModels: store.all('readModels').filter(owns).map((rm) => ({
       id: rm.id,

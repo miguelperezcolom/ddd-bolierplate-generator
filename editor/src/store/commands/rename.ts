@@ -45,6 +45,7 @@ const TOP_LEVEL: Record<string, TopLevel> = {
   'actor': { type: 'roles' },
   'external-system': { type: 'externalSystems' },
   'application-event': { type: 'applicationEvents' },
+  'integration-event': { type: 'integrationEvents' },
   'domain-service': { type: 'domainServices' },
   'query-service': { type: 'queryServices' },
   'read-model': { type: 'readModels' },

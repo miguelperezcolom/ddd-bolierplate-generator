@@ -187,7 +187,7 @@ const RENAMEABLE_KINDS = new Set([
   'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'system', 'cdc', 'aggregate', 'entity',
   'value-object', 'operation', 'process-step', 'workflow', 'workflow-step', 'domain-event',
   'read-model', 'domain-service', 'query-service', 'use-case', 'external-use-case',
-  'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'external-system',
+  'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'integration-event', 'external-system',
   'actor', 'ai-agent', 'rag', 'api', 'proxy-api', 'api-operation',
 ]);
 
@@ -2613,6 +2613,11 @@ export class ModuxEditor extends LitElement {
     items: { id: string; name: string }[];
   }[] {
     const m = this.model;
+    // State models belong to an aggregate/entity (its fields) — not stand-alone catalog models.
+    const stateModelIds = new Set<string>([
+      ...(m.aggregates ?? []).map((a) => a.modelId),
+      ...(m.entities ?? []).map((e) => e.modelId),
+    ].filter((id): id is string => !!id));
     const groups: {
       label: string;
       symbol: string;
@@ -2653,7 +2658,10 @@ export class ModuxEditor extends LitElement {
         label: 'Modelos',
         symbol: 'readmodel',
         color: '#0369a1',
-        items: (m.models ?? []).map((x) => ({ id: x.id, name: x.name })),
+        // A state model belongs to an aggregate/entity (its fields) — not a stand-alone catalog model.
+        items: (m.models ?? [])
+          .filter((x) => !stateModelIds.has(x.id))
+          .map((x) => ({ id: x.id, name: x.name })),
       },
       {
         label: 'Triggers programados',
@@ -2682,6 +2690,7 @@ export class ModuxEditor extends LitElement {
         items: m.boundedContexts.flatMap((mod) => [
           ...(mod.domainEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
           ...(mod.applicationEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
+          ...(mod.integrationEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
         ]),
       },
       {
@@ -2948,7 +2957,7 @@ export class ModuxEditor extends LitElement {
     const chain = this.dropChain(targetId);
     const needsBoundedContext = [
       'aggregate', 'use-case', 'policy', 'domain-event',
-      'application-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
+      'application-event', 'integration-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
       'notification', 'document', 'module',
     ].includes(type);
     if (needsBoundedContext) return chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id)) ?? null;
@@ -3623,6 +3632,8 @@ export class ModuxEditor extends LitElement {
       issue({ kind: 'add-domain-event', id, name, boundedContextId: container }, id, container);
     } else if (type === 'application-event') {
       issue({ kind: 'add-application-event', id, name, boundedContextId: container }, id, container);
+    } else if (type === 'integration-event') {
+      issue({ kind: 'add-integration-event', id, name, boundedContextId: container }, id, container);
     } else if (type === 'domain-service') {
       issue({ kind: 'add-domain-service', id, name, boundedContextId: container }, id, container);
     } else if (type === 'query-service') {

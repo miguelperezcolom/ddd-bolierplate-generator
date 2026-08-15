@@ -2900,6 +2900,11 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-application-event', id });
       return;
     }
+    if (elementType === 'node' && kind === 'integration-event') {
+      host.clearSelection();
+      host.command({ kind: 'remove-integration-event', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'external-system') {
       host.clearSelection();
       host.command({ kind: 'remove-external-system', id });

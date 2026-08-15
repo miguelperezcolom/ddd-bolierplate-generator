@@ -198,6 +198,8 @@ export interface BoundedContextRef {
   domainServices?: DomainServiceRef[];
   /** Application events owned by this bounded context (published by its use cases). */
   applicationEvents?: ApplicationEventRef[];
+  /** Integration events this context publishes ACROSS boundaries (for other systems to consume). */
+  integrationEvents?: ApplicationEventRef[];
   /** Query services owned by this bounded context. */
   queryServices?: QueryServiceRef[];
   /** Cron tasks owned by this bounded context. */

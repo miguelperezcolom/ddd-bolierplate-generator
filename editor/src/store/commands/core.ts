@@ -269,6 +269,11 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   'remove-domain-event': remove({ type: 'domainEvents' }),
   'add-application-event': add({ type: 'applicationEvents' }),
   'remove-application-event': remove({ type: 'applicationEvents' }),
+  'add-integration-event': add({
+    type: 'integrationEvents',
+    init: (c) => ({ boundedContextId: c.boundedContextId ?? null }),
+  }),
+  'remove-integration-event': remove({ type: 'integrationEvents' }),
   'add-domain-service': add({ type: 'domainServices' }),
   'remove-domain-service': remove({ type: 'domainServices' }),
   'add-read-model': add({ type: 'readModels', init: (c) => ({ aggregateId: c.aggregateId ?? null }) }),
@@ -404,7 +409,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 /** Element shapes this block creates, for the schema-defaults check in tests. */
 export const CORE_TYPES: string[] = [
   'boundedContexts', 'systems', 'cdcs', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
-  'domainEvents', 'applicationEvents', 'domainServices', 'readModels', 'useCases',
+  'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices', 'readModels', 'useCases',
   'contextMapRelations', 'archimateRelations', 'notes', 'areas', 'urls',
 ];
 

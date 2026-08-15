@@ -488,6 +488,14 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** An integration event: a fact this context publishes across boundaries. */
+      kind: 'add-integration-event';
+      id: string;
+      name: string;
+      boundedContextId: string;
+    }
+  | { kind: 'remove-integration-event'; id: string }
+  | {
       /** A domain service: stateless domain logic owned by a bounded context. */
       kind: 'add-domain-service';
       id: string;

@@ -1251,6 +1251,17 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
         }
         return null;
       }
+      case 'add-integration-event':
+        return [{ kind: 'remove-integration-event', id: c.id }];
+      case 'remove-integration-event': {
+        for (const m of host.model.boundedContexts) {
+          const ev = (m.integrationEvents ?? []).find((x) => x.id === c.id);
+          if (ev) {
+            return [{ kind: 'add-integration-event', id: ev.id, name: ev.name, boundedContextId: m.id }];
+          }
+        }
+        return null;
+      }
       case 'add-domain-service':
         return [{ kind: 'remove-domain-service', id: c.id }];
       case 'remove-domain-service': {

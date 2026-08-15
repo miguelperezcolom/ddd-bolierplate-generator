@@ -294,6 +294,7 @@ interface ChildDesc {
     | 'use-case'
     | 'domain-event'
     | 'application-event'
+    | 'integration-event'
     | 'read-model'
     | 'domain-service'
     | 'query-service'
@@ -341,6 +342,7 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
   'application-event': { symbol: 'event', fill: '#fefce8', stroke: '#eab308' },
+  'integration-event': { symbol: 'event', fill: '#fff1f2', stroke: '#e11d48' },
   'read-model': { symbol: 'readmodel', fill: '#ecfdf5', stroke: '#10b981' },
   'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
   'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
@@ -381,6 +383,7 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
   'application-event': 'Evento de aplicación',
+  'integration-event': 'Evento de integración',
   'read-model': 'Read model',
   'domain-service': 'Servicio de dominio',
   'query-service': 'Query service',
@@ -501,6 +504,9 @@ function boundedContextElementDescs(
     ),
     ...(boundedContext.applicationEvents ?? []).map(
       (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'application-event' }),
+    ),
+    ...(boundedContext.integrationEvents ?? []).map(
+      (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'integration-event' }),
     ),
     ...(boundedContext.queryServices ?? []).map(
       (qs): ChildDesc => ({ id: qs.id, name: qs.name, kind: 'query-service' }),
@@ -900,6 +906,12 @@ function buildScene(
     });
   };
 
+  // State models belong to an aggregate/entity (its fields) — never drawn as a free node.
+  const stateModelIds = new Set<string>([
+    ...(model.aggregates ?? []).map((a) => a.modelId),
+    ...(model.entities ?? []).map((e) => e.modelId),
+  ].filter((id): id is string => !!id));
+
   const allNodes = [
     // A context grouped under a system enters the stage through that system's expansion, not at the
     // top level — except in the distribution lens, where systems aren't drawn and it must show.
@@ -934,13 +946,17 @@ function buildScene(
       proxy: false,
       process: true,
     }))),
-    ...(distributionLevel ? [] : (model.models ?? []).map((dm) => ({
-      ref: dm,
-      external: false,
-      api: false,
-      proxy: false,
-      dataModel: true,
-    }))),
+    // An aggregate/entity's STATE model is its own data shape (its fields live there) — not a
+    // separate node. Only stand-alone data models float on the canvas; state models stay implicit.
+    ...(distributionLevel ? [] : (model.models ?? [])
+      .filter((dm) => !stateModelIds.has(dm.id))
+      .map((dm) => ({
+        ref: dm,
+        external: false,
+        api: false,
+        proxy: false,
+        dataModel: true,
+      }))),
     ...(distributionLevel ? [] : (model.pages ?? []).map((pg) => ({
       ref: pg,
       external: false,
