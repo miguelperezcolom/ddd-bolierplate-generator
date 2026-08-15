@@ -116,7 +116,15 @@ public final class ModuxFileEditor extends UserDataHolderBase implements FileEdi
     }
 
     @Override
+    public void deselectNotify() {
+        // Safety net: switching away or closing the tab flushes unsaved work while the webview is
+        // still alive (the native "save on close" prompt does not fire for a non-Document editor).
+        bridge.saveIfDirty();
+    }
+
+    @Override
     public void dispose() {
-        // the bridge is registered as a child
+        // last-ditch flush before the webview goes; the bridge is a registered child, disposed after
+        bridge.saveIfDirty();
     }
 }

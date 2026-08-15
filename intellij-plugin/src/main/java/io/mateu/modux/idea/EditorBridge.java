@@ -250,6 +250,15 @@ public final class EditorBridge implements Disposable {
                 "window.__moduxSave && window.__moduxSave();", browser.getCefBrowser().getURL(), 0);
     }
 
+    /**
+     * Safety net against lost work: flush when the tab loses focus or is about to close, while the
+     * webview is still alive. Ctrl+S is still the explicit save; this only fires when there IS
+     * unsaved work, so it never writes for nothing.
+     */
+    void saveIfDirty() {
+        if (modified) requestSave();
+    }
+
     /** Serve one request from the editor. Errors come back as data, never as a dead promise. */
     private JBCefJSQuery.Response handle(String raw) {
         try {

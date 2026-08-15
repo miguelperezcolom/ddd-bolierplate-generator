@@ -2588,6 +2588,12 @@ export class ModuxEditor extends LitElement {
       items: { id: string; name: string }[];
     }[] = [
       {
+        label: 'Sistemas',
+        symbol: 'component',
+        color: '#475569',
+        items: (m.systems ?? []).map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
         label: 'Contextos',
         symbol: 'component',
         color: '#94a3b8',
