@@ -59,6 +59,22 @@ describe('sketch (intent) vs fact', () => {
     expect(fact!.dashArray).toBeUndefined();
   });
 
+  it('treats a landscape line (actor→system) as intent, like system→external', () => {
+    const m = baseModel({
+      systems: [{ id: 'sys', name: 'RIU' }],
+      actors: [{ id: 'act', name: 'Cliente' }],
+      externalSystems: [{ id: 'ext', name: 'ixo' }],
+      archimateRelations: [
+        { id: 'a', sourceId: 'act', targetId: 'sys', type: 'serving' },
+        { id: 'b', sourceId: 'sys', targetId: 'ext', type: 'serving' },
+      ] as never,
+    });
+    const scene = contextMapScene(m, { sys: { x: 0, y: 0 }, act: { x: -200, y: 0 }, ext: { x: 200, y: 0 } });
+    // both are top-down sketches → both proposed (dashed), not one solid and one dashed
+    expect(scene.edges.find((e) => e.id === 'archi:a')?.nature).toBe('intent');
+    expect(scene.edges.find((e) => e.id === 'archi:b')?.nature).toBe('intent');
+  });
+
   it('honours the escape hatch: nature:fact forces a context→context to be real', () => {
     const m = model({ archimateRelations: [{ id: 'r', sourceId: 'bc-a', targetId: 'bc-b', type: 'serving', nature: 'fact' }] as never });
     const scene = contextMapScene(m, { 'bc-a': { x: 0, y: 0 }, 'bc-b': { x: 300, y: 0 } });

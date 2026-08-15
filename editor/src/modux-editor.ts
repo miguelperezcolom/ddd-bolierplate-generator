@@ -2246,7 +2246,11 @@ export class ModuxEditor extends LitElement {
     const strategic = (id: string) =>
       this.model.boundedContexts.some((m) => m.id === id)
       || (this.model.systems ?? []).some((s) => s.id === id)
-      || this.model.externalSystems.some((x) => x.id === id);
+      || this.model.externalSystems.some((x) => x.id === id)
+      || (this.model.actors ?? []).some((a) => a.id === id)
+      || (this.model.aiAgents ?? []).some((a) => a.id === id)
+      || (this.model.rags ?? []).some((r) => r.id === id)
+      || (this.model.mcpGateways ?? []).some((g) => g.id === id);
     const effective = rel.nature ?? (strategic(rel.sourceId) && strategic(rel.targetId) ? 'intent' : 'fact');
     const next: 'intent' | 'fact' = effective === 'intent' ? 'fact' : 'intent';
     return [{
