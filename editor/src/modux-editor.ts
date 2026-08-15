@@ -5,7 +5,7 @@ import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { DiagramLayout, EditorLayout, Point, Scene, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
 import { MODUX_THEME } from './theme.js';
-import { contextMapScene, distributionScene, ownershipIndex } from './views/context-map.js';
+import { contextMapScene, distributionScene, ownershipIndex, rollupOwnershipIndex } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
@@ -83,6 +83,8 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
   switch (kind) {
     case 'boundedContext':
       return { elementType: 'boundedContext', id: id.replace(/^tgt:/, '') };
+    case 'system':
+      return { elementType: 'system', id: id.replace(/^tgt:/, '') };
     case 'aggregate':
       return { elementType: 'aggregate', id };
     case 'use-case':
@@ -1402,6 +1404,28 @@ export class ModuxEditor extends LitElement {
       this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
       return;
     }
+    // A bounded context shift-dropped on a system joins it (C4 grouping); dropped on the bare
+    // canvas, it leaves its system and returns to the top level.
+    const ctx = this.model.boundedContexts.find((m) => m.id === id);
+    if (ctx) {
+      const targetSystem = targetId ? (this.model.systems ?? []).find((s) => s.id === targetId) : null;
+      // only react to a system (or the canvas, to detach) — dropping on anything else is ignored
+      if (targetId && !targetSystem) return;
+      const next = targetSystem?.id ?? null;
+      if ((ctx.parentSystemId ?? null) === next) return;
+      const view = this._view;
+      const layout = this.viewLayout(view);
+      const scene = this.sceneFor(view);
+      const parent = next ? scene.nodes.find((n) => n.id === next) : undefined;
+      const pos = parent ? { x: x - parent.x, y: y - parent.y } : { x, y };
+      this.pushUndoEntry([
+        { kind: 'set-context-system', id, parentSystemId: ctx.parentSystemId ?? null },
+        { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
+      ]);
+      this.command({ kind: 'set-context-system', id, parentSystemId: next }, false);
+      this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
+      return;
+    }
     const api =
       (this.model.apis ?? []).find((a) => a.id === id) ??
       (this.model.proxyApis ?? []).find((px) => px.id === id);
@@ -1706,6 +1730,7 @@ export class ModuxEditor extends LitElement {
     switch (kind) {
       case 'boundedContext':
       case 'external-system':
+      case 'system':
         return id.replace(/^tgt:/, '');
       case 'aggregate':
       case 'entity':
@@ -1988,6 +2013,7 @@ export class ModuxEditor extends LitElement {
       switch (node.kind) {
         case 'boundedContext':
         case 'external-system':
+        case 'system':
           members.add(id.replace(/^tgt:/, ''));
           break;
         case 'aggregate':
@@ -2060,7 +2086,14 @@ export class ModuxEditor extends LitElement {
     const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
     if (!view) return this.model;
     const members = new Set(view.memberIds);
-    const boundedContexts = this.model.boundedContexts.filter((m) => members.has(m.id));
+    // A system rides in when it is a member; its bounded contexts ride in with it (so the system can
+    // be drilled into) even if the view lists only the system — that is the C4 landscape → container
+    // drill-down on one canvas.
+    const systems = (this.model.systems ?? []).filter((s) => members.has(s.id));
+    const systemIds = new Set(systems.map((s) => s.id));
+    const boundedContexts = this.model.boundedContexts.filter(
+      (m) => members.has(m.id) || (m.parentSystemId != null && systemIds.has(m.parentSystemId)),
+    );
     const boundedContextIds = new Set(boundedContexts.map((m) => m.id));
     const externalSystems = this.model.externalSystems.filter((x) => members.has(x.id));
     const externalIds = new Set(externalSystems.map((x) => x.id));
@@ -2096,6 +2129,7 @@ export class ModuxEditor extends LitElement {
       pages,
       actorAppUses: (this.model.actorAppUses ?? []).filter((u) => keptAppIds.has(u.appId)),
       boundedContexts,
+      systems,
       externalSystems,
       relations: this.model.relations.filter(
         (r) => boundedContextIds.has(r.sourceId) && boundedContextIds.has(r.targetId),
@@ -3015,6 +3049,8 @@ export class ModuxEditor extends LitElement {
       const cmd: ModuxCommand =
         type === 'boundedContext'
           ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
+          : type === 'system'
+            ? { kind: 'add-system', id, name }
           : type === 'note'
             ? { kind: 'add-note', id, name }
           : type === 'area'
@@ -3091,6 +3127,27 @@ export class ModuxEditor extends LitElement {
         if (parentId) {
           issue({ ...cmd, parentId }, id);
           this.emit('modux-notice', { message: 'Subsistema creado como parte del sistema' });
+          return;
+        }
+      }
+      if (cmd.kind === 'add-system') {
+        // Dropped on another system: it is born as its nested SUBSYSTEM.
+        const chain = this.dropChain(targetId);
+        const parentSystemId = chain.find((cid) => (this.model.systems ?? []).some((s) => s.id === cid));
+        if (parentSystemId) {
+          issue({ ...cmd, parentSystemId }, id);
+          this.emit('modux-notice', { message: 'Subsistema creado dentro del sistema' });
+          return;
+        }
+      }
+      if (cmd.kind === 'add-boundedContext') {
+        // Dropped on a system: the context is born grouped under it.
+        const chain = this.dropChain(targetId);
+        const systemId = chain.find((cid) => (this.model.systems ?? []).some((s) => s.id === cid));
+        if (systemId) {
+          issue(cmd, id);
+          this.command({ kind: 'set-context-system', id, parentSystemId: systemId });
+          this.emit('modux-notice', { message: 'Contexto creado dentro del sistema' });
           return;
         }
       }
@@ -3885,6 +3942,13 @@ export class ModuxEditor extends LitElement {
     const vl = this.viewLayout(view);
     const model = this.filteredModel();
     const expandAll = opts?.expandAll ?? false;
+    // Roll-up ownership is built over the WHOLE model, not the scoped one: a scoped view drops the
+    // API/component nodes a lower-level relation runs between, so the re-anchor needs their homes
+    // from the full model to surface that relation between the visible members. Only worth it when
+    // the view is actually scoped — the base canvas shows everything, nothing to roll up.
+    const rollup = this._activeViewId
+      ? rollupOwnershipIndex(this.model, this._canvasMode === 'distribution' ? 'distribution' : 'unified')
+      : undefined;
     const scene =
       view === 'aggregates'
         ? aggregatesScene(model, vl.nodes)
@@ -3903,13 +3967,13 @@ export class ModuxEditor extends LitElement {
                 : view === 'eventstorming'
                   ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'distribution'
-                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
+                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup)
                 // The unified canvas renders in the mode the toolbar toggles chose.
                 : view === 'context-map' && this._canvasMode === 'eventstorming'
                   ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'context-map' && this._canvasMode === 'distribution'
-                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
-                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);
+                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup)
+                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup);
     this.withAreas(scene, view);
     this.withNotes(scene, view);
     this.withDescriptions(scene);

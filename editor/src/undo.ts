@@ -547,6 +547,16 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           ),
         ];
       }
+      case 'add-system':
+        return [{ kind: 'remove-system', id: c.id }];
+      case 'remove-system': {
+        const s = (host.model.systems ?? []).find((x) => x.id === c.id);
+        return s ? [{ kind: 'add-system', id: s.id, name: s.name, ...(s.parentSystemId ? { parentSystemId: s.parentSystemId } : {}) }] : null;
+      }
+      case 'set-context-system': {
+        const m = host.model.boundedContexts.find((x) => x.id === c.id);
+        return m ? [{ kind: 'set-context-system', id: c.id, parentSystemId: m.parentSystemId ?? null }] : null;
+      }
       case 'add-aggregate':
         return [{ kind: 'remove-aggregate', id: c.id }];
       case 'remove-aggregate': {

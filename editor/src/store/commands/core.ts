@@ -92,6 +92,41 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     store.remove('boundedContexts', id);
   },
 
+  // ---- systems (group bounded contexts, C4 landscape) --------------------
+
+  'add-system': add({
+    type: 'systems',
+    init: (c) => ({ parentSystemId: c.parentSystemId ?? null }),
+  }),
+
+  'remove-system': remove({
+    type: 'systems',
+    // a system does not leave while it still groups contexts (or nested systems) — detach first
+    guards: [
+      {
+        type: 'boundedContexts', field: 'parentSystemId',
+        message: (id) => `El sistema ${id} agrupa contextos; sácalos primero`,
+      },
+      {
+        type: 'systems', field: 'parentSystemId',
+        message: (id) => `El sistema ${id} contiene subsistemas; sácalos primero`,
+      },
+    ],
+  }),
+
+  // Put a bounded context inside a system (parentSystemId: null detaches it back to top level).
+  'set-context-system': setField({
+    type: 'boundedContexts',
+    field: 'parentSystemId',
+    from: 'parentSystemId',
+    map: (value, _command, store) => {
+      if (value && !store.has('systems', value)) {
+        throw new CommandError(`Sistema desconocido: ${value}`);
+      }
+      return value ?? null;
+    },
+  }),
+
   // ---- aggregates and their contents -------------------------------------
 
   'add-aggregate': add({
@@ -352,7 +387,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */
 export const CORE_TYPES: string[] = [
-  'boundedContexts', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
+  'boundedContexts', 'systems', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
   'domainEvents', 'applicationEvents', 'domainServices', 'readModels', 'useCases',
   'contextMapRelations', 'archimateRelations', 'notes', 'areas', 'urls',
 ];

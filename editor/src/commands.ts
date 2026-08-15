@@ -189,6 +189,24 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** A system: OUR grouping of bounded contexts (C4 landscape → system → containers). */
+      kind: 'add-system';
+      id: string;
+      name: string;
+      /** When set, the new system is a SUBSYSTEM living inside this one. */
+      parentSystemId?: string;
+    }
+  | {
+      kind: 'remove-system';
+      id: string;
+    }
+  | {
+      /** Put a bounded context inside a system (null detaches it back to top level). */
+      kind: 'set-context-system';
+      id: string;
+      parentSystemId: string | null;
+    }
+  | {
       /** An AI agent; external = someone else's, entering only through MCP gateways. */
       kind: 'add-ai-agent';
       id: string;

@@ -15,6 +15,7 @@ export interface PaletteItem {
 }
 
 export const PALETTE_NEW: PaletteItem[] = [
+  { type: 'system', label: 'Sistema', symbol: 'component', color: '#475569', group: 'Estratégico' },
   { type: 'boundedContext', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
   { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
   { type: 'note', label: 'Nota', symbol: 'note', color: '#ca8a04', group: 'Estratégico' },

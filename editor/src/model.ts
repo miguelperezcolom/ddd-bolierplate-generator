@@ -206,6 +206,8 @@ export interface BoundedContextRef {
   identityProviderId?: string;
   /** UI apps owned by this bounded context (the apps themselves live in model.uiApps). */
   uiAppIds?: string[];
+  /** The system that GROUPS this bounded context (C4: System Landscape → System → Container). */
+  parentSystemId?: string;
 }
 
 export interface ActorRef {
@@ -388,6 +390,17 @@ export interface ExternalSystemRef {
   referencedProject?: ReferencedProject;
   /** The external system this one lives inside (subsystem). */
   parentExternalSystemId?: string;
+}
+
+/**
+ * A system: OUR own grouping of bounded contexts (C4: System Landscape → System → Container).
+ * It has no behaviour of its own — it is the boundary that says "these contexts are one system".
+ */
+export interface SystemRef {
+  id: string;
+  name: string;
+  /** The system this one lives inside (nested systems). Optional; usually top-level. */
+  parentSystemId?: string;
 }
 
 /** An external system calls one of our use cases in (INBOUND ACL). */
@@ -911,6 +924,8 @@ export interface ModuxModel {
   services?: ServiceRef[];
   boundedContexts: BoundedContextRef[];
   externalSystems: ExternalSystemRef[];
+  /** Systems: our own grouping of bounded contexts (C4 landscape → system → containers). */
+  systems?: SystemRef[];
   /** Sticky notes: free commentary pointing at elements (targetIds) and/or relations (edgeRefs). */
   notes?: NoteRef[];
   /** Areas: named rectangles that group elements geometrically and anchor notes. */

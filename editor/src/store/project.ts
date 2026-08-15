@@ -42,7 +42,7 @@ export function projectedTypes(): string[] {
   return [
     'projects', 'services', 'modules', 'boundedContexts', 'aggregates', 'entities',
     'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'domainServices',
-    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems',
+    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems', 'systems',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
     'scheduledTriggers', 'flows', 'looseElements',
     ...UI_PROJECTED_TYPES,
@@ -75,6 +75,11 @@ export function project(store: ModelStore): ModuxModel {
     entities: store.all('entities').map(entity),
     valueObjects: store.all('valueObjects').map((vo) => valueObject(vo, owner)),
     externalSystems: store.all('externalSystems').map(named),
+    systems: store.all('systems').map((s) => ({
+      id: s.id,
+      name: name(s),
+      parentSystemId: str(s.parentSystemId),
+    })),
     services: store.all('services').map((s) => ({
       id: s.id,
       name: name(s),
@@ -191,6 +196,7 @@ function boundedContext(store: ModelStore, bc: Element, owner: OwnerIndex): Boun
     id: bc.id,
     name: name(bc),
     subdomainType: bc.subdomainType as BoundedContextRef['subdomainType'],
+    parentSystemId: str(bc.parentSystemId),
     serviceId: service?.id,
     useCases: store.all('useCases').filter(owns).map(useCase),
     domainEvents: store.all('domainEvents').filter(owns).map(domainEvent),

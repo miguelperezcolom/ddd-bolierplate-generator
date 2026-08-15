@@ -2732,6 +2732,22 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-boundedContext', id });
       return;
     }
+    if (elementType === 'node' && kind === 'system') {
+      // the store guard blocks this while it still groups contexts — pull them out first
+      host.clearSelection();
+      host.command({ kind: 'remove-system', id });
+      return;
+    }
+    // Deleting the composition edge from a system to a context ungroups the context (keeps both).
+    if (elementType === 'edge' && kind === 'contains') {
+      const m = /^contains:(.+)->(.+)$/.exec(id);
+      const child = m ? host.model.boundedContexts.find((b) => b.id === m[2]) : null;
+      if (m && child && (host.model.systems ?? []).some((s) => s.id === m[1])) {
+        host.clearSelection();
+        host.command({ kind: 'set-context-system', id: child.id, parentSystemId: null });
+        return;
+      }
+    }
     if (elementType === 'node' && kind === 'aggregate') {
       const hasEntities = (host.model.entities ?? []).some((x) => x.aggregateId === id);
       if (hasEntities) return;
