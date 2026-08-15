@@ -949,6 +949,11 @@ export interface ModuxModel {
     targetId: string;
     type: string;
     label?: string;
+    /**
+     * Escape hatch over the structural rule (see `relationNature`): force this relation to be a
+     * `fact` (real, generates) or `intent` (sketch, no code). Absent ⇒ the endpoints decide.
+     */
+    nature?: 'intent' | 'fact';
   }[];
   flows: FlowRef[];
   aggregates?: AggregateRef[];

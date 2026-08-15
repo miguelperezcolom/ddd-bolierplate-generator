@@ -2187,6 +2187,28 @@ export class ModuxEditor extends LitElement {
     if (this.hosted) this._drawer = { ...ref, kind };
   }
 
+  /**
+   * The intent↔fact escape hatch for the ArchiMate relation picker. The classification is normally
+   * structural (a line between strategic boxes is a sketch; one touching an artifact is a fact); this
+   * lets you override the odd real-but-abstract case (a CDC drawn context→context) or vice versa.
+   */
+  private natureToggleOption(rel: { id: string; sourceId: string; targetId: string; nature?: 'intent' | 'fact' }) {
+    const strategic = (id: string) =>
+      this.model.boundedContexts.some((m) => m.id === id)
+      || (this.model.systems ?? []).some((s) => s.id === id)
+      || this.model.externalSystems.some((x) => x.id === id);
+    const effective = rel.nature ?? (strategic(rel.sourceId) && strategic(rel.targetId) ? 'intent' : 'fact');
+    const next: 'intent' | 'fact' = effective === 'intent' ? 'fact' : 'intent';
+    return [{
+      id: 'toggle-nature',
+      label: next === 'fact' ? '◆ Marcar como hecho (real)' : '◇ Marcar como intención (boceto)',
+      hint: next === 'fact'
+        ? 'Cuenta como acoplamiento real: genera y sube por roll-up'
+        : 'Boceto sin peso en el código; se confirma cuando un hecho de abajo la realice',
+      apply: () => this.command({ kind: 'set-archimate-relation-nature', id: rel.id, nature: next }),
+    }];
+  }
+
   private onElementActivated(e: CustomEvent): void {
     // Double-clicking a gateway flips its semantics: join TODAS↔CUALQUIERA,
     // split PARALELO↔EXCLUSIVO — the badge tells which one rules.
@@ -2224,6 +2246,7 @@ export class ModuxEditor extends LitElement {
               hint: 'Intercambia origen y destino de la relación',
               apply: () => this.command({ kind: 'invert-archimate-relation', id: relId }),
             },
+            ...this.natureToggleOption(rel),
             ...archimateOptions(this.gestureHost(), rel.sourceId, rel.targetId).map((o) => ({
               ...o,
               label: o.id === `archimate:${rel.type}` ? `● ${o.label}` : o.label,

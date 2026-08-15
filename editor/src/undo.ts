@@ -33,6 +33,10 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'invert-archimate-relation':
         // Its own inverse: swapping the ends back restores the direction.
         return [{ kind: 'invert-archimate-relation', id: c.id }];
+      case 'set-archimate-relation-nature': {
+        const rel = (host.model.archimateRelations ?? []).find((r) => r.id === c.id);
+        return rel ? [{ kind: 'set-archimate-relation-nature', id: c.id, nature: rel.nature ?? null }] : null;
+      }
       case 'add-relation':
         return [{ kind: 'remove-relation', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-relation': {

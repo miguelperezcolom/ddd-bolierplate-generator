@@ -305,11 +305,12 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
   'add-archimate-relation': add({
     type: 'archimateRelations',
-    init: (c) => ({ sourceId: c.sourceId, targetId: c.targetId, type: c.type }),
+    init: (c) => ({ sourceId: c.sourceId, targetId: c.targetId, type: c.type, nature: c.nature ?? null }),
   }),
 
   'remove-archimate-relation': remove({ type: 'archimateRelations' }),
   'set-archimate-relation-type': setField({ type: 'archimateRelations', field: 'type' }),
+  'set-archimate-relation-nature': setField({ type: 'archimateRelations', field: 'nature' }),
 
   'invert-archimate-relation': (store, command) => {
     const relation = store.get('archimateRelations', String(command.id));

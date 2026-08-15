@@ -2800,6 +2800,18 @@ function buildScene(
   ]);
 
   // ── ArchiMate: the hand-drawn vocabulary, with its notation ────────────────
+  // A relation is a FACT (real coupling: generates, validates, rolls up) or an INTENT (a top-down
+  // sketch: no code weight). The rule is structural — a line between two strategic containers
+  // (system/context/external) with no concrete artifact is intent by nature; anything touching an
+  // API/operation/event/aggregate is a fact — with an escape hatch (`nature`) for the rare
+  // real-but-abstract case (a CDC drawn context→context). Reconciled after re-anchoring below.
+  const strategicIds = new Set<string>([
+    ...model.boundedContexts.map((m) => m.id),
+    ...(model.systems ?? []).map((s) => s.id),
+    ...model.externalSystems.map((x) => x.id),
+  ]);
+  const relationNature = (r: NonNullable<ModuxModel['archimateRelations']>[number]): 'intent' | 'fact' =>
+    r.nature ?? (strategicIds.has(r.sourceId) && strategicIds.has(r.targetId) ? 'intent' : 'fact');
   const archimateEdges: SceneEdge[] = (model.archimateRelations ?? []).map((r) => ({
     id: `archi:${r.id}`,
     sourceId: r.sourceId,
@@ -2807,14 +2819,12 @@ function buildScene(
     kind: 'archimate-relation',
     color: '#475569',
     label: r.label || undefined,
+    nature: relationNature(r),
     ...(ARCHIMATE_NOTATION[r.type] ?? {}),
     tooltip: `${ARCHIMATE_LABEL[r.type] ?? r.type} (ArchiMate)${r.label ? ` · ${r.label}` : ''} — doble click retipa o invierte el sentido · Supr la borra`,
   }));
 
-  return {
-    nodes,
-    edges: reanchorEdges([
-      // Composition first: the ownership diamonds paint under the semantic edges.
+  const reanchored = reanchorEdges([
       ...containsEdges,
       ...archimateEdges,
       ...uiAssignmentEdges,
@@ -2868,6 +2878,27 @@ function buildScene(
       ...ragContentEdges,
       ...externalCallEdges,
       ...externalUcCallEdges,
-    ]),
-  };
+    ]);
+
+  // Reconcile sketches against facts. An INTENT that a FACT already realizes (same visible
+  // endpoints, after roll-up) is BACKED: drop it and let the solid fact stand for it (one line).
+  // An intent with no backing is PROPOSED: draw it tentative (dashed, muted). Facts are untouched.
+  const factPairs = new Set(
+    reanchored
+      .filter((e) => e.kind === 'archimate-relation' && e.nature === 'fact')
+      .map((e) => `${e.sourceId} ${e.targetId}`),
+  );
+  const edges = reanchored.flatMap((e): SceneEdge[] => {
+    if (e.kind !== 'archimate-relation' || e.nature !== 'intent') return [e];
+    if (factPairs.has(`${e.sourceId} ${e.targetId}`)) return []; // backed → merged into the fact
+    return [{
+      ...e,
+      dashArray: '6 4',
+      color: '#94a3b8',
+      faint: true,
+      tooltip: `Propuesta (boceto sin respaldo)${e.label ? ` · ${e.label}` : ''} — se confirmará cuando algún hecho de abajo la realice`,
+    }];
+  });
+
+  return { nodes, edges };
 }

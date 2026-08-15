@@ -20,8 +20,16 @@ export type ModuxCommand =
       targetId: string;
       type: string;
       name?: string;
+      /** Escape hatch: force intent (sketch) or fact (real). Absent ⇒ the endpoints decide. */
+      nature?: 'intent' | 'fact';
     }
   | { kind: 'set-archimate-relation-type'; id: string; type: string }
+  | {
+      /** Override the structural intent/fact classification (null clears the override). */
+      kind: 'set-archimate-relation-nature';
+      id: string;
+      nature: 'intent' | 'fact' | null;
+    }
   | {
       /** Swap an ArchiMate relation's ends (some — serving, association… — read either way). */
       kind: 'invert-archimate-relation';

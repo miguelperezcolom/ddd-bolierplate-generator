@@ -116,6 +116,7 @@ export function project(store: ModelStore): ModuxModel {
       targetId: str(r.targetId) ?? '',
       type: str(r.type) ?? '',
       label: str(r.name),
+      nature: r.nature === 'intent' || r.nature === 'fact' ? r.nature : undefined,
     })),
     flows: store.all('flows').map((f) => flow(f, owner)).filter(isDrawable),
     ...projectUi(store),
