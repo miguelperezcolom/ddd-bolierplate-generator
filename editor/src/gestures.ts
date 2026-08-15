@@ -134,7 +134,8 @@ export function connectionOptions(
   const ucIds = new Set(m.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((u) => u.id)));
   const qsIds = new Set(m.boundedContexts.flatMap((mo) => (mo.queryServices ?? []).map((q) => q.id)));
   const eventIds = new Set(m.boundedContexts.flatMap((mo) => (mo.domainEvents ?? []).map((ev) => ev.id)));
-  const appEventIds = new Set(m.boundedContexts.flatMap((mo) => (mo.applicationEvents ?? []).map((ev) => ev.id)));
+  const appEventIds = new Set(m.boundedContexts.flatMap((mo) =>
+    [...(mo.applicationEvents ?? []), ...(mo.integrationEvents ?? [])].map((ev) => ev.id)));
   const emitterIds = new Set([
     ...(m.aggregates ?? []).map((a) => a.id),
     ...m.boundedContexts.flatMap((mo) => (mo.domainServices ?? []).map((ds) => ds.id)),

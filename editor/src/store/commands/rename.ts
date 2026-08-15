@@ -74,6 +74,13 @@ export const RENAME_COMMANDS: Record<string, Handler> = {
     if (!kind) throw new CommandError('rename-element: falta el tipo de elemento');
     const id = String(command.id);
 
+    // A not-yet-adopted (loose) element lives in the looseElements bucket, whatever its kind — rename
+    // it there so a read model / table / integration event dropped free-standing can be named.
+    if (store.has('looseElements', id)) {
+      store.patch('looseElements', id, { name: command.name });
+      return;
+    }
+
     const top = TOP_LEVEL[kind];
     if (top) {
       // a rename of something that is not there is a no-op, not a failure: the canvas may be

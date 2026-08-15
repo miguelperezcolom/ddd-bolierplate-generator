@@ -1693,6 +1693,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'use-case' ||
             node.kind === 'domain-event' ||
             node.kind === 'application-event' ||
+            node.kind === 'integration-event' ||
             node.kind === 'external-use-case' ||
             node.kind === 'external-system' ||
             node.kind === 'system' ||
@@ -1729,6 +1730,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'use-case' ||
             node.kind === 'domain-event' ||
             node.kind === 'application-event' ||
+            node.kind === 'integration-event' ||
             node.kind === 'read-model' ||
             node.kind === 'query-service' ||
             node.kind === 'scheduled-trigger' ||
