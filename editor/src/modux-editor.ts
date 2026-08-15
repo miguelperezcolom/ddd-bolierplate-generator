@@ -1334,6 +1334,11 @@ export class ModuxEditor extends LitElement {
     this._redoStack = [];
   }
 
+  /** Undo/redo entry points for the IDE host, which routes Ctrl+Z there (IntelliJ eats the key
+   * before it reaches the webview, so the plugin re-dispatches it via these). */
+  hostUndo(): void { this.undo(); }
+  hostRedo(): void { this.redo(); }
+
   private undo(): void {
     const inverse = this._undoStack[this._undoStack.length - 1];
     if (!inverse) return;
