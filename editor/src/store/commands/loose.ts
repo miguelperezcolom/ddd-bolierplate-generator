@@ -53,12 +53,15 @@ function graft(store: ModelStore, id: string, name: string, elementType: string,
       store.patch(ownerType, ownerId, { invariants: [...invs, { id, name, conditions: [] }] });
     }
   } else if (elementType === 'read-model') {
-    // Owned by a bounded context (or an aggregate → its context). Adopt into whichever it landed on.
+    // Owned by a bounded context (or an aggregate → its context). Adopt into whichever it landed on,
+    // and list it under the context (projections and other read-side wiring look it up there).
     if (store.has('aggregates', ownerId)) {
-      store.put('readModels', { id, name, aggregateId: ownerId,
-        boundedContextId: store.get('aggregates', ownerId)?.boundedContextId ?? null });
+      const bc = store.get('aggregates', ownerId)?.boundedContextId as string | undefined;
+      store.put('readModels', { id, name, aggregateId: ownerId, boundedContextId: bc ?? null });
+      if (bc) store.addToList('boundedContexts', bc, 'readModelIds', id);
     } else if (store.has('boundedContexts', ownerId)) {
       store.put('readModels', { id, name, boundedContextId: ownerId, aggregateId: null });
+      store.addToList('boundedContexts', ownerId, 'readModelIds', id);
     } else {
       throw new CommandError('El read model debe caer sobre un contexto o un agregado');
     }

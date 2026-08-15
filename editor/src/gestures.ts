@@ -292,11 +292,16 @@ export function connectionOptions(
   {
     // tabla externa ⇆ read model: la ÚNICA relación es una PROYECCIÓN (el read model se proyecta de
     // la tabla). Cualquier sentido; el read model puede estar suelto o dentro de un contexto.
+    // The read model must be REAL (inside a context) so the projection has an owner; the table may be
+    // real (inside an external system) OR still loose — add-projection just records its id, which
+    // matches once the loose table is adopted (adoption keeps the id).
     const isReadModel = (id: string) =>
       m.boundedContexts.some((bc) => (bc.readModels ?? []).some((rm) => rm.id === id));
-    const extTableOf = (id: string) => m.externalSystems.find((x) => (x.tables ?? []).some((t) => t.id === id));
+    const isTable = (id: string) =>
+      m.externalSystems.some((x) => (x.tables ?? []).some((t) => t.id === id))
+      || (m.looseElements ?? []).some((e) => e.id === id && e.elementType === 'external-table');
     const rmId = isReadModel(sourceId) ? sourceId : isReadModel(targetId) ? targetId : null;
-    const tblId = extTableOf(sourceId) ? sourceId : extTableOf(targetId) ? targetId : null;
+    const tblId = isTable(sourceId) ? sourceId : isTable(targetId) ? targetId : null;
     if (rmId && tblId && !(m.projections ?? []).some((p) => p.readModelId === rmId)) {
       offer('projection', () => host.command({
         kind: 'add-projection', id: `proj-${tblId}-${rmId}`, name: 'Proyección',
