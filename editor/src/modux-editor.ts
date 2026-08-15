@@ -688,6 +688,9 @@ export class ModuxEditor extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 2px;
+      /* Never taller than the viewport: a long vocabulary scrolls inside instead of running off. */
+      max-height: 70vh;
+      overflow-y: auto;
     }
     .picker-title {
       font-size: 11px;
@@ -1799,6 +1802,7 @@ export class ModuxEditor extends LitElement {
     connectKind?: string,
   ): void {
     const before = this._gestureEffects;
+    const hadConnectPicker = !!this._connectPicker;
     const pickers = () =>
       !!(this._connectPicker || this._relationPicker || this._extDepPicker || this._deletePicker || this._invariantCondEditor);
     const pickersBefore = pickers();
@@ -1825,9 +1829,29 @@ export class ModuxEditor extends LitElement {
         this._connectPicker = {
           x: x ?? this.clientWidth / 2,
           y: y ?? 120,
-          options: archimateOptions(this.gestureHost(), sourceId, targetId, true),
+          options: archimateOptions(this.gestureHost(), sourceId, targetId),
         };
       }
+    }
+    // A picker just opened for this trace? Offer one «invert» toggle instead of doubling every
+    // option: it reopens the same picker with the ends swapped, so any relation reads either way
+    // without a list twice as long.
+    if (!hadConnectPicker && this._connectPicker && connectKind === undefined && sourceId !== targetId) {
+      this._connectPicker = {
+        ...this._connectPicker,
+        options: [
+          {
+            id: 'invert-connection',
+            label: '⇄ Invertir sentido',
+            hint: 'Intercambia origen y destino y vuelve a ofrecer los tipos',
+            apply: () => {
+              this._connectPicker = null;
+              this.applyConnection(targetId, sourceId, x, y, connectKind);
+            },
+          },
+          ...this._connectPicker.options,
+        ],
+      };
     }
   }
 
