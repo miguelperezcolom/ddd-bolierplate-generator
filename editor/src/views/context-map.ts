@@ -1301,9 +1301,11 @@ function buildScene(
     // parent. They have no children to expand — just the box with its badge.
     const looseKindOf: Record<string, ChildDesc['kind']> = {
       operation: 'operation', invariant: 'invariant', field: 'field', 'use-case-step': 'operation',
+      'read-model': 'read-model', 'external-table': 'external-table',
     };
     const looseNounOf: Record<string, string> = {
       operation: 'operación', invariant: 'invariante', field: 'campo', 'use-case-step': 'paso',
+      'read-model': 'read model', 'external-table': 'tabla',
     };
     for (const el of model.looseElements ?? []) {
       const kind = looseKindOf[el.elementType] ?? 'operation';

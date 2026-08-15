@@ -487,6 +487,10 @@ export function applyConnectionGesture(
           const uc = host.model.boundedContexts.flatMap((bc) => bc.useCases ?? []).find((u) => u.id === other)
             ?? (host.model.looseUseCases ?? []).find((u) => u.id === other);
           ownerId = uc?.id ?? null;
+        } else if (looseEl.elementType === 'read-model') {
+          ownerId = host.model.boundedContexts.find((b) => b.id === other)?.id ?? aggById(other)?.id ?? null;
+        } else if (looseEl.elementType === 'external-table') {
+          ownerId = host.model.externalSystems.find((x) => x.id === other)?.id ?? null;
         }
         if (ownerId) {
           host.command({ kind: 'adopt-loose-element', id: looseEl.id, ownerId });

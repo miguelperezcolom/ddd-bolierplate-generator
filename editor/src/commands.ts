@@ -724,11 +724,11 @@ export type ModuxCommand =
       boundedContextId?: string;
     }
   | {
-      /** A free-standing nested element (operation/invariant/field/use-case-step) with no parent yet. */
+      /** A free-standing element with no parent yet (adopted into its owner later by composition). */
       kind: 'add-loose-element';
       id: string;
       name: string;
-      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step';
+      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table';
     }
   | { kind: 'remove-loose-element'; id: string }
   | {
