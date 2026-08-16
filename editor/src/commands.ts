@@ -20,8 +20,16 @@ export type ModuxCommand =
       targetId: string;
       type: string;
       name?: string;
+      /** Escape hatch: force intent (sketch) or fact (real). Absent ⇒ the endpoints decide. */
+      nature?: 'intent' | 'fact';
     }
   | { kind: 'set-archimate-relation-type'; id: string; type: string }
+  | {
+      /** Override the structural intent/fact classification (null clears the override). */
+      kind: 'set-archimate-relation-nature';
+      id: string;
+      nature: 'intent' | 'fact' | null;
+    }
   | {
       /** Swap an ArchiMate relation's ends (some — serving, association… — read either way). */
       kind: 'invert-archimate-relation';
@@ -187,6 +195,37 @@ export type ModuxCommand =
   | {
       kind: 'remove-external-system';
       id: string;
+    }
+  | {
+      /** A system: OUR grouping of bounded contexts (C4 landscape → system → containers). */
+      kind: 'add-system';
+      id: string;
+      name: string;
+      /** When set, the new system is a SUBSYSTEM living inside this one. */
+      parentSystemId?: string;
+    }
+  | {
+      kind: 'remove-system';
+      id: string;
+    }
+  | {
+      /** Put a bounded context inside a system (null detaches it back to top level). */
+      kind: 'set-context-system';
+      id: string;
+      parentSystemId: string | null;
+    }
+  | {
+      /** A CDC connector (Change Data Capture): streams changes source → target. */
+      kind: 'add-cdc';
+      id: string;
+      name: string;
+    }
+  | { kind: 'remove-cdc'; id: string }
+  | {
+      /** Nest a system inside another system (null detaches it back to top level). */
+      kind: 'set-system-parent';
+      id: string;
+      parentSystemId: string | null;
     }
   | {
       /** An AI agent; external = someone else's, entering only through MCP gateways. */
@@ -449,6 +488,14 @@ export type ModuxCommand =
       id: string;
     }
   | {
+      /** An integration event: a fact this context publishes across boundaries. */
+      kind: 'add-integration-event';
+      id: string;
+      name: string;
+      boundedContextId: string;
+    }
+  | { kind: 'remove-integration-event'; id: string }
+  | {
       /** A domain service: stateless domain logic owned by a bounded context. */
       kind: 'add-domain-service';
       id: string;
@@ -692,11 +739,11 @@ export type ModuxCommand =
       boundedContextId?: string;
     }
   | {
-      /** A free-standing nested element (operation/invariant/field/use-case-step) with no parent yet. */
+      /** A free-standing element with no parent yet (adopted into its owner later by composition). */
       kind: 'add-loose-element';
       id: string;
       name: string;
-      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step';
+      elementType: 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table' | 'integration-event';
     }
   | { kind: 'remove-loose-element'; id: string }
   | {

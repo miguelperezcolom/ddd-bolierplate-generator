@@ -186,6 +186,12 @@ export function ownershipIndex(
       const parsed = /^apiimpl:(.+)@(.+)$/.exec(impl.id);
       if (parsed) apiOps(parsed[1], parsed[2], impl.id);
     }
+    // A context rolls up into its system (C4 landscape) — so a folded coupling deep inside
+    // surfaces at the SYSTEM one level up, exactly like a subsystem folds into its external.
+    if (m.parentSystemId) owners.set(m.id, m.parentSystemId);
+  }
+  for (const s of model.systems ?? []) {
+    if (s.parentSystemId) owners.set(s.id, s.parentSystemId);
   }
   for (const x of model.externalSystems) {
     if (x.parentExternalSystemId) owners.set(x.id, x.parentExternalSystemId);
@@ -235,6 +241,37 @@ export function ownershipIndex(
   return owners;
 }
 
+/**
+ * Ownership for the roll-up pass — `ownershipIndex` plus one link it deliberately omits: an API
+ * implemented by a context homes THERE. The base index leaves such APIs ownerless (they render
+ * top-level, and giving them an owner would make the layout treat their position as relative to
+ * the context — see the absolute-position resolver in the editor). The re-anchor path wants the
+ * opposite: so a `Rumbo-JDBC → RumboNet-component` serving edge folds up to `Rumbo → RumboNet`
+ * when neither endpoint is a member, this index sends the API to its implementing context. An
+ * external publisher still wins (it is the API's real home on the map).
+ */
+export function rollupOwnershipIndex(
+  model: ModuxModel,
+  mode: 'unified' | 'distribution' = 'unified',
+): Map<string, string> {
+  const owners = ownershipIndex(model, mode);
+  for (const impl of model.apiImplementations ?? []) {
+    const api = (model.apis ?? []).find((a) => a.id === impl.apiId);
+    if (api?.publishedByExternalSystemId) continue;
+    if (!owners.has(impl.apiId)) owners.set(impl.apiId, impl.boundedContextId);
+  }
+  // A hand-drawn composition/aggregation is whole→part (diamond at the source): the PART rolls up
+  // into the WHOLE. So when the part is hidden or dropped from a view, its relations re-anchor to
+  // the whole — the same way a real nesting would. A real owner (parentSystemId…) still wins.
+  for (const r of model.archimateRelations ?? []) {
+    if ((r.type === 'composition' || r.type === 'aggregation') && r.sourceId !== r.targetId
+      && !owners.has(r.targetId)) {
+      owners.set(r.targetId, r.sourceId);
+    }
+  }
+  return owners;
+}
+
 /** Deterministic circular fallback, same spirit as the server renderer. */
 function defaultPosition(index: number, total: number): { x: number; y: number } {
   const angle = (2 * Math.PI * index) / Math.max(total, 1) - Math.PI / 2;
@@ -257,6 +294,7 @@ interface ChildDesc {
     | 'use-case'
     | 'domain-event'
     | 'application-event'
+    | 'integration-event'
     | 'read-model'
     | 'domain-service'
     | 'query-service'
@@ -275,6 +313,8 @@ interface ChildDesc {
     | 'ui'
     | 'ui-app'
     | 'external-system'
+    | 'system'
+    | 'boundedContext'
     | 'workflow-step'
     | 'process-step'
     | 'menu-group'
@@ -302,11 +342,14 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   'use-case': { symbol: 'usecase', fill: '#ecfeff', stroke: '#06b6d4' },
   'domain-event': { symbol: 'event', fill: '#fff7ed', stroke: '#f59e0b' },
   'application-event': { symbol: 'event', fill: '#fefce8', stroke: '#eab308' },
+  'integration-event': { symbol: 'event', fill: '#fff1f2', stroke: '#e11d48' },
   'read-model': { symbol: 'readmodel', fill: '#ecfdf5', stroke: '#10b981' },
   'domain-service': { symbol: 'gear', fill: '#fff1f2', stroke: '#f43f5e' },
   'query-service': { symbol: 'lens', fill: '#f0f9ff', stroke: '#0284c7' },
   'external-use-case': { symbol: 'usecase', fill: '#f8fafc', stroke: '#64748b' },
   'external-system': { symbol: 'component', fill: '#ffffff', stroke: '#64748b' },
+  system: { symbol: 'component', fill: '#f8fafc', stroke: '#475569' },
+  boundedContext: { symbol: 'component', fill: '#eef2ff', stroke: '#94a3b8' },
   'external-table': { symbol: 'readmodel', fill: '#fefce8', stroke: '#a16207' },
   'mcp-server': { symbol: 'robot', fill: '#faf5ff', stroke: '#9333ea' },
   'api-operation': { symbol: 'usecase', fill: '#eef2ff', stroke: '#4f46e5' },
@@ -340,11 +383,14 @@ const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
   'use-case': 'Caso de uso',
   'domain-event': 'Evento de dominio',
   'application-event': 'Evento de aplicación',
+  'integration-event': 'Evento de integración',
   'read-model': 'Read model',
   'domain-service': 'Servicio de dominio',
   'query-service': 'Query service',
   'external-use-case': 'Caso de uso externo',
   'external-system': 'Subsistema',
+  system: 'Sistema — agrupa bounded contexts',
+  boundedContext: 'Bounded context — dentro del sistema',
   'external-table': 'Tabla (legacy)',
   'mcp-server': 'Servidor MCP',
   'api-operation': 'Operación de API',
@@ -459,6 +505,9 @@ function boundedContextElementDescs(
     ...(boundedContext.applicationEvents ?? []).map(
       (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'application-event' }),
     ),
+    ...(boundedContext.integrationEvents ?? []).map(
+      (ev): ChildDesc => ({ id: ev.id, name: ev.name, kind: 'integration-event' }),
+    ),
     ...(boundedContext.queryServices ?? []).map(
       (qs): ChildDesc => ({ id: qs.id, name: qs.name, kind: 'query-service' }),
     ),
@@ -520,8 +569,9 @@ export function contextMapScene(
   sizes: Record<string, { w: number; h: number }> = {},
   expandedIds: ReadonlySet<string> = new Set(),
   expandAll = false,
+  rollup?: Map<string, string>,
 ): Scene {
-  return buildScene(model, layout, 'unified', sizes, expandedIds, expandAll);
+  return buildScene(model, layout, 'unified', sizes, expandedIds, expandAll, rollup);
 }
 
 /** The distribution lens: contexts as module packagers, plus services and infrastructure. */
@@ -531,8 +581,9 @@ export function distributionScene(
   sizes: Record<string, { w: number; h: number }> = {},
   expandedIds: ReadonlySet<string> = new Set(),
   expandAll = false,
+  rollup?: Map<string, string>,
 ): Scene {
-  return buildScene(model, layout, 'distribution', sizes, expandedIds, expandAll);
+  return buildScene(model, layout, 'distribution', sizes, expandedIds, expandAll, rollup);
 }
 
 function buildScene(
@@ -542,6 +593,7 @@ function buildScene(
   sizes: Record<string, { w: number; h: number }> = {},
   toggledIds: ReadonlySet<string> = new Set(),
   expandAll = false,
+  rollup?: Map<string, string>,
 ): Scene {
   const distributionLevel = mode === 'distribution';
   // The yugo wants the WHOLE containment tree — its own folding decides what shows.
@@ -549,6 +601,7 @@ function buildScene(
   if (expandAll) {
     const all = new Set(toggledIds);
     for (const m of model.boundedContexts) all.add(m.id);
+    for (const s of model.systems ?? []) all.add(s.id);
     for (const a of model.aggregates ?? []) all.add(a.id);
     for (const x of model.externalSystems) all.add(x.id);
     for (const a of model.apis ?? []) all.add(a.id);
@@ -625,6 +678,17 @@ function buildScene(
       return [];
     }
     switch (kind) {
+      case 'system': {
+        // A system holds nested systems and the bounded contexts grouped under it.
+        return [
+          ...(model.systems ?? [])
+            .filter((s) => s.parentSystemId === id)
+            .map((s): ChildDesc => ({ id: s.id, name: s.name, kind: 'system' })),
+          ...model.boundedContexts
+            .filter((m) => m.parentSystemId === id)
+            .map((m): ChildDesc => ({ id: m.id, name: m.name, kind: 'boundedContext' })),
+        ];
+      }
       case 'boundedContext': {
         const bc = model.boundedContexts.find((m) => m.id === id);
         return bc ? [...apiImplChildren(model, id), ...boundedContextElementDescs(model, bc)] : [];
@@ -807,19 +871,24 @@ function buildScene(
       const expanded = toggledIds.has(k.id) && grand.length > 0;
       const style = k.policy ? POLICY_STYLE : CHILD_STYLE[k.kind];
       const subsystem = k.kind === 'external-system';
+      // A bounded context (or nested system) inside a system is a CONTAINER, not a leaf chip:
+      // it keeps its own box and can be resized and expanded into its aggregates/use-cases.
+      const container = k.kind === 'boundedContext' || k.kind === 'system';
+      const kSize = sizes[k.id];
       nodes.push({
         id: k.id,
         label: k.name,
         kind: k.kind,
         x: pos.x,
         y: pos.y,
-        w: subsystem ? 150 : childBoxWidth(k.name),
-        h: subsystem ? 44 : CHILD_H + 4,
+        w: kSize?.w ?? (subsystem ? 150 : container ? NODE_W : childBoxWidth(k.name)),
+        h: kSize?.h ?? (subsystem ? 44 : container ? NODE_H : CHILD_H + 4),
         symbol: k.symbol ?? style.symbol,
         fill: style.fill,
         stroke: style.stroke,
         badge: k.badge,
         dashed: subsystem || undefined,
+        resizable: container || undefined,
         ownerId,
         collapsible: grand.length > 0,
         collapsed: grand.length > 0 && !expanded,
@@ -837,8 +906,22 @@ function buildScene(
     });
   };
 
+  // State models belong to an aggregate/entity (its fields) — never drawn as a free node.
+  const stateModelIds = new Set<string>([
+    ...(model.aggregates ?? []).map((a) => a.modelId),
+    ...(model.entities ?? []).map((e) => e.modelId),
+  ].filter((id): id is string => !!id));
+
   const allNodes = [
-    ...model.boundedContexts.map((m) => ({ ref: m, external: false, api: false, proxy: false })),
+    // A context grouped under a system enters the stage through that system's expansion, not at the
+    // top level — except in the distribution lens, where systems aren't drawn and it must show.
+    ...model.boundedContexts
+      .filter((m) => !m.parentSystemId || distributionLevel)
+      .map((m) => ({ ref: m, external: false, api: false, proxy: false })),
+    ...(distributionLevel ? [] : (model.systems ?? []))
+      // nested systems enter through their parent's expansion, never top-level
+      .filter((s) => !s.parentSystemId)
+      .map((s) => ({ ref: s, external: false, api: false, proxy: false, system: true })),
     ...(distributionLevel ? [] : model.externalSystems)
       // subsystems enter the stage through their parent's expansion, never top-level
       .filter((e) => !e.parentExternalSystemId || !externalIds.has(e.parentExternalSystemId))
@@ -863,13 +946,17 @@ function buildScene(
       proxy: false,
       process: true,
     }))),
-    ...(distributionLevel ? [] : (model.models ?? []).map((dm) => ({
-      ref: dm,
-      external: false,
-      api: false,
-      proxy: false,
-      dataModel: true,
-    }))),
+    // An aggregate/entity's STATE model is its own data shape (its fields live there) — not a
+    // separate node. Only stand-alone data models float on the canvas; state models stay implicit.
+    ...(distributionLevel ? [] : (model.models ?? [])
+      .filter((dm) => !stateModelIds.has(dm.id))
+      .map((dm) => ({
+        ref: dm,
+        external: false,
+        api: false,
+        proxy: false,
+        dataModel: true,
+      }))),
     ...(distributionLevel ? [] : (model.pages ?? []).map((pg) => ({
       ref: pg,
       external: false,
@@ -901,10 +988,35 @@ function buildScene(
       proxy: false,
       idp: true,
     })),
+    ...(distributionLevel ? [] : (model.cdcs ?? []).map((c) => ({
+      ref: c,
+      external: false,
+      api: false,
+      proxy: false,
+      cdc: true,
+    }))),
   ];
 
   allNodes.forEach((entry, i) => {
     const pos = layout[entry.ref.id] ?? defaultPosition(i, allNodes.length);
+    if ('cdc' in entry && entry.cdc) {
+      const c = entry.ref as NonNullable<ModuxModel['cdcs']>[number];
+      nodes.push({
+        id: c.id,
+        label: c.name,
+        kind: 'cdc',
+        symbol: 'flow',
+        fill: '#ecfeff',
+        stroke: '#0891b2',
+        badge: 'CDC',
+        tooltip: `${c.name} — Change Data Capture: arrastra una relación desde la fuente y otra hacia el destino`,
+        x: pos.x,
+        y: pos.y,
+        w: NODE_W,
+        h: NODE_H,
+      });
+      return;
+    }
     if ('idp' in entry && entry.idp) {
       const idp = entry.ref as NonNullable<ModuxModel['identityProviders']>[number];
       const federated = !!idp.publishedByExternalSystemId;
@@ -1135,6 +1247,31 @@ function buildScene(
       if (expanded) emitChildren(x.id, 'external-system', x.name, pos);
       return;
     }
+    if ('system' in entry && entry.system) {
+      const s = entry.ref as NonNullable<ModuxModel['systems']>[number];
+      const kids = ownedChildren(s.id, 'system');
+      const expanded = toggledIds.has(s.id) && kids.length > 0;
+      const sSize = sizes[s.id];
+      nodes.push({
+        id: s.id,
+        label: s.name,
+        kind: 'system',
+        symbol: 'component',
+        fill: '#f8fafc',
+        stroke: '#475569',
+        badge: 'SISTEMA',
+        tooltip: `${s.name} — sistema; agrupa bounded contexts`,
+        collapsible: kids.length > 0,
+        collapsed: kids.length > 0 && !expanded,
+        resizable: true,
+        x: pos.x,
+        y: pos.y,
+        w: sSize?.w ?? NODE_W,
+        h: sSize?.h ?? NODE_H,
+      });
+      if (expanded) emitChildren(s.id, 'system', s.name, pos);
+      return;
+    }
     const m = entry.ref as ModuxModel['boundedContexts'][number];
     const subdomain = m.subdomainType ?? 'GENERIC';
     const kids = ownedChildren(m.id, 'boundedContext');
@@ -1205,9 +1342,11 @@ function buildScene(
     // parent. They have no children to expand — just the box with its badge.
     const looseKindOf: Record<string, ChildDesc['kind']> = {
       operation: 'operation', invariant: 'invariant', field: 'field', 'use-case-step': 'operation',
+      'read-model': 'read-model', 'external-table': 'external-table', 'integration-event': 'integration-event',
     };
     const looseNounOf: Record<string, string> = {
       operation: 'operación', invariant: 'invariante', field: 'campo', 'use-case-step': 'paso',
+      'read-model': 'read model', 'external-table': 'tabla', 'integration-event': 'evento de integración',
     };
     for (const el of model.looseElements ?? []) {
       const kind = looseKindOf[el.elementType] ?? 'operation';
@@ -1535,8 +1674,11 @@ function buildScene(
   // nearest VISIBLE ancestor of the ownership chain, so a folded box keeps
   // showing its children's coupling. The guards below see THROUGH the folds:
   // an id counts when some visible ancestor can stand for it — the roll-up
-  // pass at the end does the re-anchoring.
-  const owners = ownershipIndex(model, mode);
+  // pass at the end does the re-anchoring. In a SCOPED view the caller hands in
+  // an ownership index built over the WHOLE model, so an endpoint the view
+  // filtered out (an API, a component) still resolves to the visible member that
+  // owns it — that is how a lower level's coupling surfaces one level up.
+  const owners = rollup ?? ownershipIndex(model, mode);
   const repCache = new Map<string, string | null>();
   const representative = (id: string): string | null => {
     const cached = repCache.get(id);
@@ -2710,6 +2852,22 @@ function buildScene(
   ]);
 
   // ── ArchiMate: the hand-drawn vocabulary, with its notation ────────────────
+  // A relation is a FACT (real coupling: generates, validates, rolls up) or an INTENT (a top-down
+  // sketch: no code weight). The rule is structural — a line between two LANDSCAPE nodes (system,
+  // context, external system, actor, agent…) with no concrete artifact is intent by nature; anything
+  // touching an API/operation/event/aggregate is a fact — with an escape hatch (`nature`) for the
+  // rare real-but-abstract case (a CDC drawn context→context). Reconciled after re-anchoring below.
+  const strategicIds = new Set<string>([
+    ...model.boundedContexts.map((m) => m.id),
+    ...(model.systems ?? []).map((s) => s.id),
+    ...model.externalSystems.map((x) => x.id),
+    ...(model.actors ?? []).map((a) => a.id),
+    ...(model.aiAgents ?? []).map((a) => a.id),
+    ...(model.rags ?? []).map((r) => r.id),
+    ...(model.mcpGateways ?? []).map((g) => g.id),
+  ]);
+  const relationNature = (r: NonNullable<ModuxModel['archimateRelations']>[number]): 'intent' | 'fact' =>
+    r.nature ?? (strategicIds.has(r.sourceId) && strategicIds.has(r.targetId) ? 'intent' : 'fact');
   const archimateEdges: SceneEdge[] = (model.archimateRelations ?? []).map((r) => ({
     id: `archi:${r.id}`,
     sourceId: r.sourceId,
@@ -2717,14 +2875,12 @@ function buildScene(
     kind: 'archimate-relation',
     color: '#475569',
     label: r.label || undefined,
+    nature: relationNature(r),
     ...(ARCHIMATE_NOTATION[r.type] ?? {}),
     tooltip: `${ARCHIMATE_LABEL[r.type] ?? r.type} (ArchiMate)${r.label ? ` · ${r.label}` : ''} — doble click retipa o invierte el sentido · Supr la borra`,
   }));
 
-  return {
-    nodes,
-    edges: reanchorEdges([
-      // Composition first: the ownership diamonds paint under the semantic edges.
+  const reanchored = reanchorEdges([
       ...containsEdges,
       ...archimateEdges,
       ...uiAssignmentEdges,
@@ -2778,6 +2934,27 @@ function buildScene(
       ...ragContentEdges,
       ...externalCallEdges,
       ...externalUcCallEdges,
-    ]),
-  };
+    ]);
+
+  // Reconcile sketches against facts. An INTENT that a FACT already realizes (same visible
+  // endpoints, after roll-up) is BACKED: drop it and let the solid fact stand for it (one line).
+  // An intent with no backing is PROPOSED: draw it tentative (dashed, muted). Facts are untouched.
+  const factPairs = new Set(
+    reanchored
+      .filter((e) => e.kind === 'archimate-relation' && e.nature === 'fact')
+      .map((e) => `${e.sourceId} ${e.targetId}`),
+  );
+  const edges = reanchored.flatMap((e): SceneEdge[] => {
+    if (e.kind !== 'archimate-relation' || e.nature !== 'intent') return [e];
+    if (factPairs.has(`${e.sourceId} ${e.targetId}`)) return []; // backed → merged into the fact
+    return [{
+      ...e,
+      dashArray: '6 4',
+      color: '#94a3b8',
+      faint: true,
+      tooltip: `Propuesta (boceto sin respaldo)${e.label ? ` · ${e.label}` : ''} — se confirmará cuando algún hecho de abajo la realice`,
+    }];
+  });
+
+  return { nodes, edges };
 }

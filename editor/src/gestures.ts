@@ -46,6 +46,8 @@ export interface GestureHost {
   /** Screen rect of a canvas node (menu drops slot by vertical position). */
   nodeClientRect(nodeId: string): DOMRect | null | undefined;
   clearSelection(): void;
+  /** Expand a container in the current view — so an element just composed INTO it stays visible. */
+  expandNode(id: string): void;
 }
 
 /** The relation palette (Archi style): pick a type, trace, done. */
@@ -73,26 +75,43 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'ui-composition', label: 'Composición (expone la UI)', hint: 'Contexto ⇆ UI: el contexto la posee — la única relación posible entre ambos' },
   { id: 'ui-serving', label: 'Servidumbre (sirve al actor)', hint: 'UI ⇆ actor: la interfaz le sirve — la única relación posible entre ambos' },
   { id: 'aggregate-composition', label: 'Composición (lo contiene)', hint: 'Contexto ⇆ agregado suelto: el contexto pasa a contenerlo' },
+  { id: 'system-composition', label: 'Composición (lo contiene)', hint: 'Sistema ⇆ contexto/subsistema: el sistema pasa a contenerlo' },
+  { id: 'projection', label: 'Proyección', hint: 'Tabla externa ⇆ read model: el read model se proyecta de la tabla — la única relación posible entre ambos' },
 ];
 
-/** The ArchiMate 3 vocabulary as picker options: any pair admits all eleven. */
+/** A readable name for a node id, scanning the strategic/domain collections. */
+function nodeName(host: GestureHost, id: string): string {
+  const m = host.model;
+  const hit =
+    m.boundedContexts.find((e) => e.id === id) ??
+    (m.systems ?? []).find((e) => e.id === id) ??
+    m.externalSystems.find((e) => e.id === id) ??
+    (m.actors ?? []).find((e) => e.id === id) ??
+    (m.aggregates ?? []).find((e) => e.id === id) ??
+    (m.apis ?? []).find((e) => e.id === id) ??
+    (m.proxyApis ?? []).find((e) => e.id === id);
+  return hit?.name ?? id;
+}
+
+/**
+ * The ArchiMate 3 vocabulary as picker options: any pair admits all eleven, created source→target.
+ * Each label spells out the direction (src → tgt) so the sense is never a guess; to build it the
+ * other way, the connect picker offers a single «invert» toggle rather than doubling every option.
+ * The id stays `archimate:<type>` so the retype picker keeps matching on it.
+ */
 export function archimateOptions(
   host: GestureHost,
   sourceId: string,
   targetId: string,
 ): { id: string; label: string; hint: string; apply(): void }[] {
+  const src = nodeName(host, sourceId);
+  const tgt = nodeName(host, targetId);
   return Object.entries(ARCHIMATE_LABEL).map(([type, label]) => ({
     id: `archimate:${type}`,
-    label: `${label} — ArchiMate`,
-    hint: `Relación ArchiMate «${label}» de documentación entre estos dos elementos`,
+    label: `${label} — ${src} → ${tgt}`,
+    hint: `Relación ArchiMate «${label}»: ${src} → ${tgt}`,
     apply() {
-      host.command({
-        kind: 'add-archimate-relation',
-        id: `ar-${sourceId}-${targetId}-${type}`,
-        sourceId,
-        targetId,
-        type,
-      });
+      host.command({ kind: 'add-archimate-relation', id: `ar-${sourceId}-${targetId}-${type}`, sourceId, targetId, type });
     },
   }));
 }
@@ -115,7 +134,8 @@ export function connectionOptions(
   const ucIds = new Set(m.boundedContexts.flatMap((mo) => (mo.useCases ?? []).map((u) => u.id)));
   const qsIds = new Set(m.boundedContexts.flatMap((mo) => (mo.queryServices ?? []).map((q) => q.id)));
   const eventIds = new Set(m.boundedContexts.flatMap((mo) => (mo.domainEvents ?? []).map((ev) => ev.id)));
-  const appEventIds = new Set(m.boundedContexts.flatMap((mo) => (mo.applicationEvents ?? []).map((ev) => ev.id)));
+  const appEventIds = new Set(m.boundedContexts.flatMap((mo) =>
+    [...(mo.applicationEvents ?? []), ...(mo.integrationEvents ?? [])].map((ev) => ev.id)));
   const emitterIds = new Set([
     ...(m.aggregates ?? []).map((a) => a.id),
     ...m.boundedContexts.flatMap((mo) => (mo.domainServices ?? []).map((ds) => ds.id)),
@@ -125,6 +145,7 @@ export function connectionOptions(
   const isActor = (id: string) => (m.actors ?? []).some((a) => a.id === id);
   const isExternal = (id: string) => m.externalSystems.some((x) => x.id === id);
   const isContext = (id: string) => m.boundedContexts.some((mo) => mo.id === id);
+  const isSystem = (id: string) => (m.systems ?? []).some((s) => s.id === id);
   const isAggregate = (id: string) => (m.aggregates ?? []).some((a) => a.id === id);
 
   const uiIds = new Set((m.uis ?? []).map((u) => u.id));
@@ -241,8 +262,52 @@ export function connectionOptions(
     const ctx = isContext(sourceId) ? sourceId : isContext(targetId) ? targetId : null;
     const agg = isAggregate(sourceId) ? sourceId : isAggregate(targetId) ? targetId : null;
     if (ctx && agg && !(m.aggregates ?? []).find((a) => a.id === agg)?.boundedContextId) {
-      offer('aggregate-composition', () =>
-        host.command({ kind: 'set-aggregate-context', id: agg, boundedContextId: ctx }));
+      offer('aggregate-composition', () => {
+        host.command({ kind: 'set-aggregate-context', id: agg, boundedContextId: ctx });
+        host.expandNode(ctx);
+      });
+    }
+  }
+  {
+    // sistema ⇆ contexto o sistema ⇆ sistema: composición — el sistema pasa a contenerlo.
+    // Un contexto entra por tipo (cualquier sentido); un sistema entra por dirección (el ORIGEN,
+    // el «todo», contiene al DESTINO, la «parte») — como marca la notación ArchiMate.
+    if (isSystem(sourceId) || isSystem(targetId)) {
+      const sys = isSystem(sourceId) ? sourceId : targetId;
+      const other = sys === sourceId ? targetId : sourceId;
+      if (isContext(other)
+        && m.boundedContexts.find((mo) => mo.id === other)?.parentSystemId !== sys) {
+        offer('system-composition', () => {
+          host.command({ kind: 'set-context-system', id: other, parentSystemId: sys });
+          host.expandNode(sys);
+        });
+      } else if (isSystem(sourceId) && isSystem(targetId) && sourceId !== targetId
+        && (m.systems ?? []).find((s) => s.id === targetId)?.parentSystemId !== sourceId) {
+        offer('system-composition', () => {
+          host.command({ kind: 'set-system-parent', id: targetId, parentSystemId: sourceId });
+          host.expandNode(sourceId);
+        });
+      }
+    }
+  }
+  {
+    // tabla externa ⇆ read model: la ÚNICA relación es una PROYECCIÓN (el read model se proyecta de
+    // la tabla). Cualquier sentido; el read model puede estar suelto o dentro de un contexto.
+    // The read model must be REAL (inside a context) so the projection has an owner; the table may be
+    // real (inside an external system) OR still loose — add-projection just records its id, which
+    // matches once the loose table is adopted (adoption keeps the id).
+    const isReadModel = (id: string) =>
+      m.boundedContexts.some((bc) => (bc.readModels ?? []).some((rm) => rm.id === id));
+    const isTable = (id: string) =>
+      m.externalSystems.some((x) => (x.tables ?? []).some((t) => t.id === id))
+      || (m.looseElements ?? []).some((e) => e.id === id && e.elementType === 'external-table');
+    const rmId = isReadModel(sourceId) ? sourceId : isReadModel(targetId) ? targetId : null;
+    const tblId = isTable(sourceId) ? sourceId : isTable(targetId) ? targetId : null;
+    if (rmId && tblId && !(m.projections ?? []).some((p) => p.readModelId === rmId)) {
+      offer('projection', () => host.command({
+        kind: 'add-projection', id: `proj-${tblId}-${rmId}`, name: 'Proyección',
+        externalTableId: tblId, targetId: rmId,
+      }));
     }
   }
   {
@@ -417,22 +482,26 @@ export function applyConnectionGesture(
       const looseAgg = aggById(sourceId) ?? aggById(targetId);
       if (ctx && looseAgg && !looseAgg.boundedContextId) {
         host.command({ kind: 'set-aggregate-context', id: looseAgg.id, boundedContextId: ctx });
+        host.expandNode(ctx);
         return;
       }
       const looseUc = (host.model.looseUseCases ?? []).find((u) => u.id === sourceId || u.id === targetId);
       if (ctx && looseUc) {
         host.command({ kind: 'set-use-case-context', id: looseUc.id, boundedContextId: ctx });
+        host.expandNode(ctx);
         return;
       }
       const agg = aggById(sourceId) ?? aggById(targetId);
       const looseEnt = entById(sourceId) ?? entById(targetId);
       if (agg && looseEnt && !looseEnt.aggregateId) {
         host.command({ kind: 'set-entity-aggregate', id: looseEnt.id, aggregateId: agg.id });
+        host.expandNode(agg.id);
         return;
       }
       const looseVo = voById(sourceId) ?? voById(targetId);
       if (agg && looseVo && !looseVo.aggregateId) {
         host.command({ kind: 'set-value-object-aggregate', id: looseVo.id, aggregateId: agg.id });
+        host.expandNode(agg.id);
         return;
       }
       // A loose nested element (operation/invariant/field/step) is adopted into a valid parent.
@@ -452,9 +521,16 @@ export function applyConnectionGesture(
           const uc = host.model.boundedContexts.flatMap((bc) => bc.useCases ?? []).find((u) => u.id === other)
             ?? (host.model.looseUseCases ?? []).find((u) => u.id === other);
           ownerId = uc?.id ?? null;
+        } else if (looseEl.elementType === 'read-model') {
+          ownerId = host.model.boundedContexts.find((b) => b.id === other)?.id ?? aggById(other)?.id ?? null;
+        } else if (looseEl.elementType === 'external-table') {
+          ownerId = host.model.externalSystems.find((x) => x.id === other)?.id ?? null;
+        } else if (looseEl.elementType === 'integration-event') {
+          ownerId = host.model.boundedContexts.find((b) => b.id === other)?.id ?? null;
         }
         if (ownerId) {
           host.command({ kind: 'adopt-loose-element', id: looseEl.id, ownerId });
+          host.expandNode(ownerId); // keep the just-adopted child visible
           return;
         }
       }
@@ -1036,12 +1112,15 @@ export function applyConnectionGesture(
     // rest (sentinel: '__classic').
     if (connectKind !== '__classic' && connectKind === undefined) {
       const typed = connectionOptions(host, sourceId, targetId);
-      if (typed.length === 1) {
+      // Composition-into-a-system must never auto-apply: a system↔system/context line is just as
+      // likely serving or another ArchiMate type, so it always asks (composition + the vocabulary).
+      const autoApply = typed.length === 1 && typed[0].id !== 'system-composition';
+      if (autoApply) {
         // one meaning: no question, no detour — the trace IS that relation
         typed[0].apply();
         return;
       }
-      if (typed.length > 1) {
+      if (typed.length >= 1) {
         host.openConnectPicker({
           x: x ?? 0,
           y: y ?? 0,
@@ -1907,22 +1986,10 @@ export function applyConnectionGesture(
     }
     if (relationExternalIds.has(targetId)) return;
     if (actorIds.has(targetId)) return;
-    // Two bounded contexts: the derived relation carries the mechanics, but the
-    // TYPE is an annotation — the traced line asks for it (or retypes a declared one).
-    const isCtx = (id: string) => host.model.boundedContexts.some((mo) => mo.id === id);
-    if (isCtx(sourceId) && isCtx(targetId) && sourceId !== targetId) {
-      const declared = host.model.relations.find(
-        (r) => r.sourceId === sourceId && r.targetId === targetId && r.declared,
-      );
-      host.openRelationPicker({
-        sourceId,
-        targetId,
-        mode: declared ? 'edit' : 'create',
-        x: x ?? 0,
-        y: y ?? 0,
-      });
-      return;
-    }
+    // Context↔context relations use the ArchiMate vocabulary (serving, composition…), like every
+    // other strategic pair — not the DDD context-map types. So this falls through to the ArchiMate
+    // picker below. (The old CUSTOMER_SUPPLIER/ACL picker survives only for retyping a relation that
+    // was already declared, via double-click.)
     // Nothing modux meant anything for this pair: ArchiMate is the last word —
     // any two elements admit its eleven relationship types (documentation intent).
     if (sourceId !== targetId && connectKind === undefined) {
@@ -1964,6 +2031,14 @@ export function performDeleteGesture(
   kind: string,
 ): void {
   if (view === 'context-map') view = resolveDeleteLens(id, kind);
+  // A loose node (read model, external table, operation… dropped free-standing) lives in the
+  // looseElements bucket, not in its would-be parent — so the type-specific remove finds nothing.
+  // Delete it as what it is. Checked first, before the by-kind handlers below.
+  if (elementType === 'node' && (host.model.looseElements ?? []).some((e) => e.id === id)) {
+    host.clearSelection();
+    host.command({ kind: 'remove-loose-element', id });
+    return;
+  }
   // A mockup, or its link to a page (kind is unique, so no lens needed).
   if (kind === 'mockup-of') {
     const m = /^mockupof:(.+)->(.+)$/.exec(id);
@@ -2636,6 +2711,11 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-external-table', id });
       return;
     }
+    if (elementType === 'node' && kind === 'cdc') {
+      host.clearSelection();
+      host.command({ kind: 'remove-cdc', id });
+      return;
+    }
     if (elementType === 'node' && kind === 'mcp-server') {
       host.clearSelection();
       host.command({ kind: 'remove-mcp-server', id });
@@ -2732,6 +2812,29 @@ export function performDeleteGesture(
       host.command({ kind: 'remove-boundedContext', id });
       return;
     }
+    if (elementType === 'node' && kind === 'system') {
+      // the store guard blocks this while it still groups contexts — pull them out first
+      host.clearSelection();
+      host.command({ kind: 'remove-system', id });
+      return;
+    }
+    // Deleting the composition edge from a system to what it groups ungroups it (keeps both):
+    // a context detaches via set-context-system, a nested subsystem via set-system-parent.
+    if (elementType === 'edge' && kind === 'contains') {
+      const m = /^contains:(.+)->(.+)$/.exec(id);
+      if (m && (host.model.systems ?? []).some((s) => s.id === m[1])) {
+        if (host.model.boundedContexts.some((b) => b.id === m[2])) {
+          host.clearSelection();
+          host.command({ kind: 'set-context-system', id: m[2], parentSystemId: null });
+          return;
+        }
+        if ((host.model.systems ?? []).some((s) => s.id === m[2])) {
+          host.clearSelection();
+          host.command({ kind: 'set-system-parent', id: m[2], parentSystemId: null });
+          return;
+        }
+      }
+    }
     if (elementType === 'node' && kind === 'aggregate') {
       const hasEntities = (host.model.entities ?? []).some((x) => x.aggregateId === id);
       if (hasEntities) return;
@@ -2798,6 +2901,11 @@ export function performDeleteGesture(
     if (elementType === 'node' && kind === 'application-event') {
       host.clearSelection();
       host.command({ kind: 'remove-application-event', id });
+      return;
+    }
+    if (elementType === 'node' && kind === 'integration-event') {
+      host.clearSelection();
+      host.command({ kind: 'remove-integration-event', id });
       return;
     }
     if (elementType === 'node' && kind === 'external-system') {

@@ -52,6 +52,28 @@ function graft(store: ModelStore, id: string, name: string, elementType: string,
     if (!invs.some((i) => i.id === id)) {
       store.patch(ownerType, ownerId, { invariants: [...invs, { id, name, conditions: [] }] });
     }
+  } else if (elementType === 'read-model') {
+    // Owned by a bounded context (or an aggregate → its context). Adopt into whichever it landed on,
+    // and list it under the context (projections and other read-side wiring look it up there).
+    if (store.has('aggregates', ownerId)) {
+      const bc = store.get('aggregates', ownerId)?.boundedContextId as string | undefined;
+      store.put('readModels', { id, name, aggregateId: ownerId, boundedContextId: bc ?? null });
+      if (bc) store.addToList('boundedContexts', bc, 'readModelIds', id);
+    } else if (store.has('boundedContexts', ownerId)) {
+      store.put('readModels', { id, name, boundedContextId: ownerId, aggregateId: null });
+      store.addToList('boundedContexts', ownerId, 'readModelIds', id);
+    } else {
+      throw new CommandError('El read model debe caer sobre un contexto o un agregado');
+    }
+  } else if (elementType === 'external-table') {
+    const ext = mustGet(store, 'externalSystems', ownerId, 'Sistema externo');
+    const tables = nested(ext.tables);
+    if (!tables.some((t) => t.id === id)) {
+      store.patch('externalSystems', ext.id, { tables: [...tables, { id, name }] });
+    }
+  } else if (elementType === 'integration-event') {
+    mustGet(store, 'boundedContexts', ownerId, 'Contexto');
+    store.put('integrationEvents', { id, name, boundedContextId: ownerId });
   } else {
     throw new CommandError(`Tipo suelto desconocido: ${elementType}`);
   }

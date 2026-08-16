@@ -48,7 +48,14 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
     const target = command.targetId as string | undefined;
     if (target && store.has('readModels', target)) {
       readModelId = target;
-      const holder = store.findByListMember('boundedContexts', 'readModelIds', target);
+      // Prefer the context that LISTS it; fall back to the read model's own boundedContextId (a read
+      // model adopted from a loose drop may carry the field without being in the list yet). Self-heal.
+      let holder = store.findByListMember('boundedContexts', 'readModelIds', target);
+      if (!holder) {
+        const bc = store.get('readModels', target)?.boundedContextId;
+        holder = bc ? store.get('boundedContexts', String(bc)) : undefined;
+        if (holder) store.addToList('boundedContexts', holder.id, 'readModelIds', target);
+      }
       if (!holder) {
         throw new CommandError(
           `El read model ${target} no pertenece a ningún bounded context`);
@@ -144,8 +151,12 @@ function resolveSource(store: ModelStore, command: Record<string, any>): Element
     return undefined;
   }
   if (command.externalTableId) {
+    // The table may still be LOOSE (dropped, not yet adopted into an external system): accept it —
+    // its id survives adoption, so the projection stays valid once the table finds its home.
     const known = store.all('externalSystems')
-      .some((x) => nested(x.tables).some((t) => t.id === command.externalTableId));
+      .some((x) => nested(x.tables).some((t) => t.id === command.externalTableId))
+      || store.all('looseElements')
+        .some((e) => e.id === command.externalTableId && e.elementType === 'external-table');
     if (!known) throw new CommandError(`Tabla externa desconocida: ${command.externalTableId}`);
     return undefined;
   }

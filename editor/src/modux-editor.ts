@@ -5,7 +5,7 @@ import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { DiagramLayout, EditorLayout, Point, Scene, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
 import { MODUX_THEME } from './theme.js';
-import { contextMapScene, distributionScene, ownershipIndex } from './views/context-map.js';
+import { contextMapScene, distributionScene, ownershipIndex, rollupOwnershipIndex } from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
@@ -83,6 +83,10 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
   switch (kind) {
     case 'boundedContext':
       return { elementType: 'boundedContext', id: id.replace(/^tgt:/, '') };
+    case 'system':
+      return { elementType: 'system', id: id.replace(/^tgt:/, '') };
+    case 'cdc':
+      return { elementType: 'cdc', id };
     case 'aggregate':
       return { elementType: 'aggregate', id };
     case 'use-case':
@@ -180,10 +184,10 @@ function drawerTypeLabel(type: string): string {
  * gate on this — a kind not here has no rename affordance rather than a command that no-ops.
  */
 const RENAMEABLE_KINDS = new Set([
-  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'aggregate', 'entity',
+  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'system', 'cdc', 'aggregate', 'entity',
   'value-object', 'operation', 'process-step', 'workflow', 'workflow-step', 'domain-event',
   'read-model', 'domain-service', 'query-service', 'use-case', 'external-use-case',
-  'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'external-system',
+  'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'integration-event', 'external-system',
   'actor', 'ai-agent', 'rag', 'api', 'proxy-api', 'api-operation',
 ]);
 
@@ -230,7 +234,10 @@ export class ModuxEditor extends LitElement {
    * Deep link from the IDE host (§12): open at a given lens and curated scope. Applied once — the
    * user is free to switch views afterwards — so a model round-trip does not snap them back.
    */
-  @property({ attribute: false }) open: { activeViewId?: string } | null = null;
+  @property({ attribute: false }) open: {
+    activeViewId?: string;
+    mode?: 'unified' | 'distribution' | 'eventstorming';
+  } | null = null;
 
   /**
    * True inside the IDE plugin, where a view is a document file (§12): creating one opens its
@@ -683,6 +690,16 @@ export class ModuxEditor extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 2px;
+      /* Never taller than the viewport: a long vocabulary scrolls inside instead of running off. */
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    /* The relation-type picker can be long; center it so it always fits, whatever the click point. */
+    .relation-picker--centered {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      max-width: min(420px, 90vw);
     }
     .picker-title {
       font-size: 11px;
@@ -830,12 +847,15 @@ export class ModuxEditor extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this.addEventListener('keydown', this.hostKeydown);
+    // Listen at the WINDOW, not the element: inside the IDE the canvas rarely holds DOM focus, so an
+    // element-scoped keydown never fires (Ctrl+Z lands on <body> and is lost). Window-level keydown
+    // works whenever the webview has OS focus — the same reason space-to-pan already works.
+    window.addEventListener('keydown', this.hostKeydown);
     this.ownerDocument.addEventListener('fullscreenchange', this.onFullscreenChange);
   }
 
   disconnectedCallback(): void {
-    this.removeEventListener('keydown', this.hostKeydown);
+    window.removeEventListener('keydown', this.hostKeydown);
     this.ownerDocument.removeEventListener('fullscreenchange', this.onFullscreenChange);
     super.disconnectedCallback();
   }
@@ -864,6 +884,18 @@ export class ModuxEditor extends LitElement {
     const target = e.composedPath()[0] as HTMLElement | undefined;
     const tag = (target?.tagName ?? '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    // Undo/redo from anywhere in the editor (not only when the canvas has focus), so the keyboard
+    // shortcut is enough and no toolbar button is needed.
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) this.redo(); else this.undo();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      this.redo();
+      return;
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const canvas = this.renderRoot.querySelector('modux-canvas');
     switch (e.key) {
@@ -1003,6 +1035,9 @@ export class ModuxEditor extends LitElement {
   protected willUpdate(changed: PropertyValues): void {
     if (this.open && !this._opened && (changed.has('open') || changed.has('model'))) {
       this._activeViewId = this.open.activeViewId ?? '';
+      // Restore the lens the view was saved in (unified / distribution / eventstorming), so a C4
+      // container view opens straight into distribution instead of the flat unified canvas.
+      if (this.open.mode) this._canvasMode = this.open.mode;
       this._opened = true;
     }
     if (changed.has('model')) this._pendingNames.clear();
@@ -1304,6 +1339,11 @@ export class ModuxEditor extends LitElement {
     this._redoStack = [];
   }
 
+  /** Undo/redo entry points the IDE host calls: on macOS IntelliJ grabs Cmd+Z before the webview,
+   * so the plugin intercepts the key and re-dispatches it here. */
+  hostUndo(): void { this.undo(); }
+  hostRedo(): void { this.redo(); }
+
   private undo(): void {
     const inverse = this._undoStack[this._undoStack.length - 1];
     if (!inverse) return;
@@ -1393,6 +1433,54 @@ export class ModuxEditor extends LitElement {
         { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
       ]);
       this.command({ kind: 'set-external-system-parent', id, parentId: next }, false);
+      this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
+      return;
+    }
+    // A system shift-dropped on another nests as its subsystem; on the bare canvas, back to top.
+    const sys = (this.model.systems ?? []).find((s) => s.id === id);
+    if (sys) {
+      const target = targetId ? (this.model.systems ?? []).find((s) => s.id === targetId) : null;
+      if (targetId && !target) return;
+      // no cycles: the new parent must not live inside the dragged system
+      for (let cur = target; cur; ) {
+        if (cur.id === id) return;
+        const up = cur.parentSystemId;
+        cur = up ? (this.model.systems ?? []).find((s) => s.id === up) ?? null : null;
+      }
+      const next = target?.id ?? null;
+      if ((sys.parentSystemId ?? null) === next) return;
+      const view = this._view;
+      const layout = this.viewLayout(view);
+      const scene = this.sceneFor(view);
+      const parent = next ? scene.nodes.find((n) => n.id === next) : undefined;
+      const pos = parent ? { x: x - parent.x, y: y - parent.y } : { x, y };
+      this.pushUndoEntry([
+        { kind: 'set-system-parent', id, parentSystemId: sys.parentSystemId ?? null },
+        { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
+      ]);
+      this.command({ kind: 'set-system-parent', id, parentSystemId: next }, false);
+      this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
+      return;
+    }
+    // A bounded context shift-dropped on a system joins it (C4 grouping); dropped on the bare
+    // canvas, it leaves its system and returns to the top level.
+    const ctx = this.model.boundedContexts.find((m) => m.id === id);
+    if (ctx) {
+      const targetSystem = targetId ? (this.model.systems ?? []).find((s) => s.id === targetId) : null;
+      // only react to a system (or the canvas, to detach) — dropping on anything else is ignored
+      if (targetId && !targetSystem) return;
+      const next = targetSystem?.id ?? null;
+      if ((ctx.parentSystemId ?? null) === next) return;
+      const view = this._view;
+      const layout = this.viewLayout(view);
+      const scene = this.sceneFor(view);
+      const parent = next ? scene.nodes.find((n) => n.id === next) : undefined;
+      const pos = parent ? { x: x - parent.x, y: y - parent.y } : { x, y };
+      this.pushUndoEntry([
+        { kind: 'set-context-system', id, parentSystemId: ctx.parentSystemId ?? null },
+        { kind: 'move-node', view, id, pos: layout.nodes[id] ?? null },
+      ]);
+      this.command({ kind: 'set-context-system', id, parentSystemId: next }, false);
       this.writeViewLayout(view, { ...layout, nodes: { ...layout.nodes, [id]: pos } });
       return;
     }
@@ -1694,6 +1782,7 @@ export class ModuxEditor extends LitElement {
     switch (kind) {
       case 'boundedContext':
       case 'external-system':
+      case 'system':
         return id.replace(/^tgt:/, '');
       case 'aggregate':
       case 'entity':
@@ -1707,6 +1796,7 @@ export class ModuxEditor extends LitElement {
       case 'mcp-gateway':
       case 'api':
       case 'proxy-api':
+      case 'cdc':
         return id;
       case 'flow':
         return id.replace(/^flow:/, '');
@@ -1736,6 +1826,7 @@ export class ModuxEditor extends LitElement {
     connectKind?: string,
   ): void {
     const before = this._gestureEffects;
+    const hadConnectPicker = !!this._connectPicker;
     const pickers = () =>
       !!(this._connectPicker || this._relationPicker || this._extDepPicker || this._deletePicker || this._invariantCondEditor);
     const pickersBefore = pickers();
@@ -1765,6 +1856,26 @@ export class ModuxEditor extends LitElement {
           options: archimateOptions(this.gestureHost(), sourceId, targetId),
         };
       }
+    }
+    // A picker just opened for this trace? Offer one «invert» toggle instead of doubling every
+    // option: it reopens the same picker with the ends swapped, so any relation reads either way
+    // without a list twice as long.
+    if (!hadConnectPicker && this._connectPicker && connectKind === undefined && sourceId !== targetId) {
+      this._connectPicker = {
+        ...this._connectPicker,
+        options: [
+          {
+            id: 'invert-connection',
+            label: '⇄ Invertir sentido',
+            hint: 'Intercambia origen y destino y vuelve a ofrecer los tipos',
+            apply: () => {
+              this._connectPicker = null;
+              this.applyConnection(targetId, sourceId, x, y, connectKind);
+            },
+          },
+          ...this._connectPicker.options,
+        ],
+      };
     }
   }
 
@@ -1815,7 +1926,19 @@ export class ModuxEditor extends LitElement {
       clearSelection: () => {
         this._selectedId = null;
       },
+      expandNode: (id) => this.expandNode(id),
     };
+  }
+
+  /** Expand a container in the current view (idempotent) — used after composing an element into it. */
+  private expandNode(id: string): void {
+    const view = this._view;
+    const current = this.viewLayout(view);
+    const set = new Set(current.expanded ?? []);
+    if (set.has(id)) return;
+    set.add(id);
+    this.writeViewLayout(view, { ...current, expanded: [...set] });
+    this.declumpView(view);
   }
 
   private owningProcessOf(stepId: string) {
@@ -1976,6 +2099,7 @@ export class ModuxEditor extends LitElement {
       switch (node.kind) {
         case 'boundedContext':
         case 'external-system':
+        case 'system':
           members.add(id.replace(/^tgt:/, ''));
           break;
         case 'aggregate':
@@ -1989,6 +2113,7 @@ export class ModuxEditor extends LitElement {
         case 'api':
         case 'page':
         case 'ui-app':
+        case 'cdc':
           members.add(id);
           break;
         case 'menu-item':
@@ -2028,7 +2153,7 @@ export class ModuxEditor extends LitElement {
     this.command({ kind: 'add-view', id, name, memberIds });
     this._newViewName = '';
     this._multi = [];
-    this.afterViewCreated(id, name);
+    this.afterViewCreated(id, name, memberIds);
   }
 
   /**
@@ -2038,8 +2163,10 @@ export class ModuxEditor extends LitElement {
    * lands in the filename (`<slug>.<type>.modux-view.yaml`), the source of truth; there is no lens
    * to rotate afterwards, and no chooser to get wrong (a mismatched lens rendered an empty view).
    */
-  private afterViewCreated(id: string, name: string): void {
-    this.emit('create-view', { viewId: id, name, kind: this._view });
+  private afterViewCreated(id: string, name: string, memberIds: string[] = []): void {
+    // A view is a self-contained document now — its members travel WITH it, so the newly opened
+    // file already shows the selection (they are not read back from a `.modux/views/` entry).
+    this.emit('create-view', { viewId: id, name, kind: this._view, memberIds });
   }
 
   /** Model scoped to the active modux View (CURATED members + their context). */
@@ -2048,7 +2175,14 @@ export class ModuxEditor extends LitElement {
     const view = (this.model.views ?? []).find((v) => v.id === this._activeViewId);
     if (!view) return this.model;
     const members = new Set(view.memberIds);
-    const boundedContexts = this.model.boundedContexts.filter((m) => members.has(m.id));
+    // A system rides in when it is a member; its bounded contexts ride in with it (so the system can
+    // be drilled into) even if the view lists only the system — that is the C4 landscape → container
+    // drill-down on one canvas.
+    const systems = (this.model.systems ?? []).filter((s) => members.has(s.id));
+    const systemIds = new Set(systems.map((s) => s.id));
+    const boundedContexts = this.model.boundedContexts.filter(
+      (m) => members.has(m.id) || (m.parentSystemId != null && systemIds.has(m.parentSystemId)),
+    );
     const boundedContextIds = new Set(boundedContexts.map((m) => m.id));
     const externalSystems = this.model.externalSystems.filter((x) => members.has(x.id));
     const externalIds = new Set(externalSystems.map((x) => x.id));
@@ -2084,7 +2218,10 @@ export class ModuxEditor extends LitElement {
       pages,
       actorAppUses: (this.model.actorAppUses ?? []).filter((u) => keptAppIds.has(u.appId)),
       boundedContexts,
+      systems,
       externalSystems,
+      // A CDC shows only in the views that list it (a member), like every other top-level node.
+      cdcs: (this.model.cdcs ?? []).filter((c) => members.has(c.id)),
       relations: this.model.relations.filter(
         (r) => boundedContextIds.has(r.sourceId) && boundedContextIds.has(r.targetId),
       ),
@@ -2141,6 +2278,32 @@ export class ModuxEditor extends LitElement {
     if (this.hosted) this._drawer = { ...ref, kind };
   }
 
+  /**
+   * The intent↔fact escape hatch for the ArchiMate relation picker. The classification is normally
+   * structural (a line between strategic boxes is a sketch; one touching an artifact is a fact); this
+   * lets you override the odd real-but-abstract case (a CDC drawn context→context) or vice versa.
+   */
+  private natureToggleOption(rel: { id: string; sourceId: string; targetId: string; nature?: 'intent' | 'fact' }) {
+    const strategic = (id: string) =>
+      this.model.boundedContexts.some((m) => m.id === id)
+      || (this.model.systems ?? []).some((s) => s.id === id)
+      || this.model.externalSystems.some((x) => x.id === id)
+      || (this.model.actors ?? []).some((a) => a.id === id)
+      || (this.model.aiAgents ?? []).some((a) => a.id === id)
+      || (this.model.rags ?? []).some((r) => r.id === id)
+      || (this.model.mcpGateways ?? []).some((g) => g.id === id);
+    const effective = rel.nature ?? (strategic(rel.sourceId) && strategic(rel.targetId) ? 'intent' : 'fact');
+    const next: 'intent' | 'fact' = effective === 'intent' ? 'fact' : 'intent';
+    return [{
+      id: 'toggle-nature',
+      label: next === 'fact' ? '◆ Marcar como hecho (real)' : '◇ Marcar como intención (boceto)',
+      hint: next === 'fact'
+        ? 'Cuenta como acoplamiento real: genera y sube por roll-up'
+        : 'Boceto sin peso en el código; se confirma cuando un hecho de abajo la realice',
+      apply: () => this.command({ kind: 'set-archimate-relation-nature', id: rel.id, nature: next }),
+    }];
+  }
+
   private onElementActivated(e: CustomEvent): void {
     // Double-clicking a gateway flips its semantics: join TODAS↔CUALQUIERA,
     // split PARALELO↔EXCLUSIVO — the badge tells which one rules.
@@ -2178,6 +2341,7 @@ export class ModuxEditor extends LitElement {
               hint: 'Intercambia origen y destino de la relación',
               apply: () => this.command({ kind: 'invert-archimate-relation', id: relId }),
             },
+            ...this.natureToggleOption(rel),
             ...archimateOptions(this.gestureHost(), rel.sourceId, rel.targetId).map((o) => ({
               ...o,
               label: o.id === `archimate:${rel.type}` ? `● ${o.label}` : o.label,
@@ -2451,12 +2615,29 @@ export class ModuxEditor extends LitElement {
     items: { id: string; name: string }[];
   }[] {
     const m = this.model;
+    // State models belong to an aggregate/entity (its fields) — not stand-alone catalog models.
+    const stateModelIds = new Set<string>([
+      ...(m.aggregates ?? []).map((a) => a.modelId),
+      ...(m.entities ?? []).map((e) => e.modelId),
+    ].filter((id): id is string => !!id));
     const groups: {
       label: string;
       symbol: string;
       color: string;
       items: { id: string; name: string }[];
     }[] = [
+      {
+        label: 'Sistemas',
+        symbol: 'component',
+        color: '#475569',
+        items: (m.systems ?? []).map((x) => ({ id: x.id, name: x.name })),
+      },
+      {
+        label: 'CDC',
+        symbol: 'flow',
+        color: '#0891b2',
+        items: (m.cdcs ?? []).map((x) => ({ id: x.id, name: x.name })),
+      },
       {
         label: 'Contextos',
         symbol: 'component',
@@ -2479,7 +2660,10 @@ export class ModuxEditor extends LitElement {
         label: 'Modelos',
         symbol: 'readmodel',
         color: '#0369a1',
-        items: (m.models ?? []).map((x) => ({ id: x.id, name: x.name })),
+        // A state model belongs to an aggregate/entity (its fields) — not a stand-alone catalog model.
+        items: (m.models ?? [])
+          .filter((x) => !stateModelIds.has(x.id))
+          .map((x) => ({ id: x.id, name: x.name })),
       },
       {
         label: 'Triggers programados',
@@ -2508,6 +2692,7 @@ export class ModuxEditor extends LitElement {
         items: m.boundedContexts.flatMap((mod) => [
           ...(mod.domainEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
           ...(mod.applicationEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
+          ...(mod.integrationEvents ?? []).map((ev) => ({ id: ev.id, name: ev.name })),
         ]),
       },
       {
@@ -2774,7 +2959,7 @@ export class ModuxEditor extends LitElement {
     const chain = this.dropChain(targetId);
     const needsBoundedContext = [
       'aggregate', 'use-case', 'policy', 'domain-event',
-      'application-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
+      'application-event', 'integration-event', 'domain-service', 'query-service', 'scheduled-trigger', 'etl-flow',
       'notification', 'document', 'module',
     ].includes(type);
     if (needsBoundedContext) return chain.find((id) => this.model.boundedContexts.some((mo) => mo.id === id)) ?? null;
@@ -3003,6 +3188,10 @@ export class ModuxEditor extends LitElement {
       const cmd: ModuxCommand =
         type === 'boundedContext'
           ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
+          : type === 'system'
+            ? { kind: 'add-system', id, name }
+          : type === 'cdc'
+            ? { kind: 'add-cdc', id, name }
           : type === 'note'
             ? { kind: 'add-note', id, name }
           : type === 'area'
@@ -3079,6 +3268,27 @@ export class ModuxEditor extends LitElement {
         if (parentId) {
           issue({ ...cmd, parentId }, id);
           this.emit('modux-notice', { message: 'Subsistema creado como parte del sistema' });
+          return;
+        }
+      }
+      if (cmd.kind === 'add-system') {
+        // Dropped on another system: it is born as its nested SUBSYSTEM.
+        const chain = this.dropChain(targetId);
+        const parentSystemId = chain.find((cid) => (this.model.systems ?? []).some((s) => s.id === cid));
+        if (parentSystemId) {
+          issue({ ...cmd, parentSystemId }, id);
+          this.emit('modux-notice', { message: 'Subsistema creado dentro del sistema' });
+          return;
+        }
+      }
+      if (cmd.kind === 'add-boundedContext') {
+        // Dropped on a system: the context is born grouped under it.
+        const chain = this.dropChain(targetId);
+        const systemId = chain.find((cid) => (this.model.systems ?? []).some((s) => s.id === cid));
+        if (systemId) {
+          issue(cmd, id);
+          this.command({ kind: 'set-context-system', id, parentSystemId: systemId });
+          this.emit('modux-notice', { message: 'Contexto creado dentro del sistema' });
           return;
         }
       }
@@ -3323,15 +3533,20 @@ export class ModuxEditor extends LitElement {
     // Free-standing NESTED elements (operation/invariant/field/step): they can't live owner-less in
     // their parent's array, so a loose one goes to the looseElements bucket and is adopted into the
     // parent later by a composition edge. It wears a «sin asociar» badge until then.
-    if (!container && ['operation', 'invariant', 'field', 'use-case-step'].includes(type)) {
+    if (!container && ['operation', 'invariant', 'field', 'use-case-step', 'read-model', 'external-table', 'integration-event'].includes(type)) {
       const { id, name } = this.uniquePaletteName(def.label);
-      issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' }, id);
+      issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table' | 'integration-event' }, id);
       const parentNoun =
         type === 'operation' ? 'un agregado'
           : type === 'invariant' ? 'un agregado, entidad o value object'
           : type === 'field' ? 'un modelo'
+          : type === 'read-model' ? 'un contexto o agregado'
+          : type === 'external-table' ? 'un sistema externo'
+          : type === 'integration-event' ? 'un contexto'
           : 'un caso de uso o policy';
-      const noun = type === 'operation' ? 'Operación' : type === 'invariant' ? 'Invariante' : type === 'field' ? 'Campo' : 'Paso';
+      const noun = type === 'operation' ? 'Operación' : type === 'invariant' ? 'Invariante'
+        : type === 'field' ? 'Campo' : type === 'read-model' ? 'Read model'
+        : type === 'external-table' ? 'Tabla' : type === 'integration-event' ? 'Evento de integración' : 'Paso';
       this.emit('modux-notice', {
         message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
       });
@@ -3420,6 +3635,8 @@ export class ModuxEditor extends LitElement {
       issue({ kind: 'add-domain-event', id, name, boundedContextId: container }, id, container);
     } else if (type === 'application-event') {
       issue({ kind: 'add-application-event', id, name, boundedContextId: container }, id, container);
+    } else if (type === 'integration-event') {
+      issue({ kind: 'add-integration-event', id, name, boundedContextId: container }, id, container);
     } else if (type === 'domain-service') {
       issue({ kind: 'add-domain-service', id, name, boundedContextId: container }, id, container);
     } else if (type === 'query-service') {
@@ -3873,6 +4090,13 @@ export class ModuxEditor extends LitElement {
     const vl = this.viewLayout(view);
     const model = this.filteredModel();
     const expandAll = opts?.expandAll ?? false;
+    // Roll-up ownership is built over the WHOLE model, not the scoped one: a scoped view drops the
+    // API/component nodes a lower-level relation runs between, so the re-anchor needs their homes
+    // from the full model to surface that relation between the visible members. Only worth it when
+    // the view is actually scoped — the base canvas shows everything, nothing to roll up.
+    const rollup = this._activeViewId
+      ? rollupOwnershipIndex(this.model, this._canvasMode === 'distribution' ? 'distribution' : 'unified')
+      : undefined;
     const scene =
       view === 'aggregates'
         ? aggregatesScene(model, vl.nodes)
@@ -3891,13 +4115,13 @@ export class ModuxEditor extends LitElement {
                 : view === 'eventstorming'
                   ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'distribution'
-                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
+                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup)
                 // The unified canvas renders in the mode the toolbar toggles chose.
                 : view === 'context-map' && this._canvasMode === 'eventstorming'
                   ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'context-map' && this._canvasMode === 'distribution'
-                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll)
-                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll);
+                  ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup)
+                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup);
     this.withAreas(scene, view);
     this.withNotes(scene, view);
     this.withDescriptions(scene);
@@ -4343,23 +4567,6 @@ export class ModuxEditor extends LitElement {
           : ''}
         <button
           class="tab"
-          title="Deshacer el último cambio (Ctrl+Z)"
-          ?disabled=${this._undoStack.length === 0}
-          @click=${this.undo}
-        >
-          ↶ Deshacer
-        </button>
-        <button
-          class="tab"
-          title="Rehacer (Ctrl+Shift+Z / Ctrl+Y)"
-          ?disabled=${this._redoStack.length === 0}
-          @click=${this.redo}
-        >
-          ↷ Rehacer
-        </button>
-
-        <button
-          class="tab"
           title="Ajustar la vista a la selección (o a todo el diagrama, si no hay selección)"
           @click=${() => {
             this.renderRoot.querySelector('modux-canvas')?.fit();
@@ -4482,24 +4689,6 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          ?data-active=${this._canvasMode === 'distribution'}
-          title="Distribución: los contextos como empaquetadores de módulos, con servicios y despliegue — el mismo modelo, otra lente"
-          @click=${() =>
-            (this._canvasMode = this._canvasMode === 'distribution' ? 'unified' : 'distribution')}
-        >
-          ⛃ Distribución
-        </button>
-        <button
-          class="tab"
-          ?data-active=${this._canvasMode === 'eventstorming'}
-          title="EventStorming: la narrativa comando → agregado → evento → policy → read model sobre el mismo modelo"
-          @click=${() =>
-            (this._canvasMode = this._canvasMode === 'eventstorming' ? 'unified' : 'eventstorming')}
-        >
-          ▦ EventStorming
-        </button>
-        <button
-          class="tab"
           ?data-active=${this._fullscreen}
           title=${this._fullscreen
             ? 'Salir de pantalla completa (F o Esc)'
@@ -4543,7 +4732,7 @@ export class ModuxEditor extends LitElement {
               // Members are the VIEW-able kinds; finer elements ride along with
               // their (also visible) owning container, like in canvas selections.
               const MEMBER_KINDS = new Set([
-                'boundedContext', 'external-system', 'aggregate', 'entity', 'process', 'workflow',
+                'boundedContext', 'system', 'external-system', 'aggregate', 'entity', 'process', 'workflow',
                 'actor', 'ai-agent', 'rag', 'mcp-gateway', 'api', 'page', 'ui-app',
               ]);
               const memberIds = [...new Set(
@@ -4555,7 +4744,7 @@ export class ModuxEditor extends LitElement {
               }
               const id = crypto.randomUUID();
               this.command({ kind: 'add-view', id, name: e.detail.name, memberIds });
-              this.afterViewCreated(id, e.detail.name);
+              this.afterViewCreated(id, e.detail.name, memberIds);
               this.emit('modux-notice', {
                 message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
               });
@@ -4775,8 +4964,7 @@ export class ModuxEditor extends LitElement {
     return html`
       <div class="picker-backdrop" @pointerdown=${() => (this._connectPicker = null)}></div>
       <div
-        class="relation-picker"
-        style="left:${p.x}px; top:${p.y}px"
+        class="relation-picker relation-picker--centered"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
         <div class="picker-title">¿Qué relación es esta línea?</div>

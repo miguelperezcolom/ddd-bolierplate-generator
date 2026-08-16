@@ -41,8 +41,8 @@ import { asList, type Element, type ModelStore } from './store.js';
 export function projectedTypes(): string[] {
   return [
     'projects', 'services', 'modules', 'boundedContexts', 'aggregates', 'entities',
-    'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'domainServices',
-    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems',
+    'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices',
+    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems', 'systems', 'cdcs',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
     'scheduledTriggers', 'flows', 'looseElements',
     ...UI_PROJECTED_TYPES,
@@ -75,6 +75,12 @@ export function project(store: ModelStore): ModuxModel {
     entities: store.all('entities').map(entity),
     valueObjects: store.all('valueObjects').map((vo) => valueObject(vo, owner)),
     externalSystems: store.all('externalSystems').map(named),
+    systems: store.all('systems').map((s) => ({
+      id: s.id,
+      name: name(s),
+      parentSystemId: str(s.parentSystemId),
+    })),
+    cdcs: store.all('cdcs').map(named),
     services: store.all('services').map((s) => ({
       id: s.id,
       name: name(s),
@@ -111,6 +117,7 @@ export function project(store: ModelStore): ModuxModel {
       targetId: str(r.targetId) ?? '',
       type: str(r.type) ?? '',
       label: str(r.name),
+      nature: r.nature === 'intent' || r.nature === 'fact' ? r.nature : undefined,
     })),
     flows: store.all('flows').map((f) => flow(f, owner)).filter(isDrawable),
     ...projectUi(store),
@@ -166,7 +173,7 @@ function ownerIndex(store: ModelStore): OwnerIndex {
     }
   }
   // the other direction: elements that name their context themselves
-  for (const type of ['useCases', 'domainEvents', 'applicationEvents', 'domainServices', 'readModels',
+  for (const type of ['useCases', 'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices', 'readModels',
     'queryServices', 'projections', 'scheduledTriggers']) {
     for (const element of store.all(type)) {
       const declared = str(element.boundedContextId);
@@ -191,10 +198,12 @@ function boundedContext(store: ModelStore, bc: Element, owner: OwnerIndex): Boun
     id: bc.id,
     name: name(bc),
     subdomainType: bc.subdomainType as BoundedContextRef['subdomainType'],
+    parentSystemId: str(bc.parentSystemId),
     serviceId: service?.id,
     useCases: store.all('useCases').filter(owns).map(useCase),
     domainEvents: store.all('domainEvents').filter(owns).map(domainEvent),
     applicationEvents: store.all('applicationEvents').filter(owns).map(named) as ApplicationEventRef[],
+    integrationEvents: store.all('integrationEvents').filter(owns).map(named) as ApplicationEventRef[],
     domainServices: store.all('domainServices').filter(owns).map(named) as DomainServiceRef[],
     readModels: store.all('readModels').filter(owns).map((rm) => ({
       id: rm.id,

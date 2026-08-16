@@ -85,6 +85,9 @@ export async function flush(fs: FileSystem, root: string, store: ModelStore): Pr
   if (!changes.written.length && !changes.deleted.length) return changes;
 
   for (const { type, id } of changes.written) {
+    // Views are NOT catalog elements: a view is a self-contained document (its members + geometry
+    // live in `<slug>.modux-view.yaml`), so it never gets a `.modux/views/` file. See the IDE host.
+    if (type === 'views') continue;
     const element = store.get(type, id);
     if (element) await fs.write(join(root, pathOf(type, id)), toYaml(element));
   }

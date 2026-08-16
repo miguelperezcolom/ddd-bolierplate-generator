@@ -172,6 +172,12 @@ export interface SceneEdge {
    * than a relation the user drew — e.g. a proxy routing to an implementation.
    */
   faint?: boolean;
+  /**
+   * For ArchiMate relations: a real coupling (`fact`, generates/validates and rolls up) or a
+   * top-down sketch (`intent`, drawn high-level, no code weight). Classified structurally from the
+   * endpoints; used to reconcile sketches against the facts inferred below.
+   */
+  nature?: 'intent' | 'fact';
 }
 
 export interface Scene {

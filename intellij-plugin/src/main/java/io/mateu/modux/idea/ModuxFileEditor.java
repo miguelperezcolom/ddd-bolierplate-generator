@@ -11,8 +11,13 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.intellij.openapi.application.ApplicationManager;
+
 import javax.swing.JComponent;
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * The graphical model editor, opened on a model's {@code index.yaml}.
@@ -26,12 +31,26 @@ public final class ModuxFileEditor extends UserDataHolderBase implements FileEdi
     private final VirtualFile file;
     private final VirtualFile modelRoot;
     private final EditorBridge bridge;
+    private final List<PropertyChangeListener> listeners = new CopyOnWriteArrayList<>();
+    private volatile boolean modified;
 
     public ModuxFileEditor(Project project, VirtualFile file) {
         this.file = file;                                 // the view document
         this.modelRoot = ModuxProject.catalogRootFor(file);   // its catalog (.modux/), may be null
         this.bridge = new EditorBridge(project, modelRoot, file);
+        this.bridge.onModified(this::setModified);        // the webview drives the dirty state
         Disposer.register(this, bridge);
+    }
+
+    /** The webview says its buffer is (un)saved: reflect it so the tab marks modified and Ctrl+S/close prompt. */
+    private void setModified(boolean value) {
+        if (value == modified) return;
+        boolean old = modified;
+        modified = value;
+        ApplicationManager.getApplication().invokeLater(() -> {
+            var event = new PropertyChangeEvent(this, "modified", old, value);
+            for (var listener : listeners) listener.propertyChange(event);
+        });
     }
 
     @Override
@@ -71,8 +90,9 @@ public final class ModuxFileEditor extends UserDataHolderBase implements FileEdi
 
     @Override
     public boolean isModified() {
-        // edits are flushed to files as they happen; nothing is held unsaved in the editor
-        return false;
+        // the webview buffers edits until an explicit save; this drives the modified indicator,
+        // Ctrl+S (Save All), and the "save changes?" prompt on close
+        return modified;
     }
 
     @Override
@@ -81,10 +101,14 @@ public final class ModuxFileEditor extends UserDataHolderBase implements FileEdi
     }
 
     @Override
-    public void addPropertyChangeListener(@NotNull PropertyChangeListener listener) {}
+    public void addPropertyChangeListener(@NotNull PropertyChangeListener listener) {
+        listeners.add(listener);
+    }
 
     @Override
-    public void removePropertyChangeListener(@NotNull PropertyChangeListener listener) {}
+    public void removePropertyChangeListener(@NotNull PropertyChangeListener listener) {
+        listeners.remove(listener);
+    }
 
     @Override
     public <T> @Nullable T getUserData(@NotNull Key<T> key) {
@@ -92,7 +116,15 @@ public final class ModuxFileEditor extends UserDataHolderBase implements FileEdi
     }
 
     @Override
+    public void deselectNotify() {
+        // Safety net: switching away or closing the tab flushes unsaved work while the webview is
+        // still alive (the native "save on close" prompt does not fire for a non-Document editor).
+        bridge.saveIfDirty();
+    }
+
+    @Override
     public void dispose() {
-        // the bridge is registered as a child
+        // last-ditch flush before the webview goes; the bridge is a registered child, disposed after
+        bridge.saveIfDirty();
     }
 }

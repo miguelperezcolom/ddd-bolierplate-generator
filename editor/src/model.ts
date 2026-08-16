@@ -198,6 +198,8 @@ export interface BoundedContextRef {
   domainServices?: DomainServiceRef[];
   /** Application events owned by this bounded context (published by its use cases). */
   applicationEvents?: ApplicationEventRef[];
+  /** Integration events this context publishes ACROSS boundaries (for other systems to consume). */
+  integrationEvents?: ApplicationEventRef[];
   /** Query services owned by this bounded context. */
   queryServices?: QueryServiceRef[];
   /** Cron tasks owned by this bounded context. */
@@ -206,6 +208,8 @@ export interface BoundedContextRef {
   identityProviderId?: string;
   /** UI apps owned by this bounded context (the apps themselves live in model.uiApps). */
   uiAppIds?: string[];
+  /** The system that GROUPS this bounded context (C4: System Landscape → System → Container). */
+  parentSystemId?: string;
 }
 
 export interface ActorRef {
@@ -388,6 +392,27 @@ export interface ExternalSystemRef {
   referencedProject?: ReferencedProject;
   /** The external system this one lives inside (subsystem). */
   parentExternalSystemId?: string;
+}
+
+/**
+ * A system: OUR own grouping of bounded contexts (C4: System Landscape → System → Container).
+ * It has no behaviour of its own — it is the boundary that says "these contexts are one system".
+ */
+export interface SystemRef {
+  id: string;
+  name: string;
+  /** The system this one lives inside (nested systems). Optional; usually top-level. */
+  parentSystemId?: string;
+}
+
+/**
+ * A CDC (Change Data Capture) connector: streams changes from a source (a table, a system) to a
+ * target (a read model, a system, a context). A first-class integration node; its ends are drawn
+ * as relations from/to it.
+ */
+export interface CdcRef {
+  id: string;
+  name: string;
 }
 
 /** An external system calls one of our use cases in (INBOUND ACL). */
@@ -911,6 +936,10 @@ export interface ModuxModel {
   services?: ServiceRef[];
   boundedContexts: BoundedContextRef[];
   externalSystems: ExternalSystemRef[];
+  /** Systems: our own grouping of bounded contexts (C4 landscape → system → containers). */
+  systems?: SystemRef[];
+  /** CDC connectors: stream changes from a source to a target (data integration). */
+  cdcs?: CdcRef[];
   /** Sticky notes: free commentary pointing at elements (targetIds) and/or relations (edgeRefs). */
   notes?: NoteRef[];
   /** Areas: named rectangles that group elements geometrically and anchor notes. */
@@ -934,6 +963,11 @@ export interface ModuxModel {
     targetId: string;
     type: string;
     label?: string;
+    /**
+     * Escape hatch over the structural rule (see `relationNature`): force this relation to be a
+     * `fact` (real, generates) or `intent` (sketch, no code). Absent ⇒ the endpoints decide.
+     */
+    nature?: 'intent' | 'fact';
   }[];
   flows: FlowRef[];
   aggregates?: AggregateRef[];

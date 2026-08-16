@@ -17,6 +17,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <fileEditorProvider implementation="io.mateu.modux.idea.ModuxFileEditorProvider"/>
+        <fileEditorProvider implementation="io.mateu.modux.idea.DrawioFileEditorProvider"/>
     </extensions>
 
     <actions>

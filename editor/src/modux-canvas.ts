@@ -854,7 +854,9 @@ export class ModuxCanvas extends LitElement {
     const freeDrag = (ev: PointerEvent) =>
       ((ev.shiftKey || ev.ctrlKey) && (node.kind === 'api' || node.kind === 'proxy-api') && !group)
       // A top-level external system shift-drags INTO another one (subsystem) or out.
-      || (ev.shiftKey && node.kind === 'external-system' && !group);
+      || (ev.shiftKey && node.kind === 'external-system' && !group)
+      // A system nests into another system, and a context into a system, by shift-drag (or out).
+      || (ev.shiftKey && (node.kind === 'system' || node.kind === 'boundedContext') && !group);
     // Row nodes drag FREE, landing on explicit slots between their siblings: menu
     // entries travel across apps; wizard steps reorder inside their own wizard.
     const rowFamily = group
@@ -1691,8 +1693,11 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'use-case' ||
             node.kind === 'domain-event' ||
             node.kind === 'application-event' ||
+            node.kind === 'integration-event' ||
             node.kind === 'external-use-case' ||
             node.kind === 'external-system' ||
+            node.kind === 'system' ||
+            node.kind === 'boundedContext' ||
             node.kind === 'external-table' ||
             node.kind === 'api-operation' ||
             node.kind === 'api-op-occurrence' ||
@@ -1704,6 +1709,8 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'identity-provider' ||
             node.kind === 'etl-flow' ||
             node.kind === 'boundedContext' ||
+            node.kind === 'system' ||
+            node.kind === 'cdc' ||
             node.kind === 'ui' ||
             node.kind === 'ui-app' ||
             node.kind === 'external-system' ||
@@ -1723,6 +1730,7 @@ export class ModuxCanvas extends LitElement {
             node.kind === 'use-case' ||
             node.kind === 'domain-event' ||
             node.kind === 'application-event' ||
+            node.kind === 'integration-event' ||
             node.kind === 'read-model' ||
             node.kind === 'query-service' ||
             node.kind === 'scheduled-trigger' ||

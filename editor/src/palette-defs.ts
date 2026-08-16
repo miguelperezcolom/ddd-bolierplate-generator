@@ -15,6 +15,7 @@ export interface PaletteItem {
 }
 
 export const PALETTE_NEW: PaletteItem[] = [
+  { type: 'system', label: 'Sistema', symbol: 'component', color: '#475569', group: 'Estratégico' },
   { type: 'boundedContext', label: 'Contexto', symbol: 'component', color: '#94a3b8', group: 'Estratégico' },
   { type: 'actor', label: 'Actor', symbol: 'person', color: '#64748b', group: 'Estratégico' },
   { type: 'note', label: 'Nota', symbol: 'note', color: '#ca8a04', group: 'Estratégico' },
@@ -45,6 +46,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'policy', label: 'Policy', child: true, symbol: 'usecase', color: '#a855f7', group: 'Dominio' },
   { type: 'domain-event', label: 'Evento de dominio', child: true, symbol: 'event', color: '#f59e0b', group: 'Dominio' },
   { type: 'application-event', label: 'Evento de aplicación', child: true, symbol: 'event', color: '#eab308', group: 'Dominio' },
+  { type: 'integration-event', label: 'Evento de integración', child: true, symbol: 'event', color: '#e11d48', group: 'Dominio' },
   { type: 'read-model', label: 'Read model', child: true, symbol: 'readmodel', color: '#10b981', group: 'Dominio' },
   { type: 'domain-service', label: 'Servicio de dominio', child: true, symbol: 'gear', color: '#f43f5e', group: 'Dominio' },
   { type: 'query-service', label: 'Query service', child: true, symbol: 'lens', color: '#0284c7', group: 'Dominio' },
@@ -54,6 +56,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'api-operation', label: 'Operación de API', child: true, symbol: 'usecase', color: '#4f46e5', group: 'APIs' },
   { type: 'external-use-case', label: 'Operación externa', child: true, symbol: 'usecase', color: '#64748b', group: 'Sistema externo' },
   { type: 'external-table', label: 'Tabla externa', child: true, symbol: 'readmodel', color: '#a16207', group: 'Sistema externo' },
+  { type: 'cdc', label: 'CDC', symbol: 'flow', color: '#0891b2', group: 'Sistema externo' },
   { type: 'mcp-server', label: 'Servidor MCP', child: true, symbol: 'robot', color: '#9333ea', group: 'Sistema externo' },
   { type: 'service', label: 'Servicio (despliegue)', symbol: 'gear', color: '#334155', group: 'Distribución' },
   { type: 'module', label: 'Módulo', child: true, symbol: 'component', color: '#334155', group: 'Distribución' },

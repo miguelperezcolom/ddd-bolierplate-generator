@@ -33,6 +33,10 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       case 'invert-archimate-relation':
         // Its own inverse: swapping the ends back restores the direction.
         return [{ kind: 'invert-archimate-relation', id: c.id }];
+      case 'set-archimate-relation-nature': {
+        const rel = (host.model.archimateRelations ?? []).find((r) => r.id === c.id);
+        return rel ? [{ kind: 'set-archimate-relation-nature', id: c.id, nature: rel.nature ?? null }] : null;
+      }
       case 'add-relation':
         return [{ kind: 'remove-relation', sourceId: c.sourceId, targetId: c.targetId }];
       case 'remove-relation': {
@@ -546,6 +550,26 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
             }),
           ),
         ];
+      }
+      case 'add-system':
+        return [{ kind: 'remove-system', id: c.id }];
+      case 'remove-system': {
+        const s = (host.model.systems ?? []).find((x) => x.id === c.id);
+        return s ? [{ kind: 'add-system', id: s.id, name: s.name, ...(s.parentSystemId ? { parentSystemId: s.parentSystemId } : {}) }] : null;
+      }
+      case 'set-context-system': {
+        const m = host.model.boundedContexts.find((x) => x.id === c.id);
+        return m ? [{ kind: 'set-context-system', id: c.id, parentSystemId: m.parentSystemId ?? null }] : null;
+      }
+      case 'set-system-parent': {
+        const s = (host.model.systems ?? []).find((x) => x.id === c.id);
+        return s ? [{ kind: 'set-system-parent', id: c.id, parentSystemId: s.parentSystemId ?? null }] : null;
+      }
+      case 'add-cdc':
+        return [{ kind: 'remove-cdc', id: c.id }];
+      case 'remove-cdc': {
+        const cdc = (host.model.cdcs ?? []).find((x) => x.id === c.id);
+        return cdc ? [{ kind: 'add-cdc', id: cdc.id, name: cdc.name }] : null;
       }
       case 'add-aggregate':
         return [{ kind: 'remove-aggregate', id: c.id }];
@@ -1223,6 +1247,17 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
           const ev = (m.applicationEvents ?? []).find((x) => x.id === c.id);
           if (ev) {
             return [{ kind: 'add-application-event', id: ev.id, name: ev.name, boundedContextId: m.id }];
+          }
+        }
+        return null;
+      }
+      case 'add-integration-event':
+        return [{ kind: 'remove-integration-event', id: c.id }];
+      case 'remove-integration-event': {
+        for (const m of host.model.boundedContexts) {
+          const ev = (m.integrationEvents ?? []).find((x) => x.id === c.id);
+          if (ev) {
+            return [{ kind: 'add-integration-event', id: ev.id, name: ev.name, boundedContextId: m.id }];
           }
         }
         return null;

@@ -92,6 +92,56 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     store.remove('boundedContexts', id);
   },
 
+  // ---- systems (group bounded contexts, C4 landscape) --------------------
+
+  'add-system': add({
+    type: 'systems',
+    init: (c) => ({ parentSystemId: c.parentSystemId ?? null }),
+  }),
+
+  'remove-system': remove({
+    type: 'systems',
+    // a system does not leave while it still groups contexts (or nested systems) — detach first
+    guards: [
+      {
+        type: 'boundedContexts', field: 'parentSystemId',
+        message: (id) => `El sistema ${id} agrupa contextos; sácalos primero`,
+      },
+      {
+        type: 'systems', field: 'parentSystemId',
+        message: (id) => `El sistema ${id} contiene subsistemas; sácalos primero`,
+      },
+    ],
+  }),
+
+  // Put a bounded context inside a system (parentSystemId: null detaches it back to top level).
+  'set-context-system': setField({
+    type: 'boundedContexts',
+    field: 'parentSystemId',
+    from: 'parentSystemId',
+    map: (value, _command, store) => {
+      if (value && !store.has('systems', value)) {
+        throw new CommandError(`Sistema desconocido: ${value}`);
+      }
+      return value ?? null;
+    },
+  }),
+
+  'add-cdc': add({ type: 'cdcs' }),
+  'remove-cdc': remove({ type: 'cdcs' }),
+
+  // Nest a system inside another (parentSystemId: null detaches it). No self-parenting.
+  'set-system-parent': setField({
+    type: 'systems',
+    field: 'parentSystemId',
+    from: 'parentSystemId',
+    map: (value, command, store) => {
+      if (value && value === command.id) throw new CommandError('Un sistema no puede contenerse a sí mismo');
+      if (value && !store.has('systems', value)) throw new CommandError(`Sistema desconocido: ${value}`);
+      return value ?? null;
+    },
+  }),
+
   // ---- aggregates and their contents -------------------------------------
 
   'add-aggregate': add({
@@ -219,6 +269,11 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   'remove-domain-event': remove({ type: 'domainEvents' }),
   'add-application-event': add({ type: 'applicationEvents' }),
   'remove-application-event': remove({ type: 'applicationEvents' }),
+  'add-integration-event': add({
+    type: 'integrationEvents',
+    init: (c) => ({ boundedContextId: c.boundedContextId ?? null }),
+  }),
+  'remove-integration-event': remove({ type: 'integrationEvents' }),
   'add-domain-service': add({ type: 'domainServices' }),
   'remove-domain-service': remove({ type: 'domainServices' }),
   'add-read-model': add({ type: 'readModels', init: (c) => ({ aggregateId: c.aggregateId ?? null }) }),
@@ -270,11 +325,12 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
   'add-archimate-relation': add({
     type: 'archimateRelations',
-    init: (c) => ({ sourceId: c.sourceId, targetId: c.targetId, type: c.type }),
+    init: (c) => ({ sourceId: c.sourceId, targetId: c.targetId, type: c.type, nature: c.nature ?? null }),
   }),
 
   'remove-archimate-relation': remove({ type: 'archimateRelations' }),
   'set-archimate-relation-type': setField({ type: 'archimateRelations', field: 'type' }),
+  'set-archimate-relation-nature': setField({ type: 'archimateRelations', field: 'nature' }),
 
   'invert-archimate-relation': (store, command) => {
     const relation = store.get('archimateRelations', String(command.id));
@@ -352,8 +408,8 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */
 export const CORE_TYPES: string[] = [
-  'boundedContexts', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
-  'domainEvents', 'applicationEvents', 'domainServices', 'readModels', 'useCases',
+  'boundedContexts', 'systems', 'cdcs', 'aggregates', 'entities', 'valueObjects', 'models', 'modules', 'services',
+  'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices', 'readModels', 'useCases',
   'contextMapRelations', 'archimateRelations', 'notes', 'areas', 'urls',
 ];
 

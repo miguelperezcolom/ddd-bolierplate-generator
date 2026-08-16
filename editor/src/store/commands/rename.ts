@@ -25,6 +25,8 @@ interface Nested {
 
 const TOP_LEVEL: Record<string, TopLevel> = {
   'boundedContext': { type: 'boundedContexts' },
+  'system': { type: 'systems' },
+  'cdc': { type: 'cdcs' },
   // a note IS its text: it has nothing else to be called
   'note': { type: 'notes', field: 'text' },
   'url': { type: 'urls' },
@@ -43,6 +45,7 @@ const TOP_LEVEL: Record<string, TopLevel> = {
   'actor': { type: 'roles' },
   'external-system': { type: 'externalSystems' },
   'application-event': { type: 'applicationEvents' },
+  'integration-event': { type: 'integrationEvents' },
   'domain-service': { type: 'domainServices' },
   'query-service': { type: 'queryServices' },
   'read-model': { type: 'readModels' },
@@ -70,6 +73,13 @@ export const RENAME_COMMANDS: Record<string, Handler> = {
     const kind = String(command.type ?? '');
     if (!kind) throw new CommandError('rename-element: falta el tipo de elemento');
     const id = String(command.id);
+
+    // A not-yet-adopted (loose) element lives in the looseElements bucket, whatever its kind — rename
+    // it there so a read model / table / integration event dropped free-standing can be named.
+    if (store.has('looseElements', id)) {
+      store.patch('looseElements', id, { name: command.name });
+      return;
+    }
 
     const top = TOP_LEVEL[kind];
     if (top) {

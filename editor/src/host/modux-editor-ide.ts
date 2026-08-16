@@ -11,10 +11,10 @@ import { LitElement, css, html, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import type { ModuxModel } from '../model.js';
 import type { DiagramLayout, EditorLayout, ViewLayout } from '../scene.js';
-import { apply, CommandError } from '../store/apply.js';
+import { applyAll, CommandError } from '../store/apply.js';
 import { snapshotOf } from '../store/project-snapshot.js';
 import { project, unprojectedTypes } from '../store/project.js';
-import { ModelStore } from '../store/store.js';
+import { asList, ModelStore } from '../store/store.js';
 import { flush, loadTree } from '../store/tree.js';
 import {
   hostBridge, ideFileSystem, readOnlyFileSystem, resolveProject, readView, writeView,
@@ -22,10 +22,19 @@ import {
 } from './ide-fs.js';
 import '../modux-editor.js';
 
-/** The view document (§12): geometry over a catalog view, referenced by id. No type anymore. */
+/**
+ * The view document — now SELF-CONTAINED: it carries its own members and geometry, so a view is
+ * one file. There is no `.modux/views/` catalog entry anymore; copying the file gives a fully
+ * independent view, and renaming it is harmless. (Legacy docs without `memberIds` fall back to the
+ * old catalog entry once, then migrate on save.)
+ */
 interface ViewDoc {
   viewId?: string;
+  name?: string;
+  memberIds?: string[];
   geometry?: ViewLayout | DiagramLayout;
+  /** The lens the view opens in — so a C4 container view reopens in distribution, not unified. */
+  mode?: 'unified' | 'distribution' | 'eventstorming';
 }
 
 /**
@@ -59,7 +68,7 @@ export class ModuxEditorIde extends LitElement {
   @state() private error: string | null = null;
   @state() private notice: string | null = null;
   /** The lens + scope to open at, handed to the editor once the catalog is in. */
-  @state() private open: { activeViewId?: string } | null = null;
+  @state() private open: { activeViewId?: string; mode?: ViewDoc['mode'] } | null = null;
 
   private store = new ModelStore();
   private fs: IdeFileSystem | null = null;
@@ -71,11 +80,6 @@ export class ModuxEditorIde extends LitElement {
   /** Serializes edits: a command must land before the next one reads the store. */
   private chain: Promise<void> = Promise.resolve();
 
-  /**
-   * Dragging emits a position per frame. Writing each one would put a commit per pixel in the
-   * IDE's undo stack and a diff per pixel in git, so the geometry lands once the hand stops.
-   */
-  private layoutTimer: number | undefined;
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -96,9 +100,18 @@ export class ModuxEditorIde extends LitElement {
       this.doc = (parse(await readView(bridge)) as ViewDoc) ?? {};
       this.viewKey = layoutKeyFor(this.doc.viewId);
       this.store = await loadTree(this.fs, ROOT);
-      await this.ensureView();
+      this.seedView();
       this.layout = this.doc.geometry ? { [this.viewKey]: this.doc.geometry } : {};
-      this.open = { activeViewId: this.doc.viewId };
+      this.open = { activeViewId: this.doc.viewId, mode: this.doc.mode };
+      this.canvasMode = this.doc.mode;
+      // The IDE host calls these: Ctrl+S (native save), and Cmd/Ctrl+Z / Shift+Z (macOS IntelliJ
+      // grabs the undo keys before the webview, so the plugin re-dispatches them through here).
+      const w = window as unknown as { __moduxSave?: () => void; __moduxUndo?: () => void; __moduxRedo?: () => void };
+      const editorEl = () => this.renderRoot.querySelector('modux-editor') as
+        (Element & { hostUndo(): void; hostRedo(): void }) | null;
+      w.__moduxSave = this.boundSave;
+      w.__moduxUndo = () => editorEl()?.hostUndo();
+      w.__moduxRedo = () => editorEl()?.hostRedo();
       this.refresh();
       // the host has no other window into the webview: without this, a model that
       // loaded and one that never got here look the same from the IDE log
@@ -125,16 +138,20 @@ export class ModuxEditorIde extends LitElement {
   }
 
   /**
-   * A view opens scoped and empty, not showing the whole catalog: if the document names a view the
-   * catalog does not hold yet — as a freshly created `*.modux-view.yaml` does — create it as an
-   * empty curated entity (§12, born-empty). The user then fills it by adding members.
+   * Author the active view in memory FROM ITS DOCUMENT (the self-contained source of truth). It is
+   * never written to `.modux/views/` — flush skips views. A legacy doc without `memberIds` falls
+   * back to its old catalog entry (loaded from `.modux/views/`), then migrates to the doc on save.
    */
-  private async ensureView(): Promise<void> {
+  private seedView(): void {
     const id = this.doc.viewId;
-    if (!id || !this.fs || this.store.has('views', id)) return;
-    apply(this.store, { kind: 'add-view', id, name: id, memberIds: [] } as never);
-    await flush(this.fs, ROOT, this.store);
-    await this.fs.commit();
+    if (!id) return;
+    const legacy = asList(this.store.get('views', id)?.memberIds as string[] | undefined);
+    this.store.put('views', {
+      id,
+      name: this.doc.name ?? id,
+      kind: 'CURATED',
+      memberIds: this.doc.memberIds ?? legacy,
+    });
   }
 
   /**
@@ -146,8 +163,10 @@ export class ModuxEditorIde extends LitElement {
   private onCreateView(event: CustomEvent): void {
     const bridge = hostBridge();
     if (!bridge) return;
-    const { viewId, name } = event.detail as { viewId: string; name: string };
-    this.chain = this.chain.then(() => bridge({ op: 'createView', viewId, name }) as Promise<unknown>)
+    const { viewId, name, memberIds } = event.detail as { viewId: string; name: string; memberIds?: string[] };
+    // A view is self-contained: seed the new document with its members so the selection survives the
+    // hop to the freshly-opened file (there is no `.modux/views/` entry to read them back from).
+    this.chain = this.chain.then(() => bridge({ op: 'createView', viewId, name, memberIds: memberIds ?? [] }) as Promise<unknown>)
       .then(() => undefined);
   }
 
@@ -181,48 +200,105 @@ export class ModuxEditorIde extends LitElement {
    */
   private onLayoutChanged(event: CustomEvent): void {
     this.layout = event.detail.layout as EditorLayout;
-    window.clearTimeout(this.layoutTimer);
-    this.layoutTimer = window.setTimeout(() => this.flushLayout(), 400);
+    // Geometry now rides in the in-memory buffer; nothing hits disk until the user saves.
+    this.markDirty();
   }
 
-  private flushLayout(): void {
-    const bridge = hostBridge();
-    if (!bridge) return;
-    this.chain = this.chain.then(async () => {
-      try {
-        // One canvas, one geometry blob; a legacy `kind:` is dropped by rewriting only these keys.
-        this.doc = { viewId: this.doc.viewId, geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} } };
-        await writeView(bridge, stringify(this.doc));
-      } catch (e) {
-        this.error = `No se pudo guardar la geometría: ${message(e)}`;
-      }
-    });
+  /** The lens changed in the editor — remember it (persisted with the document on save). */
+  private onCanvasModeChanged(event: CustomEvent): void {
+    this.canvasMode = event.detail.mode as ViewDoc['mode'];
+    this.markDirty();
   }
 
-  /** Closing inside the debounce window must not lose the last drag. */
-  override disconnectedCallback(): void {
-    window.clearTimeout(this.layoutTimer);
-    this.flushLayout();
-    super.disconnectedCallback();
+  /** The lens the view is currently in, persisted with the document (undefined ⇒ unified). */
+  private canvasMode: ViewDoc['mode'];
+
+  /** Unsaved work lives in memory (the store + `ideFileSystem`'s write buffer) until save(). */
+  private dirty = false;
+  /** Debounced auto-save to disk — the safety net so work is never lost. Git stays manual. */
+  private autosaveTimer: number | undefined;
+
+  /** Mark dirty, tell the host (modified indicator), and arm the debounced auto-save. */
+  private markDirty(): void {
+    if (!this.dirty) {
+      this.dirty = true;
+      const bridge = hostBridge();
+      if (bridge) void bridge({ op: 'setModified', modified: true });
+    }
+    // Auto-save to disk shortly after edits settle; Ctrl+S still forces an immediate save. Only
+    // files are written — never git — so the user keeps full control of what gets committed.
+    window.clearTimeout(this.autosaveTimer);
+    this.autosaveTimer = window.setTimeout(() => void this.save(), 1500);
   }
 
   /**
-   * Apply, write, show. A failed command changes nothing: the applier rolls the
-   * store back before throwing, and nothing has reached disk yet.
+   * Save to disk: the buffered writes (commands + drags queued in `ideFileSystem`) plus the view
+   * document, flushed as one batch. Fired by the debounce, by Ctrl+S, and by the close safety net.
+   * Writes files only — git is left to the user.
+   */
+  private async save(): Promise<void> {
+    window.clearTimeout(this.autosaveTimer);
+    const bridge = hostBridge();
+    if (!this.fs || !bridge || !this.dirty) return;
+    await this.chain; // let any queued command land in the buffer first
+    try {
+      // The document is self-contained: its members (from the in-memory view) and geometry, plus
+      // the lens. Written as one file — no `.modux/views/` entry.
+      const id = this.doc.viewId;
+      const view = id ? this.store.get('views', id) : undefined;
+      this.doc = {
+        viewId: id,
+        ...(view?.name ? { name: String(view.name) } : {}),
+        memberIds: asList(view?.memberIds as string[] | undefined),
+        geometry: this.layout[this.viewKey] ?? { nodes: {}, edges: {} },
+        ...(this.canvasMode && this.canvasMode !== 'unified' ? { mode: this.canvasMode } : {}),
+      };
+      await writeView(bridge, stringify(this.doc));
+      // Migration: the members live in the doc now — drop the legacy `.modux/views/` entry if any.
+      if (id) {
+        const legacy = `views/${id}.yaml`;
+        if (await this.fs.exists(legacy)) await this.fs.delete(legacy);
+      }
+      await this.fs.commit();
+      this.dirty = false;
+      void bridge({ op: 'setModified', modified: false });
+    } catch (e) {
+      this.error = `No se pudo guardar: ${message(e)}`;
+    }
+  }
+
+  override disconnectedCallback(): void {
+    // Flush anything still pending before the element goes (the debounce may not have fired yet).
+    window.clearTimeout(this.autosaveTimer);
+    if (this.dirty) void this.save();
+    const w = window as unknown as { __moduxSave?: unknown; __moduxUndo?: unknown; __moduxRedo?: unknown };
+    if (w.__moduxSave === this.boundSave) {
+      delete w.__moduxSave;
+      delete w.__moduxUndo;
+      delete w.__moduxRedo;
+    }
+    super.disconnectedCallback();
+  }
+
+  /** Stable reference so the IDE host can call save() and disconnect can clear exactly it. */
+  private readonly boundSave = () => this.save();
+
+  /**
+   * Apply and buffer — do NOT touch disk. A failed command changes nothing: applyAll rolls the
+   * store back atomically, so the in-memory buffer of earlier (unsaved) work is preserved (we must
+   * not reload from disk, which is now behind the buffer).
    */
   private async run(command: unknown): Promise<void> {
     if (!this.fs) return;
     try {
       const enriched = await this.enrich(command as Record<string, unknown>);
-      apply(this.store, enriched as never);
-      await flush(this.fs, ROOT, this.store);
-      await this.fs.commit();
+      applyAll(this.store, [enriched as never]);
+      await flush(this.fs, ROOT, this.store); // queues the writes; commit happens on save()
       this.error = null;
       this.refresh();
+      this.markDirty();
     } catch (e) {
-      this.error = e instanceof CommandError ? e.message : `No se pudo guardar: ${message(e)}`;
-      // whatever was queued belongs to a command that did not land
-      await this.load();
+      this.error = e instanceof CommandError ? e.message : `No se pudo aplicar: ${message(e)}`;
     }
   }
 
@@ -240,6 +316,7 @@ export class ModuxEditorIde extends LitElement {
         .hosted=${true}
         @modux-command=${this.onCommand}
         @layout-changed=${this.onLayoutChanged}
+        @canvas-mode-changed=${this.onCanvasModeChanged}
         @create-view=${this.onCreateView}
       ></modux-editor>
     `;
