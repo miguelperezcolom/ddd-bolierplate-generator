@@ -8,9 +8,15 @@ export default defineConfig(({ command }) => ({
     command === 'build'
       ? {
           lib: {
-            entry: 'src/index.ts',
+            // Two hosts, one bundle: the modux canvas (index.ts) and the draw.io host (host.ts),
+            // which share the store/model code as split chunks. The plugin serves both from the
+            // same `/modux-editor` classpath.
+            entry: {
+              'modux-editor': 'src/index.ts',
+              'drawio-host': 'src/drawio/host.ts',
+            },
             formats: ['es'],
-            fileName: 'modux-editor',
+            fileName: (_format, entryName) => `${entryName}.js`,
           },
           outDir: 'dist',
         }
