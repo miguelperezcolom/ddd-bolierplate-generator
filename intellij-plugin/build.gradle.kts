@@ -147,4 +147,5 @@ tasks.named<JavaExec>("runIde") {
     // The sandbox opens throwaway projects; skip the "trust this project?" gate so a passed file
     // opens straight away instead of waiting behind a dialog.
     jvmArgs("-Didea.trust.all.projects=true")
+    jvmArgs("-Dide.browser.jcef.debug.port=9222")
 }
