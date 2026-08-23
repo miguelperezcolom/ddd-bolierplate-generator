@@ -26,7 +26,7 @@ modux mapea sus conceptos a figuras ArchiMate. Silueta + icono arriba-derecha.
 
 | Concepto modux | Figura ArchiMate | Silueta | Icono | Estado |
 |---|---|---|---|---|
-| Contexto / sistema | ApplicationComponent | rect + pestañas izq. | pestañas | 🟡 icono ✅, silueta como contenedor (rect) |
+| Contexto / sistema | ApplicationComponent | rect + pestañas izq. | pestañas | ✅ |
 | Agregado / Entidad | Business/Data Object | rect + línea de título | ▤ | ✅ |
 | Evento | Application/Business Event | muesca cóncava izq. + semicírculo der. | evento | ✅ |
 | Caso de uso | ApplicationFunction | chevron (punta arriba, muesca abajo) | función | ✅ |
@@ -46,7 +46,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 | Realization | punteada | — | triángulo hueco | ✅ |
 | Serving | sólida | — | flecha abierta | ✅ |
 | Access | punteada | — | flecha abierta | ✅ |
-| Influence | discontinua | — | flecha abierta + `+/-` | 🟡 falta signo `+/-` |
+| Influence | discontinua | — | flecha abierta + `±` | ✅ |
 | Triggering | sólida | — | flecha rellena | ✅ |
 | Flow | discontinua | — | flecha rellena | ✅ |
 | Specialization | sólida | — | triángulo hueco | ✅ |
@@ -89,7 +89,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 ### Paneles
 - ✅ Propiedades editables: Principal (nombre+doc), Apariencia (relleno color), Propiedades (clave-valor)
 - ✅ Árbol de modelo + sync bidireccional con lienzo
-- 🟡 Árbol por carpetas de capa · ⬜ búsqueda/filtro en árbol
+- 🟡 Árbol por carpetas de capa · ✅ búsqueda/filtro en árbol
 - ✅ Outline / minimapa
 
 ---

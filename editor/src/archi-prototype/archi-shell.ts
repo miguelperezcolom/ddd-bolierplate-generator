@@ -44,6 +44,8 @@ export class ArchiShell extends LitElement {
   @state() private selectedId: string | null = null;
   @state() private collapsed = new Set<string>();
   @state() private tab: 'main' | 'appearance' | 'properties' = 'main';
+  @state() private treeQuery = '';
+  private _vis: Set<string> | null = null;
 
   @state() private tool: Tool = { kind: 'select' };
   @state() private menu: { x: number; y: number; src: SceneNode; tgt: SceneNode; opts: RelOption[] } | null = null;
@@ -81,6 +83,7 @@ export class ArchiShell extends LitElement {
     .panel > .body { flex: 1; overflow: auto; }
 
     .tree { grid-area: tree; border-right: 1px solid #cbd5e1; }
+    .tree .treesearch { margin: 6px 8px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: 12px; }
     .row { display: flex; align-items: center; gap: 6px; padding: 3px 8px; cursor: pointer; white-space: nowrap; user-select: none; }
     .row:hover { background: #e7edf5; }
     .row.sel { background: #d6e4ff; box-shadow: inset 2px 0 0 #3b82f6; }
@@ -256,9 +259,24 @@ export class ArchiShell extends LitElement {
   private roots() { return this.scene.nodes.filter((n) => !n.parentId); }
   private childrenOf(id: string) { return this.scene.nodes.filter((n) => n.parentId === id); }
 
-  private renderTreeRow(node: SceneNode, child = false): TemplateResult {
+  /** Ids to show when searching: matches + their ancestors. null = no filter. */
+  private visibleTreeIds(): Set<string> | null {
+    const q = this.treeQuery.trim().toLowerCase();
+    if (!q) return null;
+    const ids = new Set<string>();
+    for (const n of this.scene.nodes) {
+      if (!n.label.toLowerCase().includes(q)) continue;
+      ids.add(n.id);
+      let p = n.parentId;
+      while (p) { ids.add(p); p = this.node(p)?.parentId; }
+    }
+    return ids;
+  }
+
+  private renderTreeRow(node: SceneNode, child = false): TemplateResult | typeof nothing {
+    if (this._vis && !this._vis.has(node.id)) return nothing;
     const kids = this.childrenOf(node.id);
-    const isCollapsed = this.collapsed.has(node.id);
+    const isCollapsed = this._vis ? false : this.collapsed.has(node.id);
     const sw = LAYER[kindLayer(node.kind)];
     return html`
       <div class="row ${child ? 'child' : ''} ${this.selectedId === node.id ? 'sel' : ''}" @click=${() => this.select(node.id)}>
@@ -359,6 +377,7 @@ export class ArchiShell extends LitElement {
   }
 
   render() {
+    this._vis = this.visibleTreeIds();
     const t = this.tool;
     const hint = t.kind === 'place' ? `Coloca «${t.el.label}» — click en el lienzo`
       : t.kind === 'connect' ? `${t.rel === null ? 'Conector mágico' : `Relación «${REL_NOTATION[t.rel]?.label ?? t.rel}»`} — click en origen y luego en destino`
@@ -372,7 +391,12 @@ export class ArchiShell extends LitElement {
         <button class=${t.kind === 'connect' && t.rel === null ? 'on' : ''} @click=${() => (this.tool = { kind: 'connect', rel: null })}>Conector mágico ✦</button>
       </div>
 
-      <div class="panel tree"><header>Modelo</header><div class="body">${this.roots().map((n) => this.renderTreeRow(n))}</div></div>
+      <div class="panel tree">
+        <header>Modelo</header>
+        <input class="treesearch" type="search" placeholder="Buscar…" .value=${this.treeQuery}
+          @input=${(e: Event) => (this.treeQuery = (e.target as HTMLInputElement).value)} />
+        <div class="body">${this.roots().map((n) => this.renderTreeRow(n))}</div>
+      </div>
 
       <div class="canvas-wrap">
         <modux-canvas archimate

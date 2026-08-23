@@ -1622,6 +1622,11 @@ export class ModuxCanvas extends LitElement {
               marker-end=${edge.markerEnd
                 ? `url(#${edge.markerEnd}-${this.markerId(color)})`
                 : edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}></path>
+        ${edge.kind === 'influence'
+          ? svg`<text x=${mid.x + 11} y=${mid.y + 4} text-anchor="middle" font-size="12" font-weight="700"
+                  fill=${color} paint-order="stroke" stroke="var(--modux-canvas-bg, #fafafa)" stroke-width="3"
+                  pointer-events="none">±</text>`
+          : ''}
         ${edge.label
           ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle"
                   style="cursor: pointer" pointer-events="all"
@@ -1889,7 +1894,13 @@ export class ModuxCanvas extends LitElement {
                   font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 22)}</text>`}
         ${isContainer
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
-                style="stroke: var(--modux-border, #e2e8f0)" stroke-width="1" pointer-events="none"></line>`
+                style=${`stroke: ${this.archimate ? nodeStroke : 'var(--modux-border, #e2e8f0)'}`} stroke-width="1" pointer-events="none"></line>`
+          : ''}
+        ${this.archimate && isContainer && node.kind === 'component'
+          ? svg`<g pointer-events="none" style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`} stroke-width="1">
+              <rect x=${-hw - 5} y=${-hh + 13} width="12" height="8"></rect>
+              <rect x=${-hw - 5} y=${-hh + 27} width="12" height="8"></rect>
+            </g>`
           : ''}
         ${selected && this.archimate
           ? [[-hw, -hh], [0, -hh], [hw, -hh], [hw, 0], [hw, hh], [0, hh], [-hw, hh], [-hw, 0]].map(
