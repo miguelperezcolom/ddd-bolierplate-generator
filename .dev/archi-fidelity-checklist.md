@@ -86,6 +86,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - ✅ Renombrar in-place con F2 (Enter confirma, Esc cancela)
 - ✅ Borrar con Supr/Backspace (nodo + sus aristas; contenedor + hijos)
 - ✅ Deshacer/Rehacer (Ctrl+Z / Ctrl+Y o Ctrl+Shift+Z) con historial de 60 pasos
+- ✅ Zoom (+/−/ajustar a ventana) y alineación (izq/centro/dcha, arriba/medio/abajo) sobre la selección primaria
 
 ### Selección
 - ✅ Asas de redimensión · ✅ marquee

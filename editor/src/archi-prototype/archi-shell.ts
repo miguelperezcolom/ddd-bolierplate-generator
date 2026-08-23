@@ -95,6 +95,12 @@ export class ArchiShell extends LitElement {
     .toolbar .spacer { flex: 1; }
     .toolbar button { font: inherit; border: 1px solid #cbd5e1; background: #fff; color: #334155; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
     .toolbar button.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .aligngrp { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; }
+    .aligngrp button { padding: 3px 7px; font-size: 14px; line-height: 1; }
+    .aligngrp .asep { width: 1px; height: 18px; background: #cbd5e1; margin: 0 4px; }
+    .zoombar { position: absolute; right: 12px; top: 12px; z-index: 6; display: flex; flex-direction: column; gap: 3px; }
+    .zoombar button { width: 30px; height: 28px; font-size: 15px; border: 1px solid #cbd5e1; background: rgba(255,255,255,.95); color: #334155; border-radius: 6px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    .zoombar button:hover { background: #f1f5f9; }
 
     .panel { background: #f7f8fa; border: 1px solid #d5dbe3; overflow: hidden; display: flex; flex-direction: column; }
     .panel > header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #64748b;
@@ -222,6 +228,22 @@ export class ArchiShell extends LitElement {
     this.commit();
     const m = new Map(moves.map((mv) => [mv.id, mv]));
     this.patchNodes((n) => (m.has(n.id) ? { ...n, x: m.get(n.id)!.x, y: m.get(n.id)!.y } : n));
+  }
+  /** Align the multi-selection to the primary selection's edge/centre (Archi's align tools). */
+  private align(mode: 'left' | 'centerH' | 'right' | 'top' | 'middleV' | 'bottom') {
+    const primary = this.node(this.selectedId);
+    if (!primary || this.selectedIds.length < 2) return;
+    const moves = this.selectedIds.map((id) => this.node(id)).filter((n): n is SceneNode => !!n).map((n) => {
+      let { x, y } = n;
+      if (mode === 'left') x = primary.x - primary.w / 2 + n.w / 2;
+      else if (mode === 'centerH') x = primary.x;
+      else if (mode === 'right') x = primary.x + primary.w / 2 - n.w / 2;
+      else if (mode === 'top') y = primary.y - primary.h / 2 + n.h / 2;
+      else if (mode === 'middleV') y = primary.y;
+      else if (mode === 'bottom') y = primary.y + primary.h / 2 - n.h / 2;
+      return { id: n.id, x, y };
+    });
+    this.moveNodes(moves);
   }
   private onNodeMoved = (e: Event) => this.moveNodes([(e as CustomEvent).detail]);
   private onNodesMoved = (e: Event) => this.moveNodes((e as CustomEvent).detail.moves);
@@ -550,6 +572,15 @@ export class ArchiShell extends LitElement {
       <div class="toolbar">
         <span class="brand">modux <small>· experimento UI estilo Archi</small></span>
         ${hint ? html`<span class="hint">${hint} · Esc cancela</span>` : nothing}
+        ${this.selectedIds.length >= 2 ? html`<span class="aligngrp">
+          <button title="Alinear izquierda" @click=${() => this.align('left')}>⇤</button>
+          <button title="Centrar horizontal" @click=${() => this.align('centerH')}>⇔</button>
+          <button title="Alinear derecha" @click=${() => this.align('right')}>⇥</button>
+          <span class="asep"></span>
+          <button title="Alinear arriba" @click=${() => this.align('top')}>⤒</button>
+          <button title="Centrar vertical" @click=${() => this.align('middleV')}>⇳</button>
+          <button title="Alinear abajo" @click=${() => this.align('bottom')}>⤓</button>
+        </span>` : nothing}
         <div class="spacer"></div>
         <button class=${t.kind === 'select' ? 'on' : ''} @click=${() => this.resetTool()}>Seleccionar</button>
         <button class=${t.kind === 'connect' && t.rel === null ? 'on' : ''} @click=${() => (this.tool = { kind: 'connect', rel: null })}>Conector mágico ✦</button>
@@ -585,6 +616,11 @@ export class ArchiShell extends LitElement {
           @connect-committed=${this.onCommitted}
           @connect-rejected=${this.onRejected}
           @connect-on-empty=${this.onConnectEmpty}></modux-canvas>
+        <div class="zoombar">
+          <button title="Acercar" @click=${() => this.canvasEl?.zoomBy(1.2)}>+</button>
+          <button title="Alejar" @click=${() => this.canvasEl?.zoomBy(0.8)}>−</button>
+          <button title="Ajustar a la ventana" @click=${() => this.canvasEl?.fit()}>⤢</button>
+        </div>
         <div class="legend">${Object.values(LAYER).map((l) => html`<span class="k"><span class="sw" style="background:${l.fill};border-color:${l.stroke}"></span>${l.name}</span>`)}</div>
       </div>
 
