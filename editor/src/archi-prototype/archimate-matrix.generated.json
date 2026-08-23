@@ -1,0 +1,202 @@
+{
+  "ApplicationComponent": {
+    "ApplicationComponent": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "realization",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "assignment",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "assignment",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "ApplicationEvent": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "ApplicationFunction": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "BusinessActor": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "BusinessObject": {
+    "ApplicationComponent": [
+      "association"
+    ],
+    "ApplicationEvent": [
+      "association"
+    ],
+    "ApplicationFunction": [
+      "association"
+    ],
+    "BusinessActor": [
+      "association"
+    ],
+    "BusinessObject": [
+      "composition",
+      "aggregation",
+      "association",
+      "specialization"
+    ],
+    "DataObject": [
+      "association"
+    ]
+  },
+  "DataObject": {
+    "ApplicationComponent": [
+      "association"
+    ],
+    "ApplicationEvent": [
+      "association"
+    ],
+    "ApplicationFunction": [
+      "association"
+    ],
+    "BusinessActor": [
+      "association"
+    ],
+    "BusinessObject": [
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "composition",
+      "aggregation",
+      "association",
+      "specialization"
+    ]
+  }
+}
