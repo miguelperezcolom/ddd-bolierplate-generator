@@ -47,6 +47,7 @@ type Tool =
 export class ArchiShell extends LitElement {
   @state() private scene: Scene = structuredClone(EXAMPLE_SCENE);
   @state() private selectedId: string | null = null;
+  @state() private selectedIds: string[] = [];
   @state() private collapsed = new Set<string>();
   @state() private tab: 'main' | 'appearance' | 'properties' = 'main';
   @state() private treeQuery = '';
@@ -147,7 +148,16 @@ export class ArchiShell extends LitElement {
   // ---- helpers -------------------------------------------------------------
   private node(id: string | null) { return this.scene.nodes.find((n) => n.id === id) ?? null; }
   private selectedNode() { return this.node(this.selectedId); }
-  private select(id: string | null) { this.selectedId = id; }
+  private select(id: string | null) { this.selectedId = id; this.selectedIds = id ? [id] : []; }
+  /** Ctrl/Cmd-click: add or remove from the selection; the clicked node becomes primary. */
+  private toggleSel(id: string) {
+    const has = this.selectedIds.includes(id);
+    this.selectedIds = has ? this.selectedIds.filter((x) => x !== id) : [...this.selectedIds, id];
+    this.selectedId = this.selectedIds.includes(id) ? id : (this.selectedIds[this.selectedIds.length - 1] ?? null);
+  }
+  private onMultiToggle = (e: Event) => this.toggleSel((e as CustomEvent).detail.id);
+  private onBoxed = (e: Event) => { const ids = (e as CustomEvent).detail.ids as string[]; this.selectedIds = ids; this.selectedId = ids[0] ?? null; };
+  private onSelCleared = () => { this.selectedIds = []; this.selectedId = null; };
   private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; }
   /** Select a palette tool; Shift-click makes it sticky (stays active after one use). */
   private pickTool(t: Tool, e: MouseEvent) { this.sticky = e.shiftKey; this.tool = t; this.menu = null; this.createMenu = null; }
@@ -285,7 +295,8 @@ export class ArchiShell extends LitElement {
     const isCollapsed = this._vis ? false : this.collapsed.has(node.id);
     const sw = LAYER[kindLayer(node.kind)];
     return html`
-      <div class="row ${child ? 'child' : ''} ${this.selectedId === node.id ? 'sel' : ''}" @click=${() => this.select(node.id)}>
+      <div class="row ${child ? 'child' : ''} ${this.selectedIds.includes(node.id) || this.selectedId === node.id ? 'sel' : ''}"
+           @click=${(e: MouseEvent) => (e.ctrlKey || e.metaKey ? this.toggleSel(node.id) : this.select(node.id))}>
         <span class="twisty" @click=${(ev: Event) => { ev.stopPropagation(); this.toggle(node.id); }}>${kids.length ? (isCollapsed ? '▶' : '▼') : ''}</span>
         <span class="swatch" style="background:${sw.fill};border-color:${sw.stroke}"></span>
         <span class="lbl">${node.label}</span>
@@ -412,9 +423,12 @@ export class ArchiShell extends LitElement {
 
       <div class="canvas-wrap">
         <modux-canvas archimate
-          .scene=${this.scene} .selectedId=${this.selectedId}
+          .scene=${this.scene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
           .tool=${this.canvasTool} .connectValidator=${this.validator}
           @element-selected=${this.onCanvasSelected}
+          @element-multi-toggled=${this.onMultiToggle}
+          @nodes-boxed=${this.onBoxed}
+          @selection-cleared=${this.onSelCleared}
           @place-requested=${this.onPlace}
           @connect-committed=${this.onCommitted}
           @connect-rejected=${this.onRejected}

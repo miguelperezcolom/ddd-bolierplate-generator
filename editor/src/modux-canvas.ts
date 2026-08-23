@@ -1906,7 +1906,7 @@ export class ModuxCanvas extends LitElement {
         ${selected && this.archimate
           ? [[-hw, -hh], [0, -hh], [hw, -hh], [hw, 0], [hw, hh], [0, hh], [-hw, hh], [-hw, 0]].map(
               ([cx, cy]) => svg`<rect x=${cx - 3.5} y=${cy - 3.5} width="7" height="7"
-                fill="#ffffff" stroke="#5C5C5C" stroke-width="1" pointer-events="none"></rect>`)
+                fill=${this.selectedId === node.id ? '#1e293b' : '#ffffff'} stroke="#5C5C5C" stroke-width="1" pointer-events="none"></rect>`)
           : ''}
         ${selected &&
         this.connectable &&
