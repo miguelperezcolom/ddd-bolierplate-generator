@@ -1504,6 +1504,43 @@ export class ModuxCanvas extends LitElement {
     return best.seg;
   }
 
+  /**
+   * Archi's bend-point creation handle: grabbing the hollow midpoint circle of
+   * segment `seg` births a bend once the pointer moves, then drags it. A plain
+   * click leaves the line straight (so the handle just previews where a bend goes).
+   */
+  private beginBendDrag(e: PointerEvent, edge: SceneEdge, seg: number): void {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const start = this.toScene(e);
+    let created = false;
+    const onMove = (ev: PointerEvent) => {
+      if ((ev.buttons & 1) === 0) { onUp(); return; }
+      const p = this.toScene(ev);
+      if (!created) {
+        if (Math.hypot(p.x - start.x, p.y - start.y) < 4 / this._t.k) return;
+        created = true;
+        this.focus();
+        const waypoints = [...(this.edgePoints[edge.id] ?? [])];
+        waypoints.splice(seg, 0, p);
+        this._selectedWaypoint = { edgeId: edge.id, index: seg };
+        this._wpDrag = { edgeId: edge.id, points: waypoints, index: seg };
+      } else if (this._wpDrag) {
+        const next = [...this._wpDrag.points];
+        next[seg] = p;
+        this._wpDrag = { ...this._wpDrag, points: next };
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (this._wpDrag && created) this.emit('edge-points-changed', { id: this._wpDrag.edgeId, points: this._wpDrag.points });
+      this._wpDrag = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
   /** Insert a new bend on `edge` at scene point `at`, selecting it. */
   private addWaypointAt(edge: SceneEdge, pts: Point[], at: Point): void {
     const seg = this.nearestSegment(pts, at);
@@ -1677,6 +1714,17 @@ export class ModuxCanvas extends LitElement {
                         }}>
                   <title>Arrastra para ajustar · Supr o doble click para quitar el punto</title>
                 </circle>`;
+            })
+          : ''}
+        ${selected && this.archimate
+          ? pts.slice(0, -1).map((_p, i) => {
+              const mx = (pts[i].x + pts[i + 1].x) / 2;
+              const my = (pts[i].y + pts[i + 1].y) / 2;
+              return svg`<circle data-bend-create cx=${mx} cy=${my} r="4.5"
+                  fill="var(--modux-canvas-bg, #ffffff)" stroke="#0000FF" stroke-width="1.4"
+                  pointer-events="all" style="cursor: crosshair"
+                  @pointerdown=${(e: PointerEvent) => this.beginBendDrag(e, edge, i)}>
+                  <title>Arrastra para crear un punto de ruptura</title></circle>`;
             })
           : ''}
       </g>

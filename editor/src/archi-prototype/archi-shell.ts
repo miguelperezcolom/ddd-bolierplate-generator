@@ -10,7 +10,7 @@ import { LitElement, html, css, nothing, svg, type TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import '../modux-canvas.js';
 import type { CanvasTool } from '../modux-canvas.js';
-import type { Scene, SceneNode, SceneEdge } from '../scene.js';
+import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
 
@@ -50,6 +50,7 @@ export class ArchiShell extends LitElement {
   @state() private scene: Scene = structuredClone(EXAMPLE_SCENE);
   @state() private selectedId: string | null = null;
   @state() private selectedIds: string[] = [];
+  @state() private edgePoints: Record<string, Point[]> = {};
   @state() private collapsed = new Set<string>();
   @state() private tab: 'main' | 'appearance' | 'properties' = 'main';
   @state() private treeQuery = '';
@@ -458,7 +459,9 @@ export class ArchiShell extends LitElement {
       <div class="canvas-wrap">
         <modux-canvas archimate
           .scene=${this.displayScene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
+          .edgePoints=${this.edgePoints}
           .tool=${this.canvasTool} .connectValidator=${this.validator}
+          @edge-points-changed=${(e: Event) => { const d = (e as CustomEvent).detail; this.edgePoints = { ...this.edgePoints, [d.id]: d.points }; }}
           @element-selected=${this.onCanvasSelected}
           @element-multi-toggled=${this.onMultiToggle}
           @nodes-boxed=${this.onBoxed}

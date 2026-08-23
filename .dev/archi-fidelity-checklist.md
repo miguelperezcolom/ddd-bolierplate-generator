@@ -73,7 +73,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 ### Conexiones
 - ✅ **Router por defecto**: líneas rectas (Manual), como Archi. [decidido]
 - ⬜ Selector de router por vista (Manual / Manhattan)
-- ✅ Bendpoints: añadir/mover/borrar; 🟡 asa "círculo hueco en el medio" (estilo exacto)
+- ✅ Bendpoints estilo Archi: círculo hueco en el medio → arrastrar crea el punto (sólido) y aparecen 2 huecos nuevos; mover; borrar-al-estirar
 - ✅ Snap de bendpoints a rejilla (Alt para liberar)
 
 ### Contenedores anidados + ARM
