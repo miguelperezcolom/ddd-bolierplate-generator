@@ -28,8 +28,10 @@ const ELEMENT_TOOLS: ElementTool[] = [
 
 /** Non-ArchiMate extras (Archi's Note/Group section of the palette). */
 const EXTRA_TOOLS: ElementTool[] = [
+  { kind: 'group', label: 'Grupo', layer: 'context', w: 240, h: 150, container: true },
   { kind: 'note', label: 'Nota', layer: 'event', w: 160, h: 64 },
 ];
+const EXTRA_SWATCH: Record<string, string> = { note: '#FEF9C3', group: '#e2e8f0' };
 
 function kindLayer(kind: string): LayerKey {
   if (kind === 'component' || kind === 'area' || kind === 'system') return 'context';
@@ -183,6 +185,20 @@ export class ArchiShell extends LitElement {
     return { kind: 'select' };
   }
 
+  /**
+   * ARM (Automatic Relationship Management): a relation between a container and its
+   * directly-nested child is implicit — the nesting already expresses it — so it's
+   * hidden on the canvas while kept in the model (still listed in the Relations folder).
+   */
+  private get displayScene(): Scene {
+    const nested = (e: SceneEdge) => {
+      const s = this.node(e.sourceId), t = this.node(e.targetId);
+      return !!s && !!t && (t.parentId === s.id || s.parentId === t.id);
+    };
+    const edges = this.scene.edges.filter((e) => !nested(e));
+    return edges.length === this.scene.edges.length ? this.scene : { ...this.scene, edges };
+  }
+
   private onCanvasSelected(e: Event) {
     const d = (e as CustomEvent).detail;
     if (d?.elementType === 'node') this.select(d.id);
@@ -241,10 +257,13 @@ export class ArchiShell extends LitElement {
 
   private addNodeAt(el: ElementTool, x: number, y: number): SceneNode {
     const lay = LAYER[el.layer];
+    const isGroup = el.kind === 'group';
     const n: SceneNode = {
       id: `${el.kind}-${++this.seq}`, label: el.label, kind: el.kind, symbol: ARCHIMATE_SYMBOL[el.kind] ?? el.kind,
-      x, y, w: el.w, h: el.h, fill: el.kind === 'note' ? '#FEF9C3' : lay.fill, stroke: lay.stroke,
+      x, y, w: el.w, h: el.h,
+      fill: el.kind === 'note' ? '#FEF9C3' : isGroup ? '#F8FAFC' : lay.fill, stroke: lay.stroke,
       ...(el.container ? { container: true, collapsible: true } : {}),
+      ...(isGroup ? { dashed: true } : {}),
     };
     this.scene = { ...this.scene, nodes: [...this.scene.nodes, n] };
     this.select(n.id);
@@ -302,7 +321,7 @@ export class ArchiShell extends LitElement {
     return html`
       ${layers.map((fk) => {
         const nodes = this.scene.nodes
-          .filter((n) => kindLayer(n.kind) === fk && n.kind !== 'junction')
+          .filter((n) => kindLayer(n.kind) === fk && !['junction', 'note', 'group'].includes(n.kind))
           .filter((n) => !q || n.label.toLowerCase().includes(q))
           .sort((a, b) => a.label.localeCompare(b.label));
         if (q && !nodes.length) return nothing;
@@ -351,7 +370,7 @@ export class ArchiShell extends LitElement {
       <div class="pgroup">Extras</div>
       ${EXTRA_TOOLS.map((el) => {
         const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}><span class="sw" style="background:#FEF9C3;border-color:#ca8a04"></span><span class="lbl">${el.label}</span></div>`;
+        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}><span class="sw" style="background:${EXTRA_SWATCH[el.kind] ?? '#e2e8f0'};border-color:#94a3b8"></span><span class="lbl">${el.label}</span></div>`;
       })}
     `;
   }
@@ -438,7 +457,7 @@ export class ArchiShell extends LitElement {
 
       <div class="canvas-wrap">
         <modux-canvas archimate
-          .scene=${this.scene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
+          .scene=${this.displayScene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
           .tool=${this.canvasTool} .connectValidator=${this.validator}
           @element-selected=${this.onCanvasSelected}
           @element-multi-toggled=${this.onMultiToggle}

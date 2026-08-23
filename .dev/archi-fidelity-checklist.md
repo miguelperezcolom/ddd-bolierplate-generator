@@ -59,7 +59,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - ✅ Magic connector primero, luego relaciones, luego elementos por grupo
 - ✅ Herramienta de selección
 - 🟡 Marquee (rubber-band existe; falta el modo que selecciona también conexiones)
-- ✅ Junction · ✅ Note · ⬜ Group/Legend · ⬜ Format painter
+- ✅ Junction · ✅ Note · ✅ Group · ⬜ Legend/Format painter
 - ✅ Colocar nodo: click o arrastrar-para-dimensionar
 - ✅ Tras dibujar vuelve a la flecha; ✅ Shift-click fija la herramienta
 
@@ -78,7 +78,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 
 ### Contenedores anidados + ARM
 - 🟡 Resaltado azul del contenedor al arrastrar dentro
-- ⬜ **ARM**: diálogo de relación válida al anidar (fwd + "(reverse)"), y ocultar la conexión al anidar
+- ✅ ARM (núcleo): la relación contenedor↔hijo anidado se oculta en el lienzo y sigue en el modelo/carpeta Relaciones · ⬜ diálogo al arrastrar-para-anidar (requiere gesto de reparent genérico en el motor)
 - ✅ Arrastrar hijo dentro/fuera del padre
 
 ### Selección
