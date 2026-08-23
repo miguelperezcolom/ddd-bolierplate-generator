@@ -81,6 +81,12 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - ✅ ARM (núcleo): la relación contenedor↔hijo anidado se oculta en el lienzo y sigue en el modelo/carpeta Relaciones · ⬜ diálogo al arrastrar-para-anidar (requiere gesto de reparent genérico en el motor)
 - ✅ Arrastrar hijo dentro/fuera del padre
 
+### Edición (bucle básico — ¡era el gran hueco!)
+- ✅ Mover nodos (persiste), mover en grupo, redimensionar, colapsar contenedores
+- ✅ Renombrar in-place con F2 (Enter confirma, Esc cancela)
+- ✅ Borrar con Supr/Backspace (nodo + sus aristas; contenedor + hijos)
+- ✅ Deshacer/Rehacer (Ctrl+Z / Ctrl+Y o Ctrl+Shift+Z) con historial de 60 pasos
+
 ### Selección
 - ✅ Asas de redimensión · ✅ marquee
 - ✅ Selección primaria (asas oscuras) para alineación

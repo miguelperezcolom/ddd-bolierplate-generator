@@ -70,7 +70,17 @@ export class ArchiShell extends LitElement {
 
   connectedCallback() { super.connectedCallback(); window.addEventListener('keydown', this.onKey); }
   disconnectedCallback() { super.disconnectedCallback(); window.removeEventListener('keydown', this.onKey); }
-  private onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') this.resetTool(); };
+  private onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') { this.resetTool(); return; }
+    const path = e.composedPath();
+    const tag = (path[0] as HTMLElement | undefined)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    // The canvas handles its own Del / Ctrl+Z while focused; only act when focus is elsewhere.
+    if (path.some((el) => (el as HTMLElement | undefined)?.tagName === 'MODUX-CANVAS')) return;
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); return; }
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); this.redo(); return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') { if (this.selectedIds.length || this.selectedId) { e.preventDefault(); this.deleteSelected(); } }
+  };
 
   static styles = css`
     :host { display: grid; grid-template-columns: 264px 1fr 232px; grid-template-rows: 40px 1fr 224px;
@@ -186,6 +196,62 @@ export class ArchiShell extends LitElement {
     return { kind: 'select' };
   }
 
+  // ---- editing loop: apply the canvas's mutations + undo/redo -------------
+  private history: { scene: Scene; edgePoints: Record<string, Point[]> }[] = [];
+  private future: { scene: Scene; edgePoints: Record<string, Point[]> }[] = [];
+  private snap() { return { scene: structuredClone(this.scene), edgePoints: structuredClone(this.edgePoints) }; }
+  /** Call before any model mutation so it can be undone. */
+  private commit() { this.history = [...this.history, this.snap()].slice(-60); this.future = []; }
+  private undo() {
+    const prev = this.history.at(-1); if (!prev) return;
+    this.future = [this.snap(), ...this.future];
+    this.history = this.history.slice(0, -1);
+    this.scene = prev.scene; this.edgePoints = prev.edgePoints;
+  }
+  private redo() {
+    const nxt = this.future[0]; if (!nxt) return;
+    this.history = [...this.history, this.snap()];
+    this.future = this.future.slice(1);
+    this.scene = nxt.scene; this.edgePoints = nxt.edgePoints;
+  }
+
+  private patchNodes(fn: (n: SceneNode) => SceneNode) { this.scene = { ...this.scene, nodes: this.scene.nodes.map(fn) }; }
+  private moveNodes(moves: { id: string; x: number; y: number }[]) {
+    this.commit();
+    const m = new Map(moves.map((mv) => [mv.id, mv]));
+    this.patchNodes((n) => (m.has(n.id) ? { ...n, x: m.get(n.id)!.x, y: m.get(n.id)!.y } : n));
+  }
+  private onNodeMoved = (e: Event) => this.moveNodes([(e as CustomEvent).detail]);
+  private onNodesMoved = (e: Event) => this.moveNodes((e as CustomEvent).detail.moves);
+  private onNodeResized = (e: Event) => {
+    const d = (e as CustomEvent).detail; this.commit();
+    this.patchNodes((n) => (n.id === d.id ? { ...n, x: d.x, y: d.y, w: d.w, h: d.h } : n));
+  };
+  private onNodeRenamed = (e: Event) => {
+    const d = (e as CustomEvent).detail; this.commit();
+    this.patchNodes((n) => (n.id === d.id ? { ...n, label: d.name } : n));
+  };
+  private onCollapseToggled = (e: Event) => {
+    const id = (e as CustomEvent).detail.id; this.commit();
+    this.patchNodes((n) => (n.id === id ? { ...n, collapsed: !n.collapsed } : n));
+  };
+  private removeElements(ids: string[], commit = true) {
+    if (commit) this.commit();
+    const set = new Set(ids);
+    const gone = new Set(this.scene.nodes.filter((n) => set.has(n.id) || (n.parentId && set.has(n.parentId))).map((n) => n.id));
+    const nodes = this.scene.nodes.filter((n) => !gone.has(n.id));
+    const edges = this.scene.edges.filter((ed) => !set.has(ed.id) && !gone.has(ed.sourceId) && !gone.has(ed.targetId));
+    this.scene = { ...this.scene, nodes, edges };
+    if (this.selectedId && (set.has(this.selectedId) || gone.has(this.selectedId))) this.selectedId = null;
+    this.selectedIds = this.selectedIds.filter((id) => !set.has(id) && !gone.has(id));
+  }
+  private onDeleteReq = (e: Event) => this.removeElements([(e as CustomEvent).detail.id]);
+  private onDeleteSel = (e: Event) => this.removeElements(((e as CustomEvent).detail.items as { id: string }[]).map((i) => i.id));
+  private deleteSelected() {
+    const ids = this.selectedIds.length ? this.selectedIds : this.selectedId ? [this.selectedId] : [];
+    if (ids.length) this.removeElements(ids);
+  }
+
   /**
    * ARM (Automatic Relationship Management): a relation between a container and its
    * directly-nested child is implicit — the nesting already expresses it — so it's
@@ -206,12 +272,12 @@ export class ArchiShell extends LitElement {
   }
 
   private rename(name: string) {
-    const n = this.selectedNode(); if (!n) return;
-    n.label = name; this.scene = { ...this.scene, nodes: [...this.scene.nodes] };
+    const id = this.selectedId; if (!id) return;
+    this.patchNodes((n) => (n.id === id ? { ...n, label: name } : n));
   }
   private setFill(v: string) {
-    const n = this.selectedNode(); if (!n) return;
-    n.fill = v; this.scene = { ...this.scene, nodes: [...this.scene.nodes] };
+    const id = this.selectedId; if (!id) return;
+    this.patchNodes((n) => (n.id === id ? { ...n, fill: v } : n));
   }
   private setDoc(v: string) { const n = this.selectedNode(); if (n) this.patchMeta(n.id, { doc: v }); }
   private addProp() { const n = this.selectedNode(); if (n) this.patchMeta(n.id, { props: [...this.metaOf(n.id).props, { k: '', v: '' }] }); }
@@ -230,6 +296,7 @@ export class ArchiShell extends LitElement {
     const el = ELEMENT_TOOLS.find((x) => x.kind === d.nodeKind)
       ?? EXTRA_TOOLS.find((x) => x.kind === d.nodeKind)
       ?? { kind: d.nodeKind, label: d.nodeKind, layer: 'domain', w: d.w, h: d.h } as ElementTool;
+    this.commit();
     this.addNodeAt(el, d.x, d.y);
     if (!this.sticky) this.tool = { kind: 'select' };
   };
@@ -242,7 +309,7 @@ export class ArchiShell extends LitElement {
       this.menu = { x: d.x, y: d.y, src, tgt, opts };
     } else {
       const dir = canDraw(d.rel, src.kind, tgt.kind);
-      if (dir) this.addEdge(d.rel, dir === 'forward' ? src : tgt, dir === 'forward' ? tgt : src);
+      if (dir) { this.commit(); this.addEdge(d.rel, dir === 'forward' ? src : tgt, dir === 'forward' ? tgt : src); }
     }
   };
   private onRejected = (e: Event) => {
@@ -280,6 +347,7 @@ export class ArchiShell extends LitElement {
   private pickFromMenu(o: RelOption) {
     if (!this.menu) return;
     const { src, tgt } = this.menu;
+    this.commit();
     this.addEdge(o.type, o.reverse ? tgt : src, o.reverse ? src : tgt);
     this.menu = null;
   }
@@ -289,6 +357,7 @@ export class ArchiShell extends LitElement {
   private pickCascade(el: ElementTool, o: RelOption | null) {
     if (!this.createMenu) return;
     const { src, sx, sy } = this.createMenu;
+    this.commit();
     const n = this.addNodeAt(el, sx, sy);
     if (o) this.addEdge(o.type, o.reverse ? n : src, o.reverse ? src : n);
     this.createMenu = null; this.createExpand = null;
@@ -461,11 +530,20 @@ export class ArchiShell extends LitElement {
           .scene=${this.displayScene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
           .edgePoints=${this.edgePoints}
           .tool=${this.canvasTool} .connectValidator=${this.validator}
-          @edge-points-changed=${(e: Event) => { const d = (e as CustomEvent).detail; this.edgePoints = { ...this.edgePoints, [d.id]: d.points }; }}
+          @edge-points-changed=${(e: Event) => { const d = (e as CustomEvent).detail; this.commit(); this.edgePoints = { ...this.edgePoints, [d.id]: d.points }; }}
           @element-selected=${this.onCanvasSelected}
           @element-multi-toggled=${this.onMultiToggle}
           @nodes-boxed=${this.onBoxed}
           @selection-cleared=${this.onSelCleared}
+          @node-moved=${this.onNodeMoved}
+          @nodes-moved=${this.onNodesMoved}
+          @node-resized=${this.onNodeResized}
+          @node-renamed=${this.onNodeRenamed}
+          @node-collapse-toggled=${this.onCollapseToggled}
+          @delete-requested=${this.onDeleteReq}
+          @delete-selection-requested=${this.onDeleteSel}
+          @undo-requested=${() => this.undo()}
+          @redo-requested=${() => this.redo()}
           @place-requested=${this.onPlace}
           @connect-committed=${this.onCommitted}
           @connect-rejected=${this.onRejected}
