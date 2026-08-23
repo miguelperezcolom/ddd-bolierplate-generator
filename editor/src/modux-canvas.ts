@@ -110,6 +110,20 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   component: svg`<rect x="3.5" y="0.5" width="8" height="11" rx="1"></rect>
     <rect x="0.5" y="2.5" width="6" height="2.6"></rect>
     <rect x="0.5" y="6.9" width="6" height="2.6"></rect>`,
+  // ArchiMate-accurate type icons (top-right badge), transcribed from Archi's figure source.
+  'am-component': svg`<rect x="3" y="1" width="8.5" height="10"></rect>
+    <rect x="0.5" y="2.8" width="4" height="2.4"></rect>
+    <rect x="0.5" y="6.8" width="4" height="2.4"></rect>`,
+  'am-object': svg`<rect x="0.8" y="1.5" width="10.4" height="9"></rect>
+    <line x1="0.8" y1="4" x2="11.2" y2="4"></line>`,
+  'am-event': svg`<path d="M2.5 2.5 H8.5 Q11 2.5 11 6 Q11 9.5 8.5 9.5 H2.5 Q4.3 6 2.5 2.5 Z"></path>`,
+  'am-function': svg`<path d="M1.5 11 V4 L6 1 L10.5 4 V11 L6 8.5 Z"></path>`,
+  'am-actor': svg`<circle cx="6" cy="2.6" r="1.8"></circle>
+    <line x1="6" y1="4.4" x2="6" y2="8.4"></line>
+    <line x1="2.6" y1="5.8" x2="9.4" y2="5.8"></line>
+    <line x1="6" y1="8.4" x2="3.4" y2="11.4"></line>
+    <line x1="6" y1="8.4" x2="8.6" y2="11.4"></line>`,
+  'am-service': svg`<rect x="0.8" y="3" width="10.4" height="6" rx="3"></rect>`,
   aggregate: svg`<path d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"></path>`,
   shield: svg`<path d="M6 0.5 L11 2.5 V6 C11 9 8.8 11 6 11.8 C3.2 11 1 9 1 6 V2.5 Z"></path>`,
   note: svg`<path d="M1.5 0.5 H10.5 V7.5 L7 11.5 H1.5 Z"></path><path d="M10.5 7.5 H7 V11.5"></path>`,
@@ -299,6 +313,9 @@ export class ModuxCanvas extends LitElement {
     }
     svg.main.placing {
       cursor: copy;
+    }
+    svg.main.forbidden {
+      cursor: not-allowed;
     }
     svg.main.panning {
       cursor: grab;
@@ -1288,6 +1305,14 @@ export class ModuxCanvas extends LitElement {
     return id ? this.scene.nodes.find((n) => n.id === id) : undefined;
   }
 
+  /** True while hovering an INVALID target during a connect gesture — drives the no-drop cursor. */
+  private toolForbidden(): boolean {
+    if (this.tool.kind !== 'connect' || !this._connectSource || !this._toolHover) return false;
+    const src = this.nodeById(this._connectSource), tgt = this.nodeById(this._toolHover);
+    if (!src || !tgt || tgt.id === src.id) return false;
+    return !!this.connectValidator && !this.connectValidator(src.kind, tgt.kind, this.tool.rel);
+  }
+
   /** A pointerdown landed on `node` while a place/connect tool is active. Returns true if handled. */
   private handleToolPointer(node: SceneNode, e: PointerEvent): boolean {
     if (this.tool.kind === 'place') {
@@ -1674,16 +1699,17 @@ export class ModuxCanvas extends LitElement {
     const { x, y } = this.nodePos(node);
     const selected = this.selectedId === node.id || this.selectedIds.includes(node.id);
     const hovered = this._hoverNodeId === node.id;
-    // Tool-mode target feedback: the chosen source is blue; the hovered node turns
-    // green (valid) or red (invalid) per the host's validator — the Archi "feel".
+    // Tool-mode target feedback. Archi highlights the source and any VALID hovered
+    // target in pure blue; an invalid target isn't highlighted (the cursor turns to
+    // "no-drop" instead). Off-notation mode keeps the green/red affordance.
+    const hl = this.archimate ? '#0000FF' : '#2563eb';
     let toolStroke: string | null = null;
     if (this.tool.kind === 'connect') {
-      if (node.id === this._connectSource) toolStroke = '#2563eb';
+      if (node.id === this._connectSource) toolStroke = hl;
       else if (node.id === this._toolHover) {
         const src = this.nodeById(this._connectSource);
-        if (!src) toolStroke = '#2563eb';
-        else toolStroke = !this.connectValidator || this.connectValidator(src.kind, node.kind, this.tool.rel)
-          ? '#16a34a' : '#dc2626';
+        const ok = !src || !this.connectValidator || this.connectValidator(src.kind, node.kind, this.tool.rel);
+        toolStroke = ok ? (this.archimate ? hl : '#16a34a') : (this.archimate ? null : '#dc2626');
       }
     }
     // Spotlight in effect and this node is outside the hovered neighbourhood.
@@ -1726,7 +1752,8 @@ export class ModuxCanvas extends LitElement {
                   : 'Modificado respecto al sistema'}</title>
               </rect>`
           : ''}
-        <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${isChild ? 6 : 10}
+        <rect x=${-hw} y=${-hh} width=${rw} height=${rh}
+              rx=${this.archimate ? (['event', 'usecase', 'service'].includes(node.kind) ? 11 : 2) : isChild ? 6 : 10}
               style=${'fill: ' +
                 (node.fill ??
                   (node.kind === 'note'
@@ -1735,9 +1762,11 @@ export class ModuxCanvas extends LitElement {
                 '; stroke: ' +
                 (toolStroke ??
                   (hovered || selected
-                    ? 'var(--modux-primary, #2563eb)'
-                    : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)')))}
-              stroke-width=${toolStroke ? 3 : selected || hovered ? 2.5 : 1.4}
+                    ? hl
+                    : this.archimate
+                      ? '#5C5C5C'
+                      : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)')))}
+              stroke-width=${toolStroke ? 2 : selected || hovered ? 2 : this.archimate ? 1 : 1.4}
               stroke-dasharray=${node.dashed ? '6 4' : ''}>
           ${tooltip ? svg`<title>${tooltip}</title>` : ''}
         </rect>
@@ -1806,14 +1835,21 @@ export class ModuxCanvas extends LitElement {
                   font-weight="700" font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${node.label}</text>`
               : node.kind === 'area'
                 ? '' // a bare rectangle: its name only shows as tooltip (F2 still edits it)
-                : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
-                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 16)}</text>`}
+                : svg`<text x="0" y=${this.archimate ? -hh + 17 : 4} text-anchor="middle"
+                  font-size=${this.archimate ? 12 : 13} font-weight=${this.archimate ? '400' : '600'}
+                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 22)}</text>`}
         ${isContainer
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
                 style="stroke: var(--modux-border, #e2e8f0)" stroke-width="1" pointer-events="none"></line>`
           : ''}
+        ${selected && this.archimate
+          ? [[-hw, -hh], [0, -hh], [hw, -hh], [hw, 0], [hw, hh], [0, hh], [-hw, hh], [-hw, 0]].map(
+              ([cx, cy]) => svg`<rect x=${cx - 3.5} y=${cy - 3.5} width="7" height="7"
+                fill="#ffffff" stroke="#5C5C5C" stroke-width="1" pointer-events="none"></rect>`)
+          : ''}
         ${selected &&
         this.connectable &&
+        !this.archimate &&
         (isChild
           ? node.kind === 'menu-item' ||
             node.kind === 'menu-group' ||
@@ -2131,7 +2167,7 @@ export class ModuxCanvas extends LitElement {
     });
     return html`
       <svg
-        class="main ${this._pendingLink || this.tool.kind === 'connect' ? 'linking' : ''} ${this.tool.kind === 'place' ? 'placing' : ''} ${this._spaceDown ? 'panning' : ''}"
+        class="main ${this._pendingLink || this.tool.kind === 'connect' ? 'linking' : ''} ${this.tool.kind === 'place' ? 'placing' : ''} ${this.toolForbidden() ? 'forbidden' : ''} ${this._spaceDown ? 'panning' : ''}"
         @pointermove=${(e: PointerEvent) => {
           if (this.tool.kind === 'connect') this._toolHover = this.nodeIdAt(e);
           else if (this.tool.kind === 'place') this._ghost = this.toScene(e);
@@ -2190,7 +2226,8 @@ export class ModuxCanvas extends LitElement {
           )}
         </defs>
         <g class="viewport" transform="translate(${this._t.x}, ${this._t.y}) scale(${this._t.k})">
-          <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
+          <rect x="-100000" y="-100000" width="200000" height="200000"
+                fill=${this.archimate ? '#ffffff' : 'url(#dots)'}
                 pointer-events="none"></rect>
           ${edgeHits}
           ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}

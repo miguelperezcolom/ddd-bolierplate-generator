@@ -11,7 +11,7 @@ import { customElement, state } from 'lit/decorators.js';
 import '../modux-canvas.js';
 import type { CanvasTool } from '../modux-canvas.js';
 import type { Scene, SceneNode, SceneEdge } from '../scene.js';
-import { EXAMPLE_SCENE, LAYER, type LayerKey } from './example-scene.js';
+import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
 
 interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; }
@@ -184,7 +184,7 @@ export class ArchiShell extends LitElement {
   private addNodeAt(el: ElementTool, x: number, y: number): SceneNode {
     const lay = LAYER[el.layer];
     const n: SceneNode = {
-      id: `${el.kind}-${++this.seq}`, label: el.label, kind: el.kind, symbol: el.kind,
+      id: `${el.kind}-${++this.seq}`, label: el.label, kind: el.kind, symbol: ARCHIMATE_SYMBOL[el.kind] ?? el.kind,
       x, y, w: el.w, h: el.h, fill: lay.fill, stroke: lay.stroke,
       ...(el.container ? { container: true, collapsible: true } : {}),
     };

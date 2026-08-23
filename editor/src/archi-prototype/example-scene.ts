@@ -44,12 +44,18 @@ export const TREE: TreeNode[] = [
   { id: 'actor-cliente', label: 'Cliente', symbol: 'person', layer: 'behavior' },
 ];
 
+/** modux concept kind → ArchiMate-accurate type icon (a `SYMBOLS` key in modux-canvas). */
+export const ARCHIMATE_SYMBOL: Record<string, string> = {
+  component: 'am-component', aggregate: 'am-object', entity: 'am-object',
+  event: 'am-event', usecase: 'am-function', person: 'am-actor',
+};
+
 const N = (
-  id: string, label: string, symbol: string, layer: LayerKey,
+  id: string, label: string, kind: string, layer: LayerKey,
   x: number, y: number, w: number, h: number,
   extra: Partial<Scene['nodes'][number]> = {},
 ) => ({
-  id, label, symbol, kind: symbol, x, y, w, h,
+  id, label, kind, symbol: ARCHIMATE_SYMBOL[kind] ?? kind, x, y, w, h,
   fill: LAYER[layer].fill, stroke: LAYER[layer].stroke, ...extra,
 });
 
