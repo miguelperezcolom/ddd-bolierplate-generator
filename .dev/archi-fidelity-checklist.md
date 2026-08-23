@@ -93,7 +93,8 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - ✅ Ctrl-click para añadir/quitar de la selección
 
 ### Paneles
-- ✅ Propiedades editables: Principal (nombre+doc), Apariencia (relleno color), Propiedades (clave-valor)
+- ✅ Propiedades editables de NODO y ARISTA: Principal (nombre/relación, origen→destino, doc), Apariencia, Propiedades (clave-valor)
+- ✅ Menú contextual (botón derecho): Renombrar (F2) / Borrar (Supr)
 - ✅ Árbol de modelo + sync bidireccional con lienzo
 - ✅ Árbol por carpetas de capa + carpeta Relaciones · ✅ búsqueda/filtro
 - ✅ Outline / minimapa

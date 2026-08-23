@@ -9,7 +9,7 @@
 import { LitElement, html, css, nothing, svg, type TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import '../modux-canvas.js';
-import type { CanvasTool } from '../modux-canvas.js';
+import type { CanvasTool, ModuxCanvas } from '../modux-canvas.js';
 import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
@@ -60,6 +60,7 @@ export class ArchiShell extends LitElement {
   @state() private createMenu: { x: number; y: number; src: SceneNode; sx: number; sy: number } | null = null;
   @state() private createExpand: string | null = null;
   @state() private toast: string | null = null;
+  @state() private ctx: { x: number; y: number; id: string; isEdge: boolean } | null = null;
   /** Side store for editable properties the SceneNode type doesn't carry (docs, key-value props). */
   @state() private meta: Record<string, { doc: string; props: { k: string; v: string }[] }> = {};
   /** Sticky palette tool (Shift-click keeps the tool selected after use, like Archi). */
@@ -148,6 +149,7 @@ export class ArchiShell extends LitElement {
     .proprow input { font: inherit; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; }
     .proprow .del { border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; color: #64748b; }
     .addprop { align-self: start; font: inherit; font-size: 12px; border: 1px dashed #94a3b8; background: none; color: #2563eb; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+    .ctxback { position: fixed; inset: 0; z-index: 59; }
     .menu .mi.sub { padding-left: 8px; color: #475569; }
     .menu .subl { display: inline-flex; align-items: center; gap: 6px; margin-left: 18px; }
 
@@ -164,7 +166,7 @@ export class ArchiShell extends LitElement {
   // ---- helpers -------------------------------------------------------------
   private node(id: string | null) { return this.scene.nodes.find((n) => n.id === id) ?? null; }
   private selectedNode() { return this.node(this.selectedId); }
-  private select(id: string | null) { this.selectedId = id; this.selectedIds = id ? [id] : []; }
+  private select(id: string | null) { this.selectedId = id; this.selectedIds = id ? [id] : []; this.ctx = null; }
   /** Ctrl/Cmd-click: add or remove from the selection; the clicked node becomes primary. */
   private toggleSel(id: string) {
     const has = this.selectedIds.includes(id);
@@ -174,7 +176,7 @@ export class ArchiShell extends LitElement {
   private onMultiToggle = (e: Event) => this.toggleSel((e as CustomEvent).detail.id);
   private onBoxed = (e: Event) => { const ids = (e as CustomEvent).detail.ids as string[]; this.selectedIds = ids; this.selectedId = ids[0] ?? null; };
   private onSelCleared = () => { this.selectedIds = []; this.selectedId = null; };
-  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; }
+  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; this.ctx = null; }
   /** Select a palette tool; Shift-click makes it sticky (stays active after one use). */
   private pickTool(t: Tool, e: MouseEvent) { this.sticky = e.shiftKey; this.tool = t; this.menu = null; this.createMenu = null; }
   private metaOf(id: string) { return this.meta[id] ?? { doc: '', props: [] }; }
@@ -252,6 +254,22 @@ export class ArchiShell extends LitElement {
     if (ids.length) this.removeElements(ids);
   }
 
+  private get canvasEl() { return this.renderRoot.querySelector('modux-canvas') as ModuxCanvas | null; }
+  private onContextMenu = (e: MouseEvent) => {
+    const id = this.canvasEl?.nodeIdAtClient(e.clientX, e.clientY);
+    if (!id) { this.ctx = null; return; }
+    e.preventDefault();
+    this.select(id);
+    this.ctx = { x: e.clientX, y: e.clientY, id, isEdge: false };
+  };
+  private ctxRename() {
+    const id = this.ctx?.id; this.ctx = null; if (!id) return;
+    this.select(id);
+    const c = this.canvasEl; c?.focus();
+    requestAnimationFrame(() => c?.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true, composed: true })));
+  }
+  private ctxDelete() { const id = this.ctx?.id; this.ctx = null; if (id) this.removeElements([id]); }
+
   /**
    * ARM (Automatic Relationship Management): a relation between a container and its
    * directly-nested child is implicit — the nesting already expresses it — so it's
@@ -279,15 +297,37 @@ export class ArchiShell extends LitElement {
     const id = this.selectedId; if (!id) return;
     this.patchNodes((n) => (n.id === id ? { ...n, fill: v } : n));
   }
-  private setDoc(v: string) { const n = this.selectedNode(); if (n) this.patchMeta(n.id, { doc: v }); }
-  private addProp() { const n = this.selectedNode(); if (n) this.patchMeta(n.id, { props: [...this.metaOf(n.id).props, { k: '', v: '' }] }); }
+  private selectedEdge() { return this.scene.edges.find((e) => e.id === this.selectedId) ?? null; }
+  private setDoc(v: string) { const id = this.selectedId; if (id) this.patchMeta(id, { doc: v }); }
+  private addProp() { const id = this.selectedId; if (id) this.patchMeta(id, { props: [...this.metaOf(id).props, { k: '', v: '' }] }); }
   private setProp(i: number, field: 'k' | 'v', v: string) {
-    const n = this.selectedNode(); if (!n) return;
-    this.patchMeta(n.id, { props: this.metaOf(n.id).props.map((p, j) => (j === i ? { ...p, [field]: v } : p)) });
+    const id = this.selectedId; if (!id) return;
+    this.patchMeta(id, { props: this.metaOf(id).props.map((p, j) => (j === i ? { ...p, [field]: v } : p)) });
   }
   private removeProp(i: number) {
-    const n = this.selectedNode(); if (!n) return;
-    this.patchMeta(n.id, { props: this.metaOf(n.id).props.filter((_, j) => j !== i) });
+    const id = this.selectedId; if (!id) return;
+    this.patchMeta(id, { props: this.metaOf(id).props.filter((_, j) => j !== i) });
+  }
+  private renderPropsTable() {
+    const id = this.selectedId; const m = id ? this.metaOf(id) : { props: [] };
+    return html`<div class="proptable">
+      ${m.props.map((p, i) => html`<div class="proprow">
+        <input placeholder="clave" .value=${p.k} @input=${(e: Event) => this.setProp(i, 'k', (e.target as HTMLInputElement).value)} />
+        <input placeholder="valor" .value=${p.v} @input=${(e: Event) => this.setProp(i, 'v', (e.target as HTMLInputElement).value)} />
+        <button class="del" @click=${() => this.removeProp(i)}>✕</button></div>`)}
+      <button class="addprop" @click=${() => this.addProp()}>+ Añadir propiedad</button></div>`;
+  }
+  private renderEdgeProps(edge: SceneEdge) {
+    const s = this.node(edge.sourceId), t = this.node(edge.targetId), m = this.metaOf(edge.id);
+    if (this.tab === 'properties') return this.renderPropsTable();
+    if (this.tab === 'appearance')
+      return html`<div class="form"><label>Tipo de línea</label><div class="ro">${(REL_NOTATION[edge.kind]?.dashed ? 'discontinua' : 'sólida')}</div>
+        <label>Color</label><div class="ro">#5C5C5C (notación ArchiMate)</div></div>`;
+    return html`<div class="form">
+      <label>Relación</label><div class="ro">${REL_NOTATION[edge.kind]?.label ?? edge.kind}</div>
+      <label>Origen</label><div class="ro">${s?.label ?? '—'}</div>
+      <label>Destino</label><div class="ro">${t?.label ?? '—'}</div>
+      <label>Documentación</label><textarea placeholder="Descripción de la relación…" .value=${m.doc} @input=${(e: Event) => this.setDoc((e.target as HTMLTextAreaElement).value)}></textarea></div>`;
   }
 
   // ---- canvas tool events --------------------------------------------------
@@ -448,7 +488,11 @@ export class ArchiShell extends LitElement {
   // ---- properties ----------------------------------------------------------
   private renderProps() {
     const n = this.selectedNode();
-    if (!n) return html`<div class="empty">Selecciona un elemento en el árbol o el lienzo.</div>`;
+    if (!n) {
+      const edge = this.selectedEdge();
+      if (edge) return this.renderEdgeProps(edge);
+      return html`<div class="empty">Selecciona un elemento en el árbol o el lienzo.</div>`;
+    }
     const layer = LAYER[kindLayer(n.kind)];
     const m = this.metaOf(n.id);
     if (this.tab === 'appearance')
@@ -457,14 +501,7 @@ export class ArchiShell extends LitElement {
         <span class="colorrow"><input type="color" .value=${n.fill ?? '#ffffff'} @input=${(e: Event) => this.setFill((e.target as HTMLInputElement).value)} /><span class="ro">${n.fill}</span></span>
         <label>Borde</label><div class="ro">#5C5C5C (notación ArchiMate)</div>
         <label>Capa</label><div class="ro">${layer.name}</div></div>`;
-    if (this.tab === 'properties')
-      return html`<div class="proptable">
-        ${m.props.map((p, i) => html`<div class="proprow">
-          <input placeholder="clave" .value=${p.k} @input=${(e: Event) => this.setProp(i, 'k', (e.target as HTMLInputElement).value)} />
-          <input placeholder="valor" .value=${p.v} @input=${(e: Event) => this.setProp(i, 'v', (e.target as HTMLInputElement).value)} />
-          <button class="del" @click=${() => this.removeProp(i)}>✕</button></div>`)}
-        <button class="addprop" @click=${() => this.addProp()}>+ Añadir propiedad</button>
-      </div>`;
+    if (this.tab === 'properties') return this.renderPropsTable();
     return html`<div class="form">
       <label>Nombre</label><input .value=${n.label} @input=${(e: Event) => this.rename((e.target as HTMLInputElement).value)} />
       <label>Tipo</label><div class="ro">${n.kind}</div>
@@ -525,7 +562,7 @@ export class ArchiShell extends LitElement {
         <div class="body">${this.renderTree()}</div>
       </div>
 
-      <div class="canvas-wrap">
+      <div class="canvas-wrap" @contextmenu=${this.onContextMenu}>
         <modux-canvas archimate
           .scene=${this.displayScene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
           .edgePoints=${this.edgePoints}
@@ -560,6 +597,12 @@ export class ArchiShell extends LitElement {
       </div>
 
       ${this.renderMenu()}${this.renderCreateMenu()}
+      ${this.ctx ? html`
+        <div class="ctxback" @pointerdown=${() => (this.ctx = null)} @contextmenu=${(e: Event) => e.preventDefault()}></div>
+        <div class="menu" style="left:${this.ctx.x}px;top:${this.ctx.y}px">
+          <div class="mi" @click=${() => this.ctxRename()}>Renombrar <span class="rev">F2</span></div>
+          <div class="mi" @click=${() => this.ctxDelete()}>Borrar <span class="rev">Supr</span></div>
+        </div>` : nothing}
       ${this.toast ? html`<div class="toast">${this.toast}</div>` : nothing}
     `;
   }
