@@ -26,6 +26,11 @@ const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16 },
 ];
 
+/** Non-ArchiMate extras (Archi's Note/Group section of the palette). */
+const EXTRA_TOOLS: ElementTool[] = [
+  { kind: 'note', label: 'Nota', layer: 'event', w: 160, h: 64 },
+];
+
 function kindLayer(kind: string): LayerKey {
   if (kind === 'component' || kind === 'area' || kind === 'system') return 'context';
   if (kind === 'event') return 'event';
@@ -193,6 +198,7 @@ export class ArchiShell extends LitElement {
   private onPlace = (e: Event) => {
     const d = (e as CustomEvent).detail as { nodeKind: string; w: number; h: number; x: number; y: number };
     const el = ELEMENT_TOOLS.find((x) => x.kind === d.nodeKind)
+      ?? EXTRA_TOOLS.find((x) => x.kind === d.nodeKind)
       ?? { kind: d.nodeKind, label: d.nodeKind, layer: 'domain', w: d.w, h: d.h } as ElementTool;
     this.addNodeAt(el, d.x, d.y);
     if (!this.sticky) this.tool = { kind: 'select' };
@@ -224,7 +230,7 @@ export class ArchiShell extends LitElement {
     const lay = LAYER[el.layer];
     const n: SceneNode = {
       id: `${el.kind}-${++this.seq}`, label: el.label, kind: el.kind, symbol: ARCHIMATE_SYMBOL[el.kind] ?? el.kind,
-      x, y, w: el.w, h: el.h, fill: lay.fill, stroke: lay.stroke,
+      x, y, w: el.w, h: el.h, fill: el.kind === 'note' ? '#FEF9C3' : lay.fill, stroke: lay.stroke,
       ...(el.container ? { container: true, collapsible: true } : {}),
     };
     this.scene = { ...this.scene, nodes: [...this.scene.nodes, n] };
@@ -313,6 +319,12 @@ export class ArchiShell extends LitElement {
         const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
         const sw = LAYER[el.layer];
         return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}><span class="sw" style="background:${sw.fill};border-color:${sw.stroke}"></span><span class="lbl">${el.label}</span></div>`;
+      })}
+
+      <div class="pgroup">Extras</div>
+      ${EXTRA_TOOLS.map((el) => {
+        const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
+        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}><span class="sw" style="background:#FEF9C3;border-color:#ca8a04"></span><span class="lbl">${el.label}</span></div>`;
       })}
     `;
   }

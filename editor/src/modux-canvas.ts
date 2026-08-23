@@ -282,6 +282,7 @@ export class ModuxCanvas extends LitElement {
   @state() private _connectSource: string | null = null;
   @state() private _toolHover: string | null = null;
   @state() private _ghost: { x: number; y: number } | null = null;
+  @state() private _placeDrag: { x0: number; y0: number; x1: number; y1: number } | null = null;
   private _connectMove?: (ev: PointerEvent) => void;
 
   private _zoomBehavior?: ZoomBehavior<SVGSVGElement, unknown>;
@@ -2240,8 +2241,29 @@ export class ModuxCanvas extends LitElement {
           // no button actually held — it must not start a gesture that never ends.
           if ((e.buttons & 1) === 0) return;
           if (this.tool.kind === 'place') {
-            const p = this.toScene(e);
-            this.emit('place-requested', { nodeKind: this.tool.nodeKind, w: this.tool.w, h: this.tool.h, x: snapValue(p.x), y: snapValue(p.y) });
+            // Click drops at default size; drag defines the box size (Archi's gesture).
+            const { nodeKind, w: dw, h: dh } = this.tool;
+            const s = this.toScene(e);
+            this._placeDrag = { x0: s.x, y0: s.y, x1: s.x, y1: s.y };
+            const onMove = (ev: PointerEvent) => {
+              const q = this.toScene(ev);
+              if (this._placeDrag) this._placeDrag = { ...this._placeDrag, x1: q.x, y1: q.y };
+            };
+            const onUp = () => {
+              window.removeEventListener('pointermove', onMove);
+              window.removeEventListener('pointerup', onUp);
+              const d = this._placeDrag;
+              this._placeDrag = null;
+              if (!d) return;
+              const w = Math.abs(d.x1 - d.x0), h = Math.abs(d.y1 - d.y0);
+              if (w > 12 && h > 12) {
+                this.emit('place-requested', { nodeKind, w: Math.round(w), h: Math.round(h), x: snapValue((d.x0 + d.x1) / 2), y: snapValue((d.y0 + d.y1) / 2) });
+              } else {
+                this.emit('place-requested', { nodeKind, w: dw, h: dh, x: snapValue(d.x0), y: snapValue(d.y0) });
+              }
+            };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
             return;
           }
           if (this.tool.kind === 'connect') {
@@ -2293,7 +2315,11 @@ export class ModuxCanvas extends LitElement {
           ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
           ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
           ${edgeInks}
-          ${this.tool.kind === 'place' && this._ghost
+          ${this.tool.kind === 'place' && this._placeDrag
+            ? svg`<rect x=${Math.min(this._placeDrag.x0, this._placeDrag.x1)} y=${Math.min(this._placeDrag.y0, this._placeDrag.y1)}
+                    width=${Math.abs(this._placeDrag.x1 - this._placeDrag.x0)} height=${Math.abs(this._placeDrag.y1 - this._placeDrag.y0)}
+                    rx="2" pointer-events="none" fill="rgba(37,99,235,0.08)" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="6 4"></rect>`
+            : this.tool.kind === 'place' && this._ghost
             ? svg`<rect x=${this._ghost.x - this.tool.w / 2} y=${this._ghost.y - this.tool.h / 2}
                     width=${this.tool.w} height=${this.tool.h} rx="10" pointer-events="none"
                     fill="rgba(37,99,235,0.08)" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="6 4"></rect>`

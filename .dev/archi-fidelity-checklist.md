@@ -59,8 +59,8 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - ✅ Magic connector primero, luego relaciones, luego elementos por grupo
 - ✅ Herramienta de selección
 - 🟡 Marquee (rubber-band existe; falta el modo que selecciona también conexiones)
-- ⬜ Junction · ⬜ Note/Group/Legend · ⬜ Format painter
-- ✅ Colocar nodo: click; ⬜ arrastrar-para-dimensionar
+- ✅ Junction · ✅ Note · ⬜ Group/Legend · ⬜ Format painter
+- ✅ Colocar nodo: click o arrastrar-para-dimensionar
 - ✅ Tras dibujar vuelve a la flecha; ✅ Shift-click fija la herramienta
 
 ### Magic connector  (✅ núcleo)
