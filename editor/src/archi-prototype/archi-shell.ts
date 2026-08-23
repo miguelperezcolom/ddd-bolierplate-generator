@@ -76,6 +76,9 @@ export class ArchiShell extends LitElement {
     const path = e.composedPath();
     const tag = (path[0] as HTMLElement | undefined)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    // Copy/paste: the canvas doesn't handle these, so act regardless of focus.
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) { this.copy(); return; }
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); this.paste(); return; }
     // The canvas handles its own Del / Ctrl+Z while focused; only act when focus is elsewhere.
     if (path.some((el) => (el as HTMLElement | undefined)?.tagName === 'MODUX-CANVAS')) return;
     if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); return; }
@@ -274,6 +277,31 @@ export class ArchiShell extends LitElement {
   private deleteSelected() {
     const ids = this.selectedIds.length ? this.selectedIds : this.selectedId ? [this.selectedId] : [];
     if (ids.length) this.removeElements(ids);
+  }
+
+  private clipboard: { nodes: SceneNode[]; edges: SceneEdge[] } | null = null;
+  private copy() {
+    const ids = new Set(this.selectedIds.length ? this.selectedIds : this.selectedId ? [this.selectedId] : []);
+    if (!ids.size) return;
+    const nodes = this.scene.nodes.filter((n) => ids.has(n.id));
+    const edges = this.scene.edges.filter((e) => ids.has(e.sourceId) && ids.has(e.targetId));
+    this.clipboard = structuredClone({ nodes, edges });
+  }
+  private paste() {
+    if (!this.clipboard?.nodes.length) return;
+    this.commit();
+    const idMap = new Map<string, string>();
+    this.clipboard.nodes.forEach((n) => idMap.set(n.id, `${n.kind}-${++this.seq}`));
+    const newNodes = this.clipboard.nodes.map((n) => ({
+      ...structuredClone(n), id: idMap.get(n.id)!, x: n.x + 24, y: n.y + 24,
+      parentId: n.parentId && idMap.has(n.parentId) ? idMap.get(n.parentId) : undefined,
+    }));
+    const newEdges = this.clipboard.edges.map((e) => ({
+      ...structuredClone(e), id: `edge-${++this.seq}`, sourceId: idMap.get(e.sourceId)!, targetId: idMap.get(e.targetId)!,
+    }));
+    this.scene = { ...this.scene, nodes: [...this.scene.nodes, ...newNodes], edges: [...this.scene.edges, ...newEdges] };
+    this.selectedIds = newNodes.map((n) => n.id);
+    this.selectedId = newNodes[0]?.id ?? null;
   }
 
   private get canvasEl() { return this.renderRoot.querySelector('modux-canvas') as ModuxCanvas | null; }
