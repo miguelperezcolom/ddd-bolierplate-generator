@@ -51,7 +51,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 | Flow | discontinua | — | flecha rellena | ✅ |
 | Specialization | sólida | — | triángulo hueco | ✅ |
 | Association | sólida | — | (opcional flecha) | ✅ |
-| Junction (and/or) | nodo pequeño | — | — | ⬜ |
+| Junction (and/or) | nodo pequeño | — | — | ✅ (render + paleta; conexión same-type ⬜) |
 
 ## D. Gestos / UX  (del manual de Archi)
 
@@ -71,7 +71,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - ⬜ Ctrl/Cmd invierte el orden (elementos antes que conexiones)
 
 ### Conexiones
-- ❔ **Router por defecto**: Archi = **líneas rectas** (Manual). El nuestro va **ortogonal esquivando nodos**. → decisión: ¿recto por defecto (fiel) o mantener ortogonal (mejor)?
+- ✅ **Router por defecto**: líneas rectas (Manual), como Archi. [decidido]
 - ⬜ Selector de router por vista (Manual / Manhattan)
 - ✅ Bendpoints: añadir/mover/borrar; 🟡 asa "círculo hueco en el medio" (estilo exacto)
 - ✅ Snap de bendpoints a rejilla (Alt para liberar)

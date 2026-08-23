@@ -1442,8 +1442,13 @@ export class ModuxCanvas extends LitElement {
     const sp = this.nodePos(source);
     const tp = this.nodePos(target);
     if (!waypoints.length) {
-      // No manual bends: route orthogonally — horizontal/vertical segments, a
-      // straight diagonal only when the boxes leave no clean path.
+      // ArchiMate mode uses Archi's default "Manual" router: a straight line between
+      // the two boxes (clipped to their borders), even if it crosses other figures.
+      if (this.archimate) {
+        return [this.borderPoint(source, tp.x, tp.y), this.borderPoint(target, sp.x, sp.y)];
+      }
+      // Otherwise route orthogonally — horizontal/vertical segments, a straight
+      // diagonal only when the boxes leave no clean path.
       return orthogonalRoute(
         { x: sp.x, y: sp.y, w: source.w, h: source.h },
         { x: tp.x, y: tp.y, w: target.w, h: target.h },
@@ -1754,6 +1759,19 @@ export class ModuxCanvas extends LitElement {
     const amRx = this.archimate ? (node.kind === 'service' ? hh : node.kind === 'usecase' ? 11 : 2) : isChild ? 6 : 10;
     // Behaviour shapes (pointed/curved tops) centre their label; flat-top figures put it on top.
     const amLabelY = node.kind === 'event' || node.kind === 'usecase' ? 4 : -hh + 17;
+    // ArchiMate Junction: a small filled dot (AND) or hollow dot (OR) — no label/icon.
+    if (this.archimate && node.kind === 'junction') {
+      const jStroke = toolStroke ?? (hovered || selected ? hl : '#5C5C5C');
+      return svg`
+        <g data-node-id=${node.id} transform="translate(${x}, ${y})"
+           @pointerenter=${() => this.setFocusNode(node.id)}
+           @pointerleave=${() => this.setFocusNode(null)}
+           @pointerdown=${(e: PointerEvent) => this.onNodePointerDown(e, node)}>
+          <circle r="7" fill=${node.tooltip === 'or' ? '#ffffff' : '#000000'}
+                  stroke=${jStroke} stroke-width=${selected || hovered ? 2 : 1}></circle>
+          ${selected ? svg`<rect x="-11" y="-11" width="22" height="22" fill="none" stroke=${hl} stroke-width="1" stroke-dasharray="3 2"></rect>` : ''}
+        </g>`;
+    }
     return svg`
       <g data-node-id=${node.id}
          opacity=${node.dim ? 0.25 : faded ? 0.16 : 1}

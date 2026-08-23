@@ -22,6 +22,7 @@ const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'event', label: 'Evento', layer: 'event', w: 200, h: 62 },
   { kind: 'usecase', label: 'Caso de uso', layer: 'behavior', w: 160, h: 62 },
   { kind: 'person', label: 'Actor', layer: 'behavior', w: 130, h: 74 },
+  { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16 },
 ];
 
 function kindLayer(kind: string): LayerKey {
