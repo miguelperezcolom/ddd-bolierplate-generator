@@ -83,13 +83,13 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 
 ### Selección
 - ✅ Asas de redimensión · ✅ marquee
-- ⬜ Selección primaria (asas oscuras) para alineación
-- 🟡 Ctrl-click para añadir/quitar de la selección
+- ✅ Selección primaria (asas oscuras) para alineación
+- ✅ Ctrl-click para añadir/quitar de la selección
 
 ### Paneles
 - ✅ Propiedades editables: Principal (nombre+doc), Apariencia (relleno color), Propiedades (clave-valor)
 - ✅ Árbol de modelo + sync bidireccional con lienzo
-- 🟡 Árbol por carpetas de capa · ✅ búsqueda/filtro en árbol
+- ✅ Árbol por carpetas de capa + carpeta Relaciones · ✅ búsqueda/filtro
 - ✅ Outline / minimapa
 
 ---

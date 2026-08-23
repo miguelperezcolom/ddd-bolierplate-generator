@@ -51,7 +51,6 @@ export class ArchiShell extends LitElement {
   @state() private collapsed = new Set<string>();
   @state() private tab: 'main' | 'appearance' | 'properties' = 'main';
   @state() private treeQuery = '';
-  private _vis: Set<string> | null = null;
 
   @state() private tool: Tool = { kind: 'select' };
   @state() private menu: { x: number; y: number; src: SceneNode; tgt: SceneNode; opts: RelOption[] } | null = null;
@@ -97,6 +96,10 @@ export class ArchiShell extends LitElement {
     .row .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,.25); flex: none; }
     .row .lbl { overflow: hidden; text-overflow: ellipsis; }
     .child { padding-left: 16px; }
+    .row.folder { font-weight: 600; color: #334155; }
+    .row.folder .fic { color: #94a3b8; margin-right: 2px; }
+    .row .count { margin-left: auto; color: #94a3b8; font-size: 11px; font-weight: 400; padding-right: 6px; }
+    .row .rel-ic { color: #94a3b8; width: 13px; text-align: center; }
 
     .canvas-wrap { grid-area: canvas; position: relative; overflow: hidden; background: #fff; border-left: 1px solid #d5dbe3; }
     modux-canvas { position: absolute; inset: 0; }
@@ -271,40 +274,53 @@ export class ArchiShell extends LitElement {
     this.createMenu = null; this.createExpand = null;
   }
 
-  // ---- tree (derived from the scene) --------------------------------------
-  private roots() { return this.scene.nodes.filter((n) => !n.parentId); }
-  private childrenOf(id: string) { return this.scene.nodes.filter((n) => n.parentId === id); }
-
-  /** Ids to show when searching: matches + their ancestors. null = no filter. */
-  private visibleTreeIds(): Set<string> | null {
-    const q = this.treeQuery.trim().toLowerCase();
-    if (!q) return null;
-    const ids = new Set<string>();
-    for (const n of this.scene.nodes) {
-      if (!n.label.toLowerCase().includes(q)) continue;
-      ids.add(n.id);
-      let p = n.parentId;
-      while (p) { ids.add(p); p = this.node(p)?.parentId; }
-    }
-    return ids;
-  }
-
-  private renderTreeRow(node: SceneNode, child = false): TemplateResult | typeof nothing {
-    if (this._vis && !this._vis.has(node.id)) return nothing;
-    const kids = this.childrenOf(node.id);
-    const isCollapsed = this._vis ? false : this.collapsed.has(node.id);
-    const sw = LAYER[kindLayer(node.kind)];
-    return html`
-      <div class="row ${child ? 'child' : ''} ${this.selectedIds.includes(node.id) || this.selectedId === node.id ? 'sel' : ''}"
-           @click=${(e: MouseEvent) => (e.ctrlKey || e.metaKey ? this.toggleSel(node.id) : this.select(node.id))}>
-        <span class="twisty" @click=${(ev: Event) => { ev.stopPropagation(); this.toggle(node.id); }}>${kids.length ? (isCollapsed ? '▶' : '▼') : ''}</span>
-        <span class="swatch" style="background:${sw.fill};border-color:${sw.stroke}"></span>
-        <span class="lbl">${node.label}</span>
-      </div>
-      ${kids.length && !isCollapsed ? kids.map((c) => this.renderTreeRow(c, true)) : nothing}
-    `;
-  }
+  // ---- tree (Archi-style: folders by layer + a Relations folder) ----------
   private toggle(id: string) { const n = new Set(this.collapsed); n.has(id) ? n.delete(id) : n.add(id); this.collapsed = n; }
+
+  private treeRow(n: SceneNode): TemplateResult {
+    const sw = LAYER[kindLayer(n.kind)];
+    return html`<div class="row child ${this.selectedIds.includes(n.id) || this.selectedId === n.id ? 'sel' : ''}"
+         @click=${(e: MouseEvent) => (e.ctrlKey || e.metaKey ? this.toggleSel(n.id) : this.select(n.id))}>
+      <span class="twisty"></span>
+      <span class="swatch" style="background:${sw.fill};border-color:${sw.stroke}"></span>
+      <span class="lbl">${n.label}</span></div>`;
+  }
+
+  private folder(key: string, label: string, rows: TemplateResult[], count: number): TemplateResult {
+    const collapsed = this.collapsed.has('f:' + key);
+    return html`
+      <div class="row folder" @click=${() => this.toggle('f:' + key)}>
+        <span class="twisty">${collapsed ? '▶' : '▼'}</span><span class="fic">▸</span>
+        <span class="lbl">${label}</span><span class="count">${count}</span>
+      </div>
+      ${collapsed ? nothing : rows}`;
+  }
+
+  private renderTree(): TemplateResult {
+    const q = this.treeQuery.trim().toLowerCase();
+    const layers: LayerKey[] = ['context', 'domain', 'event', 'behavior'];
+    return html`
+      ${layers.map((fk) => {
+        const nodes = this.scene.nodes
+          .filter((n) => kindLayer(n.kind) === fk && n.kind !== 'junction')
+          .filter((n) => !q || n.label.toLowerCase().includes(q))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        if (q && !nodes.length) return nothing;
+        return this.folder(fk, LAYER[fk].name, nodes.map((n) => this.treeRow(n)), nodes.length);
+      })}
+      ${(() => {
+        const edges = this.scene.edges
+          .map((e) => ({ e, s: this.node(e.sourceId), t: this.node(e.targetId) }))
+          .filter(({ s, t }) => s && t)
+          .map(({ e, s, t }) => ({ e, text: `${s!.label} — ${REL_NOTATION[e.kind]?.label ?? e.kind} → ${t!.label}` }))
+          .filter(({ text }) => !q || text.toLowerCase().includes(q));
+        if (q && !edges.length) return nothing;
+        const rows = edges.map(({ e, text }) => html`<div class="row child ${this.selectedId === e.id ? 'sel' : ''}"
+            @click=${() => { this.selectedId = e.id; this.selectedIds = []; }}>
+          <span class="twisty"></span><span class="rel-ic">╱</span><span class="lbl">${text}</span></div>`);
+        return this.folder('rel', 'Relaciones', rows, edges.length);
+      })()}`;
+  }
 
   // ---- palette -------------------------------------------------------------
   private dashPreview(rel: string) {
@@ -400,7 +416,6 @@ export class ArchiShell extends LitElement {
   }
 
   render() {
-    this._vis = this.visibleTreeIds();
     const t = this.tool;
     const hint = t.kind === 'place' ? `Coloca «${t.el.label}» — click en el lienzo`
       : t.kind === 'connect' ? `${t.rel === null ? 'Conector mágico' : `Relación «${REL_NOTATION[t.rel]?.label ?? t.rel}»`} — click en origen y luego en destino`
@@ -418,7 +433,7 @@ export class ArchiShell extends LitElement {
         <header>Modelo</header>
         <input class="treesearch" type="search" placeholder="Buscar…" .value=${this.treeQuery}
           @input=${(e: Event) => (this.treeQuery = (e.target as HTMLInputElement).value)} />
-        <div class="body">${this.roots().map((n) => this.renderTreeRow(n))}</div>
+        <div class="body">${this.renderTree()}</div>
       </div>
 
       <div class="canvas-wrap">
