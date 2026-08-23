@@ -30,8 +30,8 @@ modux mapea sus conceptos a figuras ArchiMate. Silueta + icono arriba-derecha.
 | Agregado / Entidad | Business/Data Object | rect + línea de título | ▤ | ✅ |
 | Evento | Application/Business Event | muesca cóncava izq. + semicírculo der. | evento | ✅ |
 | Caso de uso | ApplicationFunction | chevron (punta arriba, muesca abajo) | función | ✅ |
-| Actor | BusinessActor | monigote (figura) | monigote | 🟡 icono ✅; Archi lo dibuja como figura grande |
-| Servicio | App/Business Service | estadio (píldora) | píldora | 🟡 `rx=h/2` soportado, sin ejemplo |
+| Actor | BusinessActor | monigote (figura grande) | — | ✅ |
+| Servicio | App/Business Service | estadio (píldora) | píldora | ✅ |
 | Value object / Read model / API / … | (sin mapeo ArchiMate directo) | — | glifo modux | ⬜ decidir figura |
 
 ## C. Notación de relaciones  (✅ casi completa)
@@ -61,13 +61,13 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - 🟡 Marquee (rubber-band existe; falta el modo que selecciona también conexiones)
 - ⬜ Junction · ⬜ Note/Group/Legend · ⬜ Format painter
 - ✅ Colocar nodo: click; ⬜ arrastrar-para-dimensionar
-- ✅ Tras dibujar vuelve a la flecha; ⬜ Shift/doble-click para fijar la herramienta
+- ✅ Tras dibujar vuelve a la flecha; ✅ Shift-click fija la herramienta
 
 ### Magic connector  (✅ núcleo)
 - ✅ Click origen → click destino → menú de relaciones válidas
 - ✅ Directas + inversas separadas en el menú
 - ✅ Regla de validez (no deja trazar inválidas) — matriz real de Archi
-- 🟡 Crear-en-vacío: hacemos elemento→relación en dos menús; Archi usa **cascada** única
+- ✅ Crear-en-vacío: cascada única (elemento → sus relaciones válidas)
 - ⬜ Ctrl/Cmd invierte el orden (elementos antes que conexiones)
 
 ### Conexiones
@@ -87,7 +87,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - 🟡 Ctrl-click para añadir/quitar de la selección
 
 ### Paneles
-- 🟡 Propiedades: tabs Principal/Apariencia/Propiedades (visual; falta edición real completa)
+- ✅ Propiedades editables: Principal (nombre+doc), Apariencia (relleno color), Propiedades (clave-valor)
 - ✅ Árbol de modelo + sync bidireccional con lienzo
 - 🟡 Árbol por carpetas de capa · ⬜ búsqueda/filtro en árbol
 - ✅ Outline / minimapa

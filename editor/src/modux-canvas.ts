@@ -1834,7 +1834,17 @@ export class ModuxCanvas extends LitElement {
                     : 'Contraer: oculta los hijos'}</title>
                 </g>`
           : ''}
-        ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer || this.archimate)
+        ${this.archimate && node.kind === 'person' && !isContainer
+          ? svg`<g fill="none" style=${`stroke: ${nodeStroke}`} stroke-width="1.6"
+                  stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+                <circle cx="0" cy="-6" r="5"></circle>
+                <line x1="0" y1="-1" x2="0" y2="13"></line>
+                <line x1="-9" y1="5" x2="9" y2="5"></line>
+                <line x1="0" y1="13" x2="-8" y2="24"></line>
+                <line x1="0" y1="13" x2="8" y2="24"></line>
+              </g>`
+          : ''}
+        ${node.symbol && SYMBOLS[node.symbol] && !(this.archimate && node.kind === 'person') && (!isChild || isContainer || this.archimate)
           ? svg`<g transform="translate(${hw - (node.collapsible ? 37 : 17)}, ${-hh + 5})" fill="none"
                   style=${'stroke: ' + (node.stroke ?? 'var(--modux-node-stroke, #64748b)')}
                   stroke-width="1.1" stroke-linejoin="round"

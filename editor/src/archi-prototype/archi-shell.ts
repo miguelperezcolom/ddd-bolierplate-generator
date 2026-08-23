@@ -21,6 +21,7 @@ const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'entity', label: 'Entidad', layer: 'domain', w: 160, h: 66 },
   { kind: 'event', label: 'Evento', layer: 'event', w: 200, h: 62 },
   { kind: 'usecase', label: 'Caso de uso', layer: 'behavior', w: 160, h: 62 },
+  { kind: 'service', label: 'Servicio', layer: 'behavior', w: 170, h: 50 },
   { kind: 'person', label: 'Actor', layer: 'behavior', w: 130, h: 74 },
   { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16 },
 ];
@@ -28,7 +29,7 @@ const ELEMENT_TOOLS: ElementTool[] = [
 function kindLayer(kind: string): LayerKey {
   if (kind === 'component' || kind === 'area' || kind === 'system') return 'context';
   if (kind === 'event') return 'event';
-  if (kind === 'usecase' || kind === 'person') return 'behavior';
+  if (kind === 'usecase' || kind === 'person' || kind === 'service') return 'behavior';
   return 'domain';
 }
 
@@ -47,7 +48,12 @@ export class ArchiShell extends LitElement {
   @state() private tool: Tool = { kind: 'select' };
   @state() private menu: { x: number; y: number; src: SceneNode; tgt: SceneNode; opts: RelOption[] } | null = null;
   @state() private createMenu: { x: number; y: number; src: SceneNode; sx: number; sy: number } | null = null;
+  @state() private createExpand: string | null = null;
   @state() private toast: string | null = null;
+  /** Side store for editable properties the SceneNode type doesn't carry (docs, key-value props). */
+  @state() private meta: Record<string, { doc: string; props: { k: string; v: string }[] }> = {};
+  /** Sticky palette tool (Shift-click keeps the tool selected after use, like Archi). */
+  private sticky = false;
 
   private seq = 0;
   private toastTimer = 0;
@@ -110,6 +116,15 @@ export class ArchiShell extends LitElement {
     .form .ro { background: #f1f5f9; color: #475569; }
     .form textarea { resize: vertical; min-height: 46px; }
     .empty { padding: 22px; color: #94a3b8; }
+    .colorrow { display: flex; align-items: center; gap: 8px; }
+    .colorrow input[type=color] { width: 34px; height: 26px; padding: 0; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; }
+    .proptable { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; max-width: 520px; }
+    .proprow { display: grid; grid-template-columns: 1fr 1fr 28px; gap: 6px; }
+    .proprow input { font: inherit; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; }
+    .proprow .del { border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer; color: #64748b; }
+    .addprop { align-self: start; font: inherit; font-size: 12px; border: 1px dashed #94a3b8; background: none; color: #2563eb; border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+    .menu .mi.sub { padding-left: 8px; color: #475569; }
+    .menu .subl { display: inline-flex; align-items: center; gap: 6px; margin-left: 18px; }
 
     .menu { position: fixed; z-index: 60; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px;
       box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 4px; min-width: 190px; font-size: 13px; }
@@ -125,7 +140,13 @@ export class ArchiShell extends LitElement {
   private node(id: string | null) { return this.scene.nodes.find((n) => n.id === id) ?? null; }
   private selectedNode() { return this.node(this.selectedId); }
   private select(id: string | null) { this.selectedId = id; }
-  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; }
+  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; }
+  /** Select a palette tool; Shift-click makes it sticky (stays active after one use). */
+  private pickTool(t: Tool, e: MouseEvent) { this.sticky = e.shiftKey; this.tool = t; this.menu = null; this.createMenu = null; }
+  private metaOf(id: string) { return this.meta[id] ?? { doc: '', props: [] }; }
+  private patchMeta(id: string, patch: Partial<{ doc: string; props: { k: string; v: string }[] }>) {
+    this.meta = { ...this.meta, [id]: { ...this.metaOf(id), ...patch } };
+  }
   private flash(msg: string) {
     this.toast = msg; clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => (this.toast = null), 2600);
@@ -150,6 +171,20 @@ export class ArchiShell extends LitElement {
     const n = this.selectedNode(); if (!n) return;
     n.label = name; this.scene = { ...this.scene, nodes: [...this.scene.nodes] };
   }
+  private setFill(v: string) {
+    const n = this.selectedNode(); if (!n) return;
+    n.fill = v; this.scene = { ...this.scene, nodes: [...this.scene.nodes] };
+  }
+  private setDoc(v: string) { const n = this.selectedNode(); if (n) this.patchMeta(n.id, { doc: v }); }
+  private addProp() { const n = this.selectedNode(); if (n) this.patchMeta(n.id, { props: [...this.metaOf(n.id).props, { k: '', v: '' }] }); }
+  private setProp(i: number, field: 'k' | 'v', v: string) {
+    const n = this.selectedNode(); if (!n) return;
+    this.patchMeta(n.id, { props: this.metaOf(n.id).props.map((p, j) => (j === i ? { ...p, [field]: v } : p)) });
+  }
+  private removeProp(i: number) {
+    const n = this.selectedNode(); if (!n) return;
+    this.patchMeta(n.id, { props: this.metaOf(n.id).props.filter((_, j) => j !== i) });
+  }
 
   // ---- canvas tool events --------------------------------------------------
   private onPlace = (e: Event) => {
@@ -157,7 +192,7 @@ export class ArchiShell extends LitElement {
     const el = ELEMENT_TOOLS.find((x) => x.kind === d.nodeKind)
       ?? { kind: d.nodeKind, label: d.nodeKind, layer: 'domain', w: d.w, h: d.h } as ElementTool;
     this.addNodeAt(el, d.x, d.y);
-    this.tool = { kind: 'select' };
+    if (!this.sticky) this.tool = { kind: 'select' };
   };
   private onCommitted = (e: Event) => {
     const d = (e as CustomEvent).detail as { sourceId: string; targetId: string; rel: string | null; x: number; y: number };
@@ -207,13 +242,14 @@ export class ArchiShell extends LitElement {
     this.menu = null;
   }
 
-  private pickCreate(el: ElementTool) {
+  private toggleCreateExpand(kind: string) { this.createExpand = this.createExpand === kind ? null : kind; }
+  /** Cascade pick: create the new element at the drop point and (optionally) the chosen relation. */
+  private pickCascade(el: ElementTool, o: RelOption | null) {
     if (!this.createMenu) return;
-    const { src, sx, sy, x, y } = this.createMenu;
+    const { src, sx, sy } = this.createMenu;
     const n = this.addNodeAt(el, sx, sy);
-    this.createMenu = null;
-    const opts = validRelations(src.kind, n.kind);
-    if (opts.length) this.menu = { x, y, src, tgt: n, opts };
+    if (o) this.addEdge(o.type, o.reverse ? n : src, o.reverse ? src : n);
+    this.createMenu = null; this.createExpand = null;
   }
 
   // ---- tree (derived from the scene) --------------------------------------
@@ -246,19 +282,19 @@ export class ArchiShell extends LitElement {
     return html`
       <div class="pgroup">Herramientas</div>
       <div class="pitem ${this.tool.kind === 'select' ? 'on' : ''}" @click=${() => this.resetTool()}><span class="sw" style="background:#94a3b8"></span><span class="lbl">Seleccionar</span></div>
-      <div class="pitem ${magicOn ? 'on' : ''}" @click=${() => (this.tool = { kind: 'connect', rel: null })}><span class="sw" style="background:#7c3aed"></span><span class="lbl">Conector mágico ✦</span></div>
+      <div class="pitem ${magicOn ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel: null }, e)}><span class="sw" style="background:#7c3aed"></span><span class="lbl">Conector mágico ✦</span></div>
 
       <div class="pgroup">Relaciones</div>
       ${REL_TYPES.map((rel) => {
         const on = this.tool.kind === 'connect' && this.tool.rel === rel;
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${() => (this.tool = { kind: 'connect', rel })}>${this.dashPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
+        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.dashPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
       })}
 
-      <div class="pgroup">Elementos</div>
+      <div class="pgroup">Elementos <span style="text-transform:none;font-weight:400">· Shift = fija</span></div>
       ${ELEMENT_TOOLS.map((el) => {
         const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
         const sw = LAYER[el.layer];
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${() => (this.tool = { kind: 'place', el })}><span class="sw" style="background:${sw.fill};border-color:${sw.stroke}"></span><span class="lbl">${el.label}</span></div>`;
+        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}><span class="sw" style="background:${sw.fill};border-color:${sw.stroke}"></span><span class="lbl">${el.label}</span></div>`;
       })}
     `;
   }
@@ -268,16 +304,26 @@ export class ArchiShell extends LitElement {
     const n = this.selectedNode();
     if (!n) return html`<div class="empty">Selecciona un elemento en el árbol o el lienzo.</div>`;
     const layer = LAYER[kindLayer(n.kind)];
+    const m = this.metaOf(n.id);
     if (this.tab === 'appearance')
-      return html`<div class="form"><label>Relleno</label><div class="ro">${n.fill}</div>
-        <label>Borde</label><div class="ro">${n.stroke}</div><label>Capa</label><div class="ro">${layer.name}</div></div>`;
+      return html`<div class="form">
+        <label>Relleno</label>
+        <span class="colorrow"><input type="color" .value=${n.fill ?? '#ffffff'} @input=${(e: Event) => this.setFill((e.target as HTMLInputElement).value)} /><span class="ro">${n.fill}</span></span>
+        <label>Borde</label><div class="ro">#5C5C5C (notación ArchiMate)</div>
+        <label>Capa</label><div class="ro">${layer.name}</div></div>`;
     if (this.tab === 'properties')
-      return html`<div class="empty">Propiedades clave-valor a medida (pendiente en el prototipo).</div>`;
+      return html`<div class="proptable">
+        ${m.props.map((p, i) => html`<div class="proprow">
+          <input placeholder="clave" .value=${p.k} @input=${(e: Event) => this.setProp(i, 'k', (e.target as HTMLInputElement).value)} />
+          <input placeholder="valor" .value=${p.v} @input=${(e: Event) => this.setProp(i, 'v', (e.target as HTMLInputElement).value)} />
+          <button class="del" @click=${() => this.removeProp(i)}>✕</button></div>`)}
+        <button class="addprop" @click=${() => this.addProp()}>+ Añadir propiedad</button>
+      </div>`;
     return html`<div class="form">
       <label>Nombre</label><input .value=${n.label} @input=${(e: Event) => this.rename((e.target as HTMLInputElement).value)} />
       <label>Tipo</label><div class="ro">${n.kind}</div>
       <label>Capa</label><div class="ro">${layer.name}</div>
-      <label>Documentación</label><textarea placeholder="Descripción del elemento…"></textarea></div>`;
+      <label>Documentación</label><textarea placeholder="Descripción del elemento…" .value=${m.doc} @input=${(e: Event) => this.setDoc((e.target as HTMLTextAreaElement).value)}></textarea></div>`;
   }
 
   // ---- menus ---------------------------------------------------------------
@@ -293,9 +339,22 @@ export class ArchiShell extends LitElement {
     if (!this.createMenu) return nothing;
     const m = this.createMenu;
     return html`<div class="menu" style="left:${m.x}px;top:${m.y}px">
-      <div class="mhead">Crear elemento y conectar desde «${m.src.label}»</div>
-      ${ELEMENT_TOOLS.map((el) => html`<div class="mi" @click=${() => this.pickCreate(el)}>
-        <span class="sw" style="width:13px;height:13px;border-radius:3px;background:${LAYER[el.layer].fill};border:1px solid ${LAYER[el.layer].stroke}"></span><span>${el.label}</span></div>`)}
+      <div class="mhead">Crear elemento desde «${m.src.label}»</div>
+      ${ELEMENT_TOOLS.filter((e) => e.kind !== 'junction').map((el) => {
+        const opts = validRelations(m.src.kind, el.kind);
+        const expanded = this.createExpand === el.kind;
+        return html`
+          <div class="mi" @click=${() => this.toggleCreateExpand(el.kind)}>
+            <span class="sw" style="width:13px;height:13px;border-radius:3px;background:${LAYER[el.layer].fill};border:1px solid ${LAYER[el.layer].stroke}"></span>
+            <span>${el.label}</span><span class="rev">${opts.length ? (expanded ? '▾' : '▸') : ''}</span>
+          </div>
+          ${expanded ? html`
+            <div class="mi sub" @click=${() => this.pickCascade(el, null)}><span class="subl">(solo crear)</span></div>
+            ${opts.map((o) => html`<div class="mi sub" @click=${() => this.pickCascade(el, o)}>
+              <span class="subl">${this.dashPreview(o.type)}</span><span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
+          ` : nothing}
+        `;
+      })}
     </div>`;
   }
 
