@@ -66,6 +66,8 @@ export class ArchiShell extends LitElement {
   @state() private meta: Record<string, { doc: string; props: { k: string; v: string }[] }> = {};
   /** Sticky palette tool (Shift-click keeps the tool selected after use, like Archi). */
   private sticky = false;
+  /** Format painter: the fill to stamp onto clicked nodes (null = painter off). */
+  @state() private painter: string | null = null;
 
   private seq = 0;
   private toastTimer = 0;
@@ -186,7 +188,7 @@ export class ArchiShell extends LitElement {
   private onMultiToggle = (e: Event) => this.toggleSel((e as CustomEvent).detail.id);
   private onBoxed = (e: Event) => { const ids = (e as CustomEvent).detail.ids as string[]; this.selectedIds = ids; this.selectedId = ids[0] ?? null; };
   private onSelCleared = () => { this.selectedIds = []; this.selectedId = null; };
-  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; this.ctx = null; this.nestMenu = null; }
+  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; this.ctx = null; this.nestMenu = null; this.painter = null; }
   /** Select a palette tool; Shift-click makes it sticky (stays active after one use). */
   private pickTool(t: Tool, e: MouseEvent) { this.sticky = e.shiftKey; this.tool = t; this.menu = null; this.createMenu = null; }
   private metaOf(id: string) { return this.meta[id] ?? { doc: '', props: [] }; }
@@ -361,7 +363,15 @@ export class ArchiShell extends LitElement {
 
   private onCanvasSelected(e: Event) {
     const d = (e as CustomEvent).detail;
-    if (d?.elementType === 'node') this.select(d.id);
+    if (d?.elementType === 'node') {
+      if (this.painter !== null) { this.commit(); this.patchNodes((n) => (n.id === d.id ? { ...n, fill: this.painter! } : n)); return; }
+      this.select(d.id);
+    } else if (d?.elementType === 'edge') { this.selectedId = d.id; this.selectedIds = []; this.ctx = null; }
+  }
+  private toggleFormatPainter() {
+    if (this.painter !== null) { this.painter = null; return; }
+    const n = this.selectedNode();
+    if (n?.fill) this.painter = n.fill;
   }
 
   private rename(name: string) {
@@ -618,7 +628,8 @@ export class ArchiShell extends LitElement {
 
   render() {
     const t = this.tool;
-    const hint = t.kind === 'place' ? `Coloca «${t.el.label}» — click en el lienzo`
+    const hint = this.painter !== null ? 'Pincel activo — click en un nodo para pintar su relleno'
+      : t.kind === 'place' ? `Coloca «${t.el.label}» — click en el lienzo`
       : t.kind === 'connect' ? `${t.rel === null ? 'Conector mágico' : `Relación «${REL_NOTATION[t.rel]?.label ?? t.rel}»`} — click en origen y luego en destino`
       : '';
     return html`
@@ -636,6 +647,8 @@ export class ArchiShell extends LitElement {
         </span>` : nothing}
         <div class="spacer"></div>
         <button class=${t.kind === 'select' ? 'on' : ''} @click=${() => this.resetTool()}>Seleccionar</button>
+        <button title="Copiar formato: coge el relleno del elemento seleccionado y píntalo en otros"
+          class=${this.painter !== null ? 'on' : ''} @click=${() => this.toggleFormatPainter()}>Pincel 🖌</button>
         <button class=${t.kind === 'connect' && t.rel === null ? 'on' : ''} @click=${() => (this.tool = { kind: 'connect', rel: null })}>Conector mágico ✦</button>
       </div>
 
