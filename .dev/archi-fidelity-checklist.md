@@ -78,7 +78,7 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 
 ### Contenedores anidados + ARM
 - 🟡 Resaltado azul del contenedor al arrastrar dentro
-- ✅ ARM (núcleo): la relación contenedor↔hijo anidado se oculta en el lienzo y sigue en el modelo/carpeta Relaciones · ⬜ diálogo al arrastrar-para-anidar (requiere gesto de reparent genérico en el motor)
+- ✅ ARM completo: arrastrar un nodo dentro de un contenedor lo anida y abre el diálogo de relación válida (fwd/inversa + "solo anidar"); la relación queda implícita (oculta en lienzo, visible en Relaciones); "Sacar del contenedor" (menú contextual) la desanida y vuelve a mostrarla
 - ✅ Arrastrar hijo dentro/fuera del padre
 
 ### Edición (bucle básico — ¡era el gran hueco!)

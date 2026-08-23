@@ -61,6 +61,7 @@ export class ArchiShell extends LitElement {
   @state() private createExpand: string | null = null;
   @state() private toast: string | null = null;
   @state() private ctx: { x: number; y: number; id: string; isEdge: boolean } | null = null;
+  @state() private nestMenu: { x: number; y: number; parent: SceneNode; child: SceneNode; opts: RelOption[] } | null = null;
   /** Side store for editable properties the SceneNode type doesn't carry (docs, key-value props). */
   @state() private meta: Record<string, { doc: string; props: { k: string; v: string }[] }> = {};
   /** Sticky palette tool (Shift-click keeps the tool selected after use, like Archi). */
@@ -185,7 +186,7 @@ export class ArchiShell extends LitElement {
   private onMultiToggle = (e: Event) => this.toggleSel((e as CustomEvent).detail.id);
   private onBoxed = (e: Event) => { const ids = (e as CustomEvent).detail.ids as string[]; this.selectedIds = ids; this.selectedId = ids[0] ?? null; };
   private onSelCleared = () => { this.selectedIds = []; this.selectedId = null; };
-  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; this.ctx = null; }
+  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; this.ctx = null; this.nestMenu = null; }
   /** Select a palette tool; Shift-click makes it sticky (stays active after one use). */
   private pickTool(t: Tool, e: MouseEvent) { this.sticky = e.shiftKey; this.tool = t; this.menu = null; this.createMenu = null; }
   private metaOf(id: string) { return this.meta[id] ?? { doc: '', props: [] }; }
@@ -248,8 +249,31 @@ export class ArchiShell extends LitElement {
     });
     this.moveNodes(moves);
   }
-  private onNodeMoved = (e: Event) => this.moveNodes([(e as CustomEvent).detail]);
+  private onNodeMoved = (e: Event) => { const d = (e as CustomEvent).detail; this.moveNodes([d]); this.maybeNest(d.id); };
   private onNodesMoved = (e: Event) => this.moveNodes((e as CustomEvent).detail.moves);
+
+  // ARM: dropping a node inside a container nests it and offers a valid relationship.
+  private setParentId(id: string, parentId: string | undefined) { this.patchNodes((n) => (n.id === id ? { ...n, parentId } : n)); }
+  private containerAt(node: SceneNode) {
+    return this.scene.nodes.find((c) => c.container && c.id !== node.id && c.id !== node.parentId
+      && Math.abs(node.x - c.x) < c.w / 2 && Math.abs(node.y - c.y) < c.h / 2);
+  }
+  private maybeNest(id: string) {
+    const n = this.node(id); if (!n) return;
+    const c = this.containerAt(n);
+    if (!c) return;
+    this.setParentId(id, c.id);
+    const opts = validRelations(c.kind, n.kind);
+    if (!opts.length) return;
+    const p = this.canvasEl?.clientFromScene(n.x, n.y - n.h / 2) ?? { x: 320, y: 320 };
+    this.nestMenu = { x: p.x, y: p.y, parent: this.node(c.id)!, child: this.node(id)!, opts };
+  }
+  private pickNest(o: RelOption | null) {
+    if (!this.nestMenu) return;
+    const { parent, child } = this.nestMenu;
+    if (o) this.addEdge(o.type, o.reverse ? child : parent, o.reverse ? parent : child);
+    this.nestMenu = null;
+  }
   private onNodeResized = (e: Event) => {
     const d = (e as CustomEvent).detail; this.commit();
     this.patchNodes((n) => (n.id === d.id ? { ...n, x: d.x, y: d.y, w: d.w, h: d.h } : n));
@@ -319,6 +343,7 @@ export class ArchiShell extends LitElement {
     requestAnimationFrame(() => c?.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true, composed: true })));
   }
   private ctxDelete() { const id = this.ctx?.id; this.ctx = null; if (id) this.removeElements([id]); }
+  private ctxUnnest() { const id = this.ctx?.id; this.ctx = null; if (!id) return; this.commit(); this.setParentId(id, undefined); }
 
   /**
    * ARM (Automatic Relationship Management): a relation between a container and its
@@ -661,10 +686,16 @@ export class ArchiShell extends LitElement {
       </div>
 
       ${this.renderMenu()}${this.renderCreateMenu()}
+      ${this.nestMenu ? html`<div class="menu" style="left:${this.nestMenu.x}px;top:${this.nestMenu.y}px">
+        <div class="mhead">Anidar «${this.nestMenu.child.label}» en «${this.nestMenu.parent.label}»</div>
+        <div class="mi" @click=${() => this.pickNest(null)}><span class="subl">Solo anidar (sin relación)</span></div>
+        ${this.nestMenu.opts.map((o) => html`<div class="mi" @click=${() => this.pickNest(o)}>${this.dashPreview(o.type)}<span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
+      </div>` : nothing}
       ${this.ctx ? html`
         <div class="ctxback" @pointerdown=${() => (this.ctx = null)} @contextmenu=${(e: Event) => e.preventDefault()}></div>
         <div class="menu" style="left:${this.ctx.x}px;top:${this.ctx.y}px">
           <div class="mi" @click=${() => this.ctxRename()}>Renombrar <span class="rev">F2</span></div>
+          ${this.node(this.ctx.id)?.parentId ? html`<div class="mi" @click=${() => this.ctxUnnest()}>Sacar del contenedor</div>` : nothing}
           <div class="mi" @click=${() => this.ctxDelete()}>Borrar <span class="rev">Supr</span></div>
         </div>` : nothing}
       ${this.toast ? html`<div class="toast">${this.toast}</div>` : nothing}
