@@ -1652,6 +1652,7 @@ export class ModuxCanvas extends LitElement {
       <g data-edge-id=${edge.id}>
         <polyline class="edge-hit" points=${hitPoints}
               fill="none" stroke="transparent" stroke-width="14"
+              pointer-events=${this.tool.kind === 'select' ? 'stroke' : 'none'}
               @click=${(e: MouseEvent) => {
                 e.stopPropagation();
                 this.focus();
@@ -2381,9 +2382,9 @@ export class ModuxCanvas extends LitElement {
           <rect x="-100000" y="-100000" width="200000" height="200000"
                 fill=${this.archimate ? '#ffffff' : 'url(#dots)'}
                 pointer-events="none"></rect>
-          ${edgeHits}
           ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
           ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
+          ${edgeHits}
           ${edgeInks}
           ${this.tool.kind === 'place' && this._placeDrag
             ? svg`<rect x=${Math.min(this._placeDrag.x0, this._placeDrag.x1)} y=${Math.min(this._placeDrag.y0, this._placeDrag.y1)}
