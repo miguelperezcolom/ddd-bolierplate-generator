@@ -6,11 +6,13 @@
  * validity rule from Archi's real matrix. The shell only owns semantics (validity,
  * menus, model mutation); the canvas owns the gesture + feedback (direct manipulation).
  */
-import { LitElement, html, css, nothing, svg, type TemplateResult } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { LitElement, html, css, nothing, svg, type TemplateResult, type PropertyValues } from 'lit';
+import { customElement, state, property } from 'lit/decorators.js';
 import '../modux-canvas.js';
 import { SYMBOLS, type CanvasTool, type ModuxCanvas } from '../modux-canvas.js';
-import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
+import type { Scene, SceneNode, SceneEdge, Point, DiagramLayout } from '../scene.js';
+import type { ModuxModel } from '../model.js';
+import { aggregatesScene } from '../views/aggregates.js';
 import { snapValue } from '../snap.js';
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
@@ -84,6 +86,16 @@ type Tool =
 @customElement('archi-shell')
 export class ArchiShell extends LitElement {
   @state() private scene: Scene = structuredClone(EXAMPLE_SCENE);
+  /** SPIKE: when a real model is bound, the scene is DERIVED from it (aggregates view). */
+  @property({ attribute: false }) model: ModuxModel | null = null;
+  @property({ attribute: false }) viewLayout: DiagramLayout = {};
+  private get bound() { return !!this.model; }
+  private emit(name: string, detail: unknown) { this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true })); }
+  protected willUpdate(changed: PropertyValues) {
+    if (this.bound && (changed.has('model') || changed.has('viewLayout'))) {
+      this.scene = aggregatesScene(this.model!, this.viewLayout);
+    }
+  }
   @state() private selectedId: string | null = null;
   @state() private selectedIds: string[] = [];
   @state() private edgePoints: Record<string, Point[]> = {};
@@ -289,6 +301,13 @@ export class ArchiShell extends LitElement {
     return out;
   }
   private moveNodes(moves: { id: string; x: number; y: number }[]) {
+    if (this.bound) {
+      const layout = { ...this.viewLayout };
+      for (const m of moves) layout[m.id] = { x: m.x, y: m.y };
+      this.viewLayout = layout;
+      this.emit('layout-changed', { layout });
+      return;
+    }
     this.commit();
     // Moving a container carries its whole subtree by the same delta.
     const all = new Map(moves.map((mv) => [mv.id, mv]));
@@ -316,7 +335,7 @@ export class ArchiShell extends LitElement {
     });
     this.moveNodes(moves);
   }
-  private onNodeMoved = (e: Event) => { const d = (e as CustomEvent).detail; this.moveNodes([d]); this.maybeNest(d.id); };
+  private onNodeMoved = (e: Event) => { const d = (e as CustomEvent).detail; this.moveNodes([d]); if (!this.bound) this.maybeNest(d.id); };
   private onNodesMoved = (e: Event) => this.moveNodes((e as CustomEvent).detail.moves);
 
   // Dropping a node inside a container simply nests it (no relationship dialog).
@@ -343,6 +362,14 @@ export class ArchiShell extends LitElement {
     this.patchNodes((n) => (n.id === id ? { ...n, collapsed: !n.collapsed } : n));
   };
   private removeElements(ids: string[], commit = true) {
+    if (this.bound) {
+      for (const id of ids) {
+        const n = this.node(id);
+        if (n?.kind === 'aggregate') this.emit('modux-command', { command: { kind: 'remove-aggregate', id } });
+      }
+      this.selectedId = null; this.selectedIds = [];
+      return;
+    }
     if (commit) this.commit();
     const set = new Set(ids);
     const gone = new Set(this.scene.nodes.filter((n) => set.has(n.id) || (n.parentId && set.has(n.parentId))).map((n) => n.id));
@@ -439,6 +466,11 @@ export class ArchiShell extends LitElement {
   }
 
   private rename(name: string) {
+    if (this.bound) {
+      const n = this.selectedNode();
+      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: n.kind, id: n.id, name } });
+      return;
+    }
     const id = this.selectedId; if (!id) return;
     this.patchNodes((n) => (n.id === id ? { ...n, label: name } : n));
   }
@@ -517,6 +549,16 @@ export class ArchiShell extends LitElement {
   };
 
   private addNodeAt(el: ElementTool, x: number, y: number): SceneNode {
+    if (this.bound) {
+      const id = `${el.kind}-${Date.now()}`;
+      if (el.kind === 'aggregate') {
+        const bc = this.model!.boundedContexts[0]?.id;
+        this.emit('modux-command', { command: { kind: 'add-aggregate', id, name: el.label, boundedContextId: bc } });
+        const layout = { ...this.viewLayout, [id]: { x, y } };
+        this.viewLayout = layout; this.emit('layout-changed', { layout });
+      }
+      return { id, label: el.label, kind: el.kind, symbol: el.kind, x, y, w: el.w, h: el.h } as SceneNode;
+    }
     const lay = LAYER[el.layer];
     const isGroup = el.kind === 'group';
     const n: SceneNode = {
@@ -532,6 +574,7 @@ export class ArchiShell extends LitElement {
   }
 
   private addEdge(rel: string, a: SceneNode, b: SceneNode) {
+    if (this.bound) return; // SPIKE: edición de relaciones aún no cableada al modelo
     const note = REL_NOTATION[rel] ?? {};
     const edge = { id: `edge-${++this.seq}`, sourceId: a.id, targetId: b.id, kind: rel, ...note } as SceneEdge;
     this.scene = { ...this.scene, edges: [...this.scene.edges, edge] };
@@ -652,9 +695,9 @@ export class ArchiShell extends LitElement {
     const el = this._dragEl; this._dragEl = null;
     if (!el || !this.canvasEl) return;
     const p = this.canvasEl.sceneFromClient(e.clientX, e.clientY);
-    this.commit();
+    if (!this.bound) this.commit();
     const n = this.addNodeAt(el, snapValue(p.x), snapValue(p.y));
-    this.maybeNest(n.id);
+    if (!this.bound) this.maybeNest(n.id);
   };
   private renderPalette() {
     const magicOn = this.tool.kind === 'connect' && this.tool.rel === null;
