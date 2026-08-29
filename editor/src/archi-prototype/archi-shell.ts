@@ -90,6 +90,7 @@ export class ArchiShell extends LitElement {
   @state() private collapsed = new Set<string>();
   @state() private tab: 'main' | 'appearance' | 'properties' = 'main';
   @state() private treeQuery = '';
+  @state() private paletteWidth = 236;
 
   @state() private tool: Tool = { kind: 'select' };
   @state() private menu: { x: number; y: number; src: SceneNode; tgt: SceneNode; opts: RelOption[] } | null = null;
@@ -127,7 +128,7 @@ export class ArchiShell extends LitElement {
   };
 
   static styles = css`
-    :host { display: grid; grid-template-columns: 264px 1fr 232px; grid-template-rows: 40px 1fr 224px;
+    :host { display: grid; grid-template-columns: 264px 1fr var(--pal-w, 236px); grid-template-rows: 40px 1fr 224px;
       grid-template-areas: 'toolbar toolbar toolbar' 'tree canvas palette' 'tree props palette';
       height: 100vh; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; color: #1e293b; background: #eef1f5; }
     .toolbar { grid-area: toolbar; display: flex; align-items: center; gap: 12px; padding: 0 14px;
@@ -171,14 +172,16 @@ export class ArchiShell extends LitElement {
     .legend .k { display: flex; align-items: center; gap: 5px; color: #475569; }
     .legend .sw { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,.25); }
 
-    .palette { grid-area: palette; border-left: 1px solid #cbd5e1; }
+    .palette { grid-area: palette; border-left: 1px solid #cbd5e1; position: relative; }
+    .presize { position: absolute; left: -3px; top: 0; bottom: 0; width: 7px; cursor: col-resize; z-index: 8; }
+    .presize:hover, .presize.drag { background: rgba(37,99,235,.18); }
     .pgroup { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; padding: 8px 10px 3px; }
     .pgroup.pfold { cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }
     .pgroup.pfold:hover { color: #64748b; }
     .pgroup .ptw { font-size: 8px; color: #94a3b8; }
     .pgroup .pnote { text-transform: none; font-weight: 400; margin-left: auto; color: #cbd5e1; font-size: 9px; padding-right: 4px; }
     .pitem { display: flex; align-items: center; gap: 7px; padding: 4px 10px; cursor: pointer; }
-    .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 4px; padding: 2px 6px 6px; }
+    .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 2px 4px; padding: 2px 6px 6px; }
     .pgrid .pitem { padding: 3px 5px; gap: 5px; border-radius: 5px; overflow: hidden; min-width: 0; }
     .pgrid .pitem .lbl { min-width: 0; font-size: 12px; }
     .pitem:hover { background: #e7edf5; }
@@ -380,6 +383,16 @@ export class ArchiShell extends LitElement {
     this.selectedIds = newNodes.map((n) => n.id);
     this.selectedId = newNodes[0]?.id ?? null;
   }
+
+  protected updated() { this.style.setProperty('--pal-w', this.paletteWidth + 'px'); }
+  private startPaletteResize = (e: PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX, startW = this.paletteWidth;
+    const handle = e.currentTarget as HTMLElement; handle.classList.add('drag');
+    const onMove = (ev: PointerEvent) => { this.paletteWidth = Math.max(170, Math.min(560, startW - (ev.clientX - startX))); };
+    const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); handle.classList.remove('drag'); };
+    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+  };
 
   private get canvasEl() { return this.renderRoot.querySelector('modux-canvas') as ModuxCanvas | null; }
   private onContextMenu = (e: MouseEvent) => {
@@ -784,7 +797,10 @@ export class ArchiShell extends LitElement {
         })()}</div>
       </div>
 
-      <div class="panel palette"><header>Paleta</header><div class="body">${this.renderPalette()}</div></div>
+      <div class="panel palette">
+        <div class="presize" title="Arrastra para ajustar el ancho" @pointerdown=${this.startPaletteResize}></div>
+        <header>Paleta</header><div class="body">${this.renderPalette()}</div>
+      </div>
 
       <div class="panel props">
         <div class="tabs">${(['main', 'appearance', 'properties'] as const).map((tb) => html`
