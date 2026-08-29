@@ -1171,7 +1171,7 @@ export class ModuxCanvas extends LitElement {
    * resize is symmetric about the centre. Children never leave the box: they
    * keep their absolute position, so each edge stops at the outermost child.
    */
-  private onResizePointerDown(e: PointerEvent, node: SceneNode, sx: 1 | -1, sy: 1 | -1): void {
+  private onResizePointerDown(e: PointerEvent, node: SceneNode, sx: -1 | 0 | 1, sy: -1 | 0 | 1): void {
     if (e.button !== 0 || (e.buttons & 1) === 0) return;
     e.stopPropagation();
     this.focus();
@@ -1205,33 +1205,34 @@ export class ModuxCanvas extends LitElement {
           id: node.id,
           x: start.x,
           y: start.y,
-          w: ev.altKey
+          w: sx === 0 ? start.w : ev.altKey
             ? Math.max(symMin.w, 2 * Math.abs(p.x - start.x))
             : Math.max(symMin.w, snapValue(2 * Math.abs(p.x - start.x))),
-          h: ev.altKey
+          h: sy === 0 ? start.h : ev.altKey
             ? Math.max(symMin.h, 2 * Math.abs(p.y - start.y))
             : Math.max(symMin.h, snapValue(2 * Math.abs(p.y - start.y))),
         };
         return;
       }
-      // Anchor = the opposite corner; the dragged edges stop at the floor size
-      // and at the outermost child (plus its margin). Snapped to the grid unless Alt.
+      // Anchor = the opposite edge/corner; a side handle (0 on an axis) leaves that
+      // dimension untouched. Dragged edges stop at the floor size and outermost child.
       const pg = ev.altKey ? p : { x: snapValue(p.x), y: snapValue(p.y) };
       const ax = start.x - (sx * start.w) / 2;
       const ay = start.y - (sy * start.h) / 2;
-      const px = sx > 0
-        ? Math.max(pg.x, ax + MIN_W, kids.length ? kidsRight + CONTAINER_INSET : -Infinity)
-        : Math.min(pg.x, ax - MIN_W, kids.length ? kidsLeft - CONTAINER_INSET : Infinity);
-      const py = sy > 0
-        ? Math.max(pg.y, ay + MIN_H, kids.length ? kidsBottom + CONTAINER_INSET : -Infinity)
-        : Math.min(pg.y, ay - MIN_H, kids.length ? kidsTop - CONTAINER_HEADER : Infinity);
-      this._resize = {
-        id: node.id,
-        x: (ax + px) / 2,
-        y: (ay + py) / 2,
-        w: Math.abs(px - ax),
-        h: Math.abs(py - ay),
-      };
+      let nx = start.x, ny = start.y, nw = start.w, nh = start.h;
+      if (sx !== 0) {
+        const px = sx > 0
+          ? Math.max(pg.x, ax + MIN_W, kids.length ? kidsRight + CONTAINER_INSET : -Infinity)
+          : Math.min(pg.x, ax - MIN_W, kids.length ? kidsLeft - CONTAINER_INSET : Infinity);
+        nx = (ax + px) / 2; nw = Math.abs(px - ax);
+      }
+      if (sy !== 0) {
+        const py = sy > 0
+          ? Math.max(pg.y, ay + MIN_H, kids.length ? kidsBottom + CONTAINER_INSET : -Infinity)
+          : Math.min(pg.y, ay - MIN_H, kids.length ? kidsTop - CONTAINER_HEADER : Infinity);
+        ny = (ay + py) / 2; nh = Math.abs(py - ay);
+      }
+      this._resize = { id: node.id, x: nx, y: ny, w: nw, h: nh };
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
@@ -2043,16 +2044,22 @@ export class ModuxCanvas extends LitElement {
             )
           : ''}
         ${(isContainer || node.resizable || this.archimate) && selected
-          ? ([[-1, -1], [1, -1], [-1, 1], [1, 1]] as const).map(
-              ([sx, sy]) => svg`
-                <rect data-resize x=${sx * hw - 6.5} y=${sy * hh - 6.5} width=${this.archimate ? 8 : 13} height=${this.archimate ? 8 : 13} rx=${this.archimate ? 1 : 2.5}
-                      style=${'cursor: ' + (sx * sy > 0 ? 'nwse' : 'nesw') + '-resize; fill: '
+          ? ((this.archimate
+              ? [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]
+              : [[-1, -1], [1, -1], [-1, 1], [1, 1]]) as readonly (readonly [-1 | 0 | 1, -1 | 0 | 1])[]).map(
+              ([sx, sy]) => {
+                const hs = this.archimate ? 8 : 13;
+                const cur = sx === 0 ? 'ns' : sy === 0 ? 'ew' : sx * sy > 0 ? 'nwse' : 'nesw';
+                return svg`
+                <rect data-resize x=${sx * hw - hs / 2} y=${sy * hh - hs / 2} width=${hs} height=${hs} rx=${this.archimate ? 1 : 2.5}
+                      style=${'cursor: ' + cur + '-resize; fill: '
                         + (this.archimate ? (this.selectedId === node.id ? '#1e293b' : '#ffffff') : 'var(--modux-primary, #2563eb)')
                         + '; stroke: ' + (this.archimate ? '#5C5C5C' : 'var(--modux-surface, #ffffff)')}
                       stroke-width=${this.archimate ? 1 : 1.5}
                       @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node, sx, sy)}>
                   <title>Arrastra para cambiar el tamaño (Shift: simétrico desde el centro)</title>
-                </rect>`,
+                </rect>`;
+              },
             )
           : ''}
       </g>
