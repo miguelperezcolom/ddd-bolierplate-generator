@@ -1895,10 +1895,10 @@ export class ModuxCanvas extends LitElement {
                 </g>`
           : ''}
         ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer || this.archimate)
-          ? svg`<g transform="translate(${hw - (node.collapsible ? 37 : 17)}, ${-hh + 5})" fill="none"
-                  style=${'stroke: ' + (node.stroke ?? 'var(--modux-node-stroke, #64748b)')}
-                  stroke-width="1.1" stroke-linejoin="round"
-                  stroke-linecap="round" opacity="0.85" pointer-events="none">
+          ? svg`<g transform="translate(${hw - (node.collapsible ? 40 : 22)}, ${-hh + 5}) scale(${this.archimate ? 1.45 : 1})" fill="none"
+                  style=${'stroke: ' + (this.archimate ? '#475569' : (node.stroke ?? 'var(--modux-node-stroke, #64748b)'))}
+                  stroke-width=${this.archimate ? 1 : 1.1} stroke-linejoin="round"
+                  stroke-linecap="round" pointer-events="none">
                 ${SYMBOLS[node.symbol]}
               </g>`
           : ''}
