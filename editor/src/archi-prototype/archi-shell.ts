@@ -11,6 +11,7 @@ import { customElement, state } from 'lit/decorators.js';
 import '../modux-canvas.js';
 import { SYMBOLS, type CanvasTool, type ModuxCanvas } from '../modux-canvas.js';
 import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
+import { snapValue } from '../snap.js';
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
 
@@ -92,6 +93,8 @@ export class ArchiShell extends LitElement {
   @state() private meta: Record<string, { doc: string; props: { k: string; v: string }[] }> = {};
   /** Sticky palette tool (Shift-click keeps the tool selected after use, like Archi). */
   private sticky = false;
+  /** Element being dragged from the palette onto the canvas. */
+  private _dragEl: ElementTool | null = null;
   /** Format painter: the fill to stamp onto clicked nodes (null = painter off). */
   @state() private painter: string | null = null;
 
@@ -609,8 +612,20 @@ export class ArchiShell extends LitElement {
   }
   private elItem(el: ElementTool) {
     const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-    return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
+    return html`<div class="pitem ${on ? 'on' : ''}" draggable="true"
+      @dragstart=${(e: DragEvent) => { this._dragEl = el; if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', el.kind); } }}
+      @dragend=${() => (this._dragEl = null)}
+      @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
   }
+  private onCanvasDrop = (e: DragEvent) => {
+    e.preventDefault();
+    const el = this._dragEl; this._dragEl = null;
+    if (!el || !this.canvasEl) return;
+    const p = this.canvasEl.sceneFromClient(e.clientX, e.clientY);
+    this.commit();
+    const n = this.addNodeAt(el, snapValue(p.x), snapValue(p.y));
+    this.maybeNest(n.id);
+  };
   private renderPalette() {
     const magicOn = this.tool.kind === 'connect' && this.tool.rel === null;
     return html`
@@ -720,7 +735,9 @@ export class ArchiShell extends LitElement {
         <div class="body">${this.renderTree()}</div>
       </div>
 
-      <div class="canvas-wrap" @contextmenu=${this.onContextMenu}>
+      <div class="canvas-wrap" @contextmenu=${this.onContextMenu}
+        @dragover=${(e: DragEvent) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }}
+        @drop=${this.onCanvasDrop}>
         <modux-canvas archimate
           .scene=${this.displayScene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
           .edgePoints=${this.edgePoints}
