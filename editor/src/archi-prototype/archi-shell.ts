@@ -10,10 +10,12 @@ import { LitElement, html, css, nothing, svg, type TemplateResult, type Property
 import { customElement, state, property } from 'lit/decorators.js';
 import '../modux-canvas.js';
 import { SYMBOLS, type CanvasTool, type ModuxCanvas } from '../modux-canvas.js';
-import type { Scene, SceneNode, SceneEdge, Point, DiagramLayout } from '../scene.js';
+import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
 import type { ModuxModel } from '../model.js';
-import { aggregatesScene } from '../views/aggregates.js';
 import { snapValue } from '../snap.js';
+
+/** SPIKE: a free-form view is just which model elements it shows and where. */
+type ViewMembers = { members: { id: string; x: number; y: number; w: number; h: number }[] };
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
 
@@ -86,15 +88,55 @@ type Tool =
 @customElement('archi-shell')
 export class ArchiShell extends LitElement {
   @state() private scene: Scene = structuredClone(EXAMPLE_SCENE);
-  /** SPIKE: when a real model is bound, the scene is DERIVED from it (aggregates view). */
+  /**
+   * SPIKE (vista libre): el modelo es la fuente de verdad; la VISTA solo dice qué
+   * elementos muestra y dónde. No hay vistas especializadas — el usuario decide qué
+   * incluir. La escena se resuelve: miembros de la vista → elementos del modelo.
+   */
   @property({ attribute: false }) model: ModuxModel | null = null;
-  @property({ attribute: false }) viewLayout: DiagramLayout = {};
+  @property({ attribute: false }) view: ViewMembers = { members: [] };
   private get bound() { return !!this.model; }
   private emit(name: string, detail: unknown) { this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true })); }
   protected willUpdate(changed: PropertyValues) {
-    if (this.bound && (changed.has('model') || changed.has('viewLayout'))) {
-      this.scene = aggregatesScene(this.model!, this.viewLayout);
+    if (this.bound && (changed.has('model') || changed.has('view'))) {
+      this.scene = this.buildViewScene();
     }
+  }
+  /** kind de nodo → tipo del modelo (para comandos). */
+  private modelType(kind: string) { return kind === 'component' ? 'boundedContext' : kind === 'person' ? 'actor' : kind; }
+  /** Resuelve un id del modelo a { kind de nodo, label }. */
+  private resolveElement(id: string): { kind: string; label: string } | null {
+    const m = this.model!;
+    const bc = m.boundedContexts.find((x) => x.id === id); if (bc) return { kind: 'component', label: bc.name };
+    const ag = (m.aggregates ?? []).find((x) => x.id === id); if (ag) return { kind: 'aggregate', label: ag.name };
+    const en = (m.entities ?? []).find((x) => x.id === id); if (en) return { kind: 'entity', label: en.name };
+    const vo = (m.valueObjects ?? []).find((x) => x.id === id); if (vo) return { kind: 'value-object', label: vo.name };
+    const ac = (m.actors ?? []).find((x) => x.id === id); if (ac) return { kind: 'person', label: ac.name };
+    return null;
+  }
+  /** Escena = miembros de la vista (resueltos contra el modelo) + relaciones entre ellos. */
+  private buildViewScene(): Scene {
+    const m = this.model!;
+    const ids = new Set(this.view.members.map((x) => x.id));
+    const nodes: SceneNode[] = [];
+    for (const mem of this.view.members) {
+      const el = this.resolveElement(mem.id); if (!el) continue;
+      nodes.push({
+        id: mem.id, label: el.label, kind: el.kind, symbol: ARCHIMATE_SYMBOL[el.kind] ?? el.kind,
+        x: mem.x, y: mem.y, w: mem.w, h: mem.h,
+        fill: LAYER[kindLayer(el.kind)].fill, stroke: '#5C5C5C',
+      });
+    }
+    const edges: SceneEdge[] = [];
+    for (const r of m.relations ?? []) if (ids.has(r.sourceId) && ids.has(r.targetId))
+      edges.push({ id: `rel:${r.sourceId}->${r.targetId}`, sourceId: r.sourceId, targetId: r.targetId, kind: 'association', markerEnd: 'open-arrow', label: r.type ?? undefined });
+    for (const a of m.aggregates ?? []) if (a.boundedContextId && ids.has(a.id) && ids.has(a.boundedContextId))
+      edges.push({ id: `agg-ctx:${a.id}`, sourceId: a.boundedContextId, targetId: a.id, kind: 'composition', markerStart: 'diamond' });
+    for (const e of m.entities ?? []) if (e.aggregateId && ids.has(e.id) && ids.has(e.aggregateId))
+      edges.push({ id: `ent-agg:${e.id}`, sourceId: e.aggregateId, targetId: e.id, kind: 'composition', markerStart: 'diamond' });
+    for (const v of m.valueObjects ?? []) if (v.aggregateId && ids.has(v.id) && ids.has(v.aggregateId))
+      edges.push({ id: `vo-agg:${v.id}`, sourceId: v.aggregateId, targetId: v.id, kind: 'composition', markerStart: 'diamond' });
+    return { nodes, edges };
   }
   @state() private selectedId: string | null = null;
   @state() private selectedIds: string[] = [];
@@ -263,10 +305,8 @@ export class ArchiShell extends LitElement {
   }
   private validator = (s: string, t: string, rel: string | null) => {
     if (this.bound) {
-      // Aggregates view: the only connection is membership (aggregate ↔ entity/VO).
-      const isAgg = (k: string) => k === 'aggregate';
-      const isMember = (k: string) => k === 'entity' || k === 'value-object';
-      return (isAgg(s) && isMember(t)) || (isMember(s) && isAgg(t));
+      const pair = (a: string, b: string) => (s === a && t === b) || (s === b && t === a);
+      return (s === 'component' && t === 'component') || pair('component', 'aggregate') || pair('aggregate', 'entity') || pair('aggregate', 'value-object');
     }
     return rel === null ? validRelations(s, t).length > 0 : canDraw(rel, s, t) !== null;
   };
@@ -309,10 +349,9 @@ export class ArchiShell extends LitElement {
   }
   private moveNodes(moves: { id: string; x: number; y: number }[]) {
     if (this.bound) {
-      const layout = { ...this.viewLayout };
-      for (const m of moves) layout[m.id] = { x: m.x, y: m.y };
-      this.viewLayout = layout;
-      this.emit('layout-changed', { layout });
+      const byId = new Map(moves.map((m) => [m.id, m]));
+      this.view = { members: this.view.members.map((mem) => byId.has(mem.id) ? { ...mem, x: byId.get(mem.id)!.x, y: byId.get(mem.id)!.y } : mem) };
+      this.emit('view-changed', { view: this.view });
       return;
     }
     this.commit();
@@ -370,10 +409,10 @@ export class ArchiShell extends LitElement {
   };
   private removeElements(ids: string[], commit = true) {
     if (this.bound) {
-      for (const id of ids) {
-        const n = this.node(id);
-        if (n?.kind === 'aggregate') this.emit('modux-command', { command: { kind: 'remove-aggregate', id } });
-      }
+      // Del removes from the VIEW (the element stays in the model), like Archi.
+      const set = new Set(ids);
+      this.view = { members: this.view.members.filter((mem) => !set.has(mem.id)) };
+      this.emit('view-changed', { view: this.view });
       this.selectedId = null; this.selectedIds = [];
       return;
     }
@@ -475,7 +514,7 @@ export class ArchiShell extends LitElement {
   private rename(name: string) {
     if (this.bound) {
       const n = this.selectedNode();
-      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: n.kind, id: n.id, name } });
+      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: this.modelType(n.kind), id: n.id, name } });
       return;
     }
     const id = this.selectedId; if (!id) return;
@@ -534,14 +573,16 @@ export class ArchiShell extends LitElement {
     const d = (e as CustomEvent).detail as { sourceId: string; targetId: string; rel: string | null; x: number; y: number };
     const src = this.node(d.sourceId)!, tgt = this.node(d.targetId)!;
     if (this.bound) {
-      // Aggregates view: connecting = setting membership (entity/VO → aggregate).
-      const agg = src.kind === 'aggregate' ? src : tgt.kind === 'aggregate' ? tgt : null;
-      const mem = ['entity', 'value-object'].includes(src.kind) ? src : ['entity', 'value-object'].includes(tgt.kind) ? tgt : null;
-      if (agg && mem) {
-        const kind = mem.kind === 'entity' ? 'set-entity-aggregate' : 'set-value-object-aggregate';
-        this.emit('modux-command', { command: { kind, id: mem.id, aggregateId: agg.id } });
-      } else {
-        this.flash('En Agregados solo se conecta un agregado con una entidad/VO (pertenencia)');
+      const S = src.kind, T = tgt.kind;
+      const cmd = (command: unknown) => this.emit('modux-command', { command });
+      if (S === 'component' && T === 'component') cmd({ kind: 'add-relation', sourceId: src.id, targetId: tgt.id, type: 'CUSTOMER_SUPPLIER' });
+      else if (S === 'aggregate' && T === 'component') cmd({ kind: 'set-aggregate-context', id: src.id, boundedContextId: tgt.id });
+      else if (S === 'component' && T === 'aggregate') cmd({ kind: 'set-aggregate-context', id: tgt.id, boundedContextId: src.id });
+      else {
+        const agg = S === 'aggregate' ? src : T === 'aggregate' ? tgt : null;
+        const mem = ['entity', 'value-object'].includes(S) ? src : ['entity', 'value-object'].includes(T) ? tgt : null;
+        if (agg && mem) cmd({ kind: mem.kind === 'entity' ? 'set-entity-aggregate' : 'set-value-object-aggregate', id: mem.id, aggregateId: agg.id });
+        else this.flash(`No sé conectar «${src.label}» con «${tgt.label}»`);
       }
       this.afterConnect();
       return;
@@ -571,20 +612,19 @@ export class ArchiShell extends LitElement {
   private addNodeAt(el: ElementTool, x: number, y: number): SceneNode {
     if (this.bound) {
       const id = `${el.kind}-${Date.now()}`;
-      if (el.kind === 'aggregate') {
-        const bc = this.model!.boundedContexts[0]?.id;
-        const name = `Agregado ${(this.model!.aggregates ?? []).length + 1}`;
-        this.emit('modux-command', { command: { kind: 'add-aggregate', id, name, boundedContextId: bc } });
-        const layout = { ...this.viewLayout, [id]: { x, y } };
-        this.viewLayout = layout; this.emit('layout-changed', { layout });
-      } else if (el.kind === 'component') {
-        const name = `Contexto ${this.model!.boundedContexts.length + 1}`;
-        this.emit('modux-command', { command: { kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' } });
-        this.flash(`«${name}» añadido al modelo — asígnalo en la propiedad «Contexto» de un agregado`);
-      } else {
-        this.flash('En la vista de Agregados se añaden agregados y contextos');
+      const name = el.label;
+      let created = true;
+      if (el.kind === 'aggregate') this.emit('modux-command', { command: { kind: 'add-aggregate', id, name } });
+      else if (el.kind === 'component') this.emit('modux-command', { command: { kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' } });
+      else if (el.kind === 'entity') this.emit('modux-command', { command: { kind: 'add-entity', id, name } });
+      else if (el.kind === 'value-object') this.emit('modux-command', { command: { kind: 'add-value-object', id, name } });
+      else { created = false; this.flash(`«${el.label}» aún no cableado en el spike`); }
+      if (created) {
+        this.view = { members: [...this.view.members, { id, x, y, w: el.w, h: el.h }] };
+        this.emit('view-changed', { view: this.view });
+        this.select(id);
       }
-      return { id, label: el.label, kind: el.kind, symbol: el.kind, x, y, w: el.w, h: el.h } as SceneNode;
+      return { id, label: name, kind: el.kind, symbol: el.kind, x, y, w: el.w, h: el.h } as SceneNode;
     }
     const lay = LAYER[el.layer];
     const isGroup = el.kind === 'group';
@@ -753,8 +793,17 @@ export class ArchiShell extends LitElement {
   /** SPIKE: properties bound to the real model (aggregates view). */
   private renderBoundProps() {
     const m = this.model!, id = this.selectedId;
-    const agg = (m.aggregates ?? []).find((a) => a.id === id);
     const rename = (e: Event) => this.rename((e.target as HTMLInputElement).value);
+    const bc = m.boundedContexts.find((x) => x.id === id);
+    if (bc) {
+      const aggs = (m.aggregates ?? []).filter((a) => a.boundedContextId === bc.id).length;
+      return html`<div class="form">
+        <label>Nombre</label><input .value=${bc.name} @input=${rename} />
+        <label>Tipo</label><div class="ro">Bounded context</div>
+        <label>Subdominio</label><div class="ro">${bc.subdomainType}</div>
+        <label>Agregados</label><div class="ro">${aggs}</div></div>`;
+    }
+    const agg = (m.aggregates ?? []).find((a) => a.id === id);
     if (agg) {
       const ents = (m.entities ?? []).filter((x) => x.aggregateId === agg.id).length;
       const vos = (m.valueObjects ?? []).filter((x) => x.aggregateId === agg.id).length;
