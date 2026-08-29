@@ -124,6 +124,10 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <rect x="0.5" y="6.8" width="4" height="2.4"></rect>`,
   'am-object': svg`<rect x="0.8" y="1.5" width="10.4" height="9"></rect>
     <line x1="0.8" y1="4" x2="11.2" y2="4"></line>`,
+  // Aggregate (DDD): a cluster — stacked rectangles (root + its members).
+  'am-aggregate': svg`<path d="M3.4 3.4 V1 H11 V8.6 H8.6"></path>
+    <rect x="1" y="3.4" width="7.6" height="7.2" rx="0.6"></rect>
+    <line x1="1" y1="5.6" x2="8.6" y2="5.6"></line>`,
   'am-event': svg`<path d="M2.5 2.5 H8.5 Q11 2.5 11 6 Q11 9.5 8.5 9.5 H2.5 Q4.3 6 2.5 2.5 Z"></path>`,
   'am-function': svg`<path d="M1.5 11 V4 L6 1 L10.5 4 V11 L6 8.5 Z"></path>`,
   'am-actor': svg`<circle cx="6" cy="2.6" r="1.8"></circle>

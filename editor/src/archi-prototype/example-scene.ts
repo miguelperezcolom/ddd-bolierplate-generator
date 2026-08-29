@@ -46,7 +46,7 @@ export const TREE: TreeNode[] = [
 
 /** modux concept kind → ArchiMate-accurate type icon (a `SYMBOLS` key in modux-canvas). */
 export const ARCHIMATE_SYMBOL: Record<string, string> = {
-  component: 'am-component', aggregate: 'am-object', entity: 'am-object',
+  component: 'am-component', aggregate: 'am-aggregate', entity: 'am-object',
   event: 'am-event', usecase: 'am-function', person: 'am-actor', service: 'am-service',
 };
 
