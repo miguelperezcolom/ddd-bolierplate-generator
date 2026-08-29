@@ -664,7 +664,7 @@ export class ArchiShell extends LitElement {
           .scene=${this.displayScene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
           .edgePoints=${this.edgePoints}
           .tool=${this.canvasTool} .connectValidator=${this.validator}
-          @edge-points-changed=${(e: Event) => { const d = (e as CustomEvent).detail; this.commit(); this.edgePoints = { ...this.edgePoints, [d.id]: d.points }; }}
+          @edge-points-changed=${(e: Event) => { const d = (e as CustomEvent).detail; if (!d.auto) this.commit(); this.edgePoints = { ...this.edgePoints, [d.id]: d.points }; }}
           @element-selected=${this.onCanvasSelected}
           @element-multi-toggled=${this.onMultiToggle}
           @nodes-boxed=${this.onBoxed}

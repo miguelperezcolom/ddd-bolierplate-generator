@@ -57,6 +57,14 @@ function polylineMidpoint(pts: Point[]): Point {
   return pts[Math.floor(pts.length / 2)];
 }
 
+/** Perpendicular distance of point b from the line through a and c. */
+function perpDist(a: Point, b: Point, c: Point): number {
+  const dx = c.x - a.x, dy = c.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return Math.hypot(b.x - a.x, b.y - a.y);
+  return Math.abs((b.x - a.x) * dy - (b.y - a.y) * dx) / len;
+}
+
 /** Orthogonal polyline with rounded corners (ArchiMate mode) — quadratic fillet per vertex. */
 function roundedOrthoPath(pts: Point[], radius = 10): string {
   if (pts.length < 2) return '';
@@ -607,6 +615,7 @@ export class ModuxCanvas extends LitElement {
         input.select();
       }
     }
+    this.pruneCollinearWaypoints();
   }
 
   /**
@@ -1529,6 +1538,34 @@ export class ModuxCanvas extends LitElement {
     window.addEventListener('pointerup', onUp);
   }
 
+  /** Drop bendpoints that ended up on a straight segment (after moving a node or waypoints). */
+  private pruneCollinearWaypoints(): void {
+    if (this._wpDrag || this._dragPos || this._dragGroup || this._resize) return;
+    const TOL = 3;
+    for (const edge of this.scene.edges) {
+      let list = this.edgePoints[edge.id];
+      if (!list?.length) continue;
+      const source = this.scene.nodes.find((n) => n.id === edge.sourceId);
+      const target = this.scene.nodes.find((n) => n.id === edge.targetId);
+      if (!source || !target) continue;
+      let changed = false;
+      for (;;) {
+        if (!list.length) break;
+        const a = this.orthoBorderPoint(source, list[0].x, list[0].y);
+        const b = this.orthoBorderPoint(target, list[list.length - 1].x, list[list.length - 1].y);
+        const poly = [a, ...list, b];
+        let rm = -1;
+        for (let i = 0; i < list.length; i++) {
+          if (perpDist(poly[i], poly[i + 1], poly[i + 2]) < TOL) { rm = i; break; }
+        }
+        if (rm < 0) break;
+        list = list.filter((_, j) => j !== rm);
+        changed = true;
+      }
+      if (changed) this.emit('edge-points-changed', { id: edge.id, points: list, auto: true });
+    }
+  }
+
   /** Insert a new bend on `edge` at scene point `at`, selecting it. */
   private addWaypointAt(edge: SceneEdge, pts: Point[], at: Point): void {
     const seg = this.nearestSegment(pts, at);
@@ -1682,13 +1719,9 @@ export class ModuxCanvas extends LitElement {
                 this._selectedWaypoint?.edgeId === edge.id && this._selectedWaypoint.index === i;
               return svg`
                 <circle data-waypoint cx=${p.x} cy=${p.y} r=${wpSelected ? 6 : 5}
-                        style=${'fill: ' +
-                          (wpSelected
-                            ? 'var(--modux-primary, #2563eb)'
-                            : 'var(--modux-node-fill, #ffffff)') +
-                          '; stroke: var(--modux-primary, #2563eb)'}
+                        style=${'cursor: move; fill: ' + (this.archimate ? '#0000FF' : 'var(--modux-primary, #2563eb)')
+                          + '; stroke: ' + (wpSelected ? '#1e293b' : 'var(--modux-surface, #ffffff)')}
                         stroke-width="1.6" pointer-events="all"
-                        style="cursor: move"
                         @pointerdown=${(e: PointerEvent) => {
                           if (e.button !== 0) return;
                           e.stopPropagation();
