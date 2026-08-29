@@ -212,7 +212,7 @@ export class ArchiShell extends LitElement {
     .tabs button.on { background: #f7f8fa; border-color: #d5dbe3; color: #0f172a; font-weight: 600; }
     .form { padding: 12px 14px; display: grid; grid-template-columns: 96px 1fr; gap: 9px 12px; align-items: center; max-width: 640px; }
     .form label { color: #64748b; font-size: 12px; }
-    .form input, .form textarea, .form .ro { font: inherit; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; background: #fff; color: #1e293b; }
+    .form input, .form textarea, .form .ro, .form select { font: inherit; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; background: #fff; color: #1e293b; }
     .form .ro { background: #f1f5f9; color: #475569; }
     .form textarea { resize: vertical; min-height: 46px; }
     .empty { padding: 22px; color: #94a3b8; }
@@ -261,8 +261,15 @@ export class ArchiShell extends LitElement {
     this.toast = msg; clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => (this.toast = null), 2600);
   }
-  private validator = (s: string, t: string, rel: string | null) =>
-    rel === null ? validRelations(s, t).length > 0 : canDraw(rel, s, t) !== null;
+  private validator = (s: string, t: string, rel: string | null) => {
+    if (this.bound) {
+      // Aggregates view: the only connection is membership (aggregate ↔ entity/VO).
+      const isAgg = (k: string) => k === 'aggregate';
+      const isMember = (k: string) => k === 'entity' || k === 'value-object';
+      return (isAgg(s) && isMember(t)) || (isMember(s) && isAgg(t));
+    }
+    return rel === null ? validRelations(s, t).length > 0 : canDraw(rel, s, t) !== null;
+  };
 
   /** Map the shell's tool to the canvas's tool contract. */
   private get canvasTool(): CanvasTool {
@@ -526,6 +533,19 @@ export class ArchiShell extends LitElement {
   private onCommitted = (e: Event) => {
     const d = (e as CustomEvent).detail as { sourceId: string; targetId: string; rel: string | null; x: number; y: number };
     const src = this.node(d.sourceId)!, tgt = this.node(d.targetId)!;
+    if (this.bound) {
+      // Aggregates view: connecting = setting membership (entity/VO → aggregate).
+      const agg = src.kind === 'aggregate' ? src : tgt.kind === 'aggregate' ? tgt : null;
+      const mem = ['entity', 'value-object'].includes(src.kind) ? src : ['entity', 'value-object'].includes(tgt.kind) ? tgt : null;
+      if (agg && mem) {
+        const kind = mem.kind === 'entity' ? 'set-entity-aggregate' : 'set-value-object-aggregate';
+        this.emit('modux-command', { command: { kind, id: mem.id, aggregateId: agg.id } });
+      } else {
+        this.flash('En Agregados solo se conecta un agregado con una entidad/VO (pertenencia)');
+      }
+      this.afterConnect();
+      return;
+    }
     if (d.rel === null) {
       const opts = validRelations(src.kind, tgt.kind);
       if (!opts.length) { this.flash(`No hay ninguna relación válida entre «${src.label}» y «${tgt.label}»`); this.afterConnect(); return; }
@@ -723,7 +743,43 @@ export class ArchiShell extends LitElement {
   }
 
   // ---- properties ----------------------------------------------------------
+  /** SPIKE: properties bound to the real model (aggregates view). */
+  private renderBoundProps() {
+    const m = this.model!, id = this.selectedId;
+    const agg = (m.aggregates ?? []).find((a) => a.id === id);
+    const rename = (e: Event) => this.rename((e.target as HTMLInputElement).value);
+    if (agg) {
+      const ents = (m.entities ?? []).filter((x) => x.aggregateId === agg.id).length;
+      const vos = (m.valueObjects ?? []).filter((x) => x.aggregateId === agg.id).length;
+      const invs = (agg.invariants ?? []).length;
+      return html`<div class="form">
+        <label>Nombre</label><input .value=${agg.name} @input=${rename} />
+        <label>Contexto</label>
+        <select .value=${agg.boundedContextId ?? ''} @change=${(e: Event) => this.emit('modux-command', { command: { kind: 'set-aggregate-context', id: agg.id, boundedContextId: (e.target as HTMLSelectElement).value } })}>
+          ${m.boundedContexts.map((bc) => html`<option value=${bc.id}>${bc.name}</option>`)}
+        </select>
+        <label>Entidades</label><div class="ro">${ents}</div>
+        <label>Value objects</label><div class="ro">${vos}</div>
+        <label>Invariantes</label><div class="ro">${invs}</div></div>`;
+    }
+    const ent = (m.entities ?? []).find((x) => x.id === id);
+    const vo = (m.valueObjects ?? []).find((x) => x.id === id);
+    const mem = ent ?? vo;
+    if (mem) {
+      const cmdKind = ent ? 'set-entity-aggregate' : 'set-value-object-aggregate';
+      return html`<div class="form">
+        <label>Nombre</label><input .value=${mem.name} @input=${rename} />
+        <label>Tipo</label><div class="ro">${ent ? 'Entidad' : 'Value object'}</div>
+        <label>Agregado</label>
+        <select .value=${mem.aggregateId ?? ''} @change=${(e: Event) => this.emit('modux-command', { command: { kind: cmdKind, id: mem.id, aggregateId: (e.target as HTMLSelectElement).value } })}>
+          ${(m.aggregates ?? []).map((a) => html`<option value=${a.id}>${a.name}</option>`)}
+        </select></div>`;
+    }
+    return html`<div class="empty">Selecciona un elemento del modelo.</div>`;
+  }
+
   private renderProps() {
+    if (this.bound) return this.renderBoundProps();
     const n = this.selectedNode();
     if (!n) {
       const edge = this.selectedEdge();

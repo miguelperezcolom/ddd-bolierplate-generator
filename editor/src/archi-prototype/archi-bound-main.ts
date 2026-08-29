@@ -43,6 +43,21 @@ function apply(cmd: ModuxCommand): void {
     case 'remove-aggregate':
       model.aggregates = (model.aggregates ?? []).filter((a) => a.id !== cmd.id);
       break;
+    case 'set-aggregate-context': {
+      const a = (model.aggregates ?? []).find((x) => x.id === cmd.id);
+      if (a) a.boundedContextId = cmd.boundedContextId ?? '';
+      break;
+    }
+    case 'set-entity-aggregate': {
+      const en = (model.entities ?? []).find((x) => x.id === cmd.id);
+      if (en) en.aggregateId = cmd.aggregateId;
+      break;
+    }
+    case 'set-value-object-aggregate': {
+      const v = (model.valueObjects ?? []).find((x) => x.id === cmd.id);
+      if (v) v.aggregateId = cmd.aggregateId;
+      break;
+    }
     default: /* other commands not wired in this spike */ break;
   }
 }
