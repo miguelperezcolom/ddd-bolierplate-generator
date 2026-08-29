@@ -41,7 +41,8 @@ const KIND_TO_CONCEPT: Record<string, string> = {
   'ui-app': 'ApplicationComponent',
   page: 'ApplicationComponent',
   'menu-item': 'ApplicationComponent',
-  // Módulos (patrones arquitectónicos)
+  // Despliegue / Módulos (patrones arquitectónicos; composición Servicio ◆— Módulo)
+  deployment: 'ApplicationComponent',
   module: 'ApplicationComponent',
   bff: 'ApplicationComponent',
   acl: 'ApplicationComponent',

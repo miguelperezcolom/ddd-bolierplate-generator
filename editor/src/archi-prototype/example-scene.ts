@@ -62,6 +62,7 @@ export const ARCHIMATE_SYMBOL: Record<string, string> = {
   'ai-agent': 'robot', 'mcp-gateway': 'plug', rag: 'lens',
   'ui-app': 'component', page: 'interface', 'menu-item': 'field',
   // Módulos (patrones arquitectónicos que se materializan como módulos).
+  deployment: 'am-deployment',
   module: 'gear', bff: 'interface', acl: 'am-acl', 'api-gateway': 'am-gateway',
   adapter: 'plug', saga: 'process', projector: 'readmodel', scheduler: 'clock',
 };

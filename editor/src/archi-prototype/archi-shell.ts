@@ -17,7 +17,7 @@ import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from
 
 interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; group: string; }
 /** Element palette groups, in display order — new (high-level) groups slot in here. */
-const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Orquestación', 'Integración', 'Externo', 'IA', 'UI', 'Módulos', 'Otros'];
+const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Orquestación', 'Integración', 'Externo', 'IA', 'UI', 'Despliegue', 'Módulos', 'Otros'];
 const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'component', label: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'Estratégico' },
   { kind: 'aggregate', label: 'Agregado', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
@@ -45,6 +45,7 @@ const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'ui-app', label: 'App UI', layer: 'ui', w: 240, h: 130, container: true, group: 'UI' },
   { kind: 'page', label: 'Página', layer: 'ui', w: 150, h: 60, group: 'UI' },
   { kind: 'menu-item', label: 'Menú', layer: 'ui', w: 140, h: 48, group: 'UI' },
+  { kind: 'deployment', label: 'Servicio (despliegue)', layer: 'tech', w: 280, h: 170, container: true, group: 'Despliegue' },
   { kind: 'module', label: 'Módulo', layer: 'tech', w: 160, h: 60, group: 'Módulos' },
   { kind: 'bff', label: 'BFF', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
   { kind: 'acl', label: 'ACL', layer: 'tech', w: 150, h: 56, group: 'Módulos' },
@@ -71,7 +72,7 @@ const KIND_LAYER: Record<string, LayerKey> = {
   'external-system': 'external', 'identity-provider': 'external',
   'ai-agent': 'ai', 'mcp-gateway': 'ai', rag: 'ai',
   'ui-app': 'ui', page: 'ui', 'menu-item': 'ui',
-  module: 'tech', bff: 'tech', acl: 'tech', 'api-gateway': 'tech', adapter: 'tech', saga: 'tech', projector: 'tech', scheduler: 'tech',
+  deployment: 'tech', module: 'tech', bff: 'tech', acl: 'tech', 'api-gateway': 'tech', adapter: 'tech', saga: 'tech', projector: 'tech', scheduler: 'tech',
 };
 function kindLayer(kind: string): LayerKey { return KIND_LAYER[kind] ?? 'domain'; }
 
