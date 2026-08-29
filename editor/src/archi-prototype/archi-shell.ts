@@ -9,7 +9,7 @@
 import { LitElement, html, css, nothing, svg, type TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import '../modux-canvas.js';
-import type { CanvasTool, ModuxCanvas } from '../modux-canvas.js';
+import { SYMBOLS, type CanvasTool, type ModuxCanvas } from '../modux-canvas.js';
 import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
@@ -31,7 +31,6 @@ const EXTRA_TOOLS: ElementTool[] = [
   { kind: 'group', label: 'Grupo', layer: 'context', w: 240, h: 150, container: true },
   { kind: 'note', label: 'Nota', layer: 'event', w: 160, h: 64 },
 ];
-const EXTRA_SWATCH: Record<string, string> = { note: '#FEF9C3', group: '#e2e8f0' };
 
 function kindLayer(kind: string): LayerKey {
   if (kind === 'component' || kind === 'area' || kind === 'system') return 'context';
@@ -140,6 +139,9 @@ export class ArchiShell extends LitElement {
     .pitem.on { background: #dbeafe; box-shadow: inset 2px 0 0 #2563eb; }
     .pitem .sw { width: 13px; height: 13px; border-radius: 3px; flex: none; border: 1px solid rgba(0,0,0,.25); }
     .pitem .dash { width: 20px; flex: none; }
+    .pico { flex: none; }
+    .prel { flex: none; }
+    .menu .mi .pico, .menu .mi .prel, .menu .subl .prel { flex: none; vertical-align: middle; }
     .pitem .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #334155; }
 
     .props { grid-area: props; border-top: 1px solid #cbd5e1; border-left: 1px solid #d5dbe3; }
@@ -540,10 +542,29 @@ export class ArchiShell extends LitElement {
   }
 
   // ---- palette -------------------------------------------------------------
-  private dashPreview(rel: string) {
+  /** ArchiMate type icon for a node kind — the same glyph the canvas draws. */
+  private elIcon(kind: string) {
+    if (kind === 'junction') return svg`<svg class="pico" viewBox="0 0 12 12" width="17" height="17"><circle cx="6" cy="6" r="3.2" fill="#475569"/></svg>`;
+    const glyph = SYMBOLS[ARCHIMATE_SYMBOL[kind] ?? kind];
+    return glyph
+      ? svg`<svg class="pico" viewBox="0 0 12 12" width="17" height="17"><g fill="none" stroke="#475569" stroke-width="1" stroke-linejoin="round" stroke-linecap="round">${glyph}</g></svg>`
+      : svg`<svg class="pico" width="17" height="17"></svg>`;
+  }
+  /** ArchiMate relationship notation preview: the line plus its start/end decorations. */
+  private relPreview(rel: string) {
     const n = REL_NOTATION[rel] ?? {};
-    return svg`<svg class="dash" viewBox="0 0 20 8" width="20" height="8">
-      <line x1="1" y1="4" x2="19" y2="4" stroke="#475569" stroke-width="1.5" stroke-dasharray=${n.dashArray ?? (n.dashed ? '4 3' : '')} /></svg>`;
+    const s = '#475569';
+    const dash = n.dashArray ?? (n.dashed ? '4 3' : '');
+    const x1 = n.markerStart ? 11 : 4, x2 = n.markerEnd ? 33 : 40;
+    const startM = n.markerStart === 'diamond' ? svg`<path d="M3 7 L7 4 L11 7 L7 10 Z" fill=${s}/>`
+      : n.markerStart === 'diamond-hollow' ? svg`<path d="M3 7 L7 4 L11 7 L7 10 Z" fill="#fff" stroke=${s} stroke-width="1"/>`
+      : n.markerStart === 'ball' ? svg`<circle cx="4" cy="7" r="2.3" fill=${s}/>` : svg``;
+    const endM = n.markerEnd === 'arrow' ? svg`<path d="M33 3.5 L41 7 L33 10.5 Z" fill=${s}/>`
+      : n.markerEnd === 'open-arrow' ? svg`<path d="M34 3.5 L41 7 L34 10.5" fill="none" stroke=${s} stroke-width="1.4"/>`
+      : n.markerEnd === 'hollow-triangle' ? svg`<path d="M33 3.5 L41 7 L33 10.5 Z" fill="#fff" stroke=${s} stroke-width="1.2"/>` : svg``;
+    return svg`<svg class="prel" viewBox="0 0 44 14" width="44" height="14">
+      <line x1=${x1} y1="7" x2=${x2} y2="7" stroke=${s} stroke-width="1.4" stroke-dasharray=${dash}/>
+      ${startM}${endM}</svg>`;
   }
   private renderPalette() {
     const magicOn = this.tool.kind === 'connect' && this.tool.rel === null;
@@ -555,20 +576,19 @@ export class ArchiShell extends LitElement {
       <div class="pgroup">Relaciones</div>
       ${REL_TYPES.map((rel) => {
         const on = this.tool.kind === 'connect' && this.tool.rel === rel;
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.dashPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
+        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.relPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
       })}
 
       <div class="pgroup">Elementos <span style="text-transform:none;font-weight:400">· Shift = fija</span></div>
       ${ELEMENT_TOOLS.map((el) => {
         const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-        const sw = LAYER[el.layer];
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}><span class="sw" style="background:${sw.fill};border-color:${sw.stroke}"></span><span class="lbl">${el.label}</span></div>`;
+        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind)}<span class="lbl">${el.label}</span></div>`;
       })}
 
       <div class="pgroup">Extras</div>
       ${EXTRA_TOOLS.map((el) => {
         const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}><span class="sw" style="background:${EXTRA_SWATCH[el.kind] ?? '#e2e8f0'};border-color:#94a3b8"></span><span class="lbl">${el.label}</span></div>`;
+        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
       })}
     `;
   }
@@ -603,7 +623,7 @@ export class ArchiShell extends LitElement {
     const m = this.menu;
     return html`<div class="menu" style="left:${m.x}px;top:${m.y}px">
       <div class="mhead">${m.src.label} → ${m.tgt.label}</div>
-      ${m.opts.map((o) => html`<div class="mi" @click=${() => this.pickFromMenu(o)}>${this.dashPreview(o.type)}<span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
+      ${m.opts.map((o) => html`<div class="mi" @click=${() => this.pickFromMenu(o)}>${this.relPreview(o.type)}<span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
     </div>`;
   }
   private renderCreateMenu() {
@@ -616,13 +636,12 @@ export class ArchiShell extends LitElement {
         const expanded = this.createExpand === el.kind;
         return html`
           <div class="mi" @click=${() => this.toggleCreateExpand(el.kind)}>
-            <span class="sw" style="width:13px;height:13px;border-radius:3px;background:${LAYER[el.layer].fill};border:1px solid ${LAYER[el.layer].stroke}"></span>
-            <span>${el.label}</span><span class="rev">${opts.length ? (expanded ? '▾' : '▸') : ''}</span>
+            ${this.elIcon(el.kind)}<span>${el.label}</span><span class="rev">${opts.length ? (expanded ? '▾' : '▸') : ''}</span>
           </div>
           ${expanded ? html`
             <div class="mi sub" @click=${() => this.pickCascade(el, null)}><span class="subl">(solo crear)</span></div>
             ${opts.map((o) => html`<div class="mi sub" @click=${() => this.pickCascade(el, o)}>
-              <span class="subl">${this.dashPreview(o.type)}</span><span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
+              <span class="subl">${this.relPreview(o.type)}</span><span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
           ` : nothing}
         `;
       })}
