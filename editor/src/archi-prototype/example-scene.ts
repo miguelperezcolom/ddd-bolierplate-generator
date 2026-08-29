@@ -7,10 +7,16 @@ import type { Scene } from '../scene.js';
 
 /** ArchiMate-ish pastel fills, mapped to modux concept groups (the "layers"). */
 export const LAYER = {
-  context:  { fill: '#F5DEAA', stroke: '#C9A85E', name: 'Estratégico' },
-  domain:   { fill: '#B5FFFF', stroke: '#5AA9A9', name: 'Dominio' },
-  event:    { fill: '#FFE3B5', stroke: '#D69A3E', name: 'Eventos' },
-  behavior: { fill: '#FFFFB5', stroke: '#C9C05E', name: 'Comportamiento' },
+  context:      { fill: '#F5DEAA', stroke: '#C9A85E', name: 'Estratégico' },
+  domain:       { fill: '#B5FFFF', stroke: '#5AA9A9', name: 'Dominio' },
+  event:        { fill: '#FFE3B5', stroke: '#D69A3E', name: 'Eventos' },
+  behavior:     { fill: '#FFFFB5', stroke: '#C9C05E', name: 'Comportamiento' },
+  orchestration:{ fill: '#EDE9FE', stroke: '#7C3AED', name: 'Orquestación' },
+  api:          { fill: '#E0E7FF', stroke: '#4F46E5', name: 'Integración' },
+  external:     { fill: '#F1F5F9', stroke: '#64748B', name: 'Externo' },
+  ai:           { fill: '#F3E8FF', stroke: '#9333EA', name: 'IA' },
+  ui:           { fill: '#CCFBF1', stroke: '#0D9488', name: 'UI' },
+  tech:         { fill: '#DCFCE7', stroke: '#16A34A', name: 'Distribución' },
 } as const;
 
 export type LayerKey = keyof typeof LAYER;
@@ -47,8 +53,15 @@ export const TREE: TreeNode[] = [
 /** modux concept kind → ArchiMate-accurate type icon (a `SYMBOLS` key in modux-canvas). */
 export const ARCHIMATE_SYMBOL: Record<string, string> = {
   component: 'am-component', aggregate: 'am-aggregate', entity: 'am-object',
-  'value-object': 'value-object', invariant: 'shield',
+  'value-object': 'value-object', invariant: 'shield', 'read-model': 'readmodel', policy: 'usecase',
   event: 'am-event', usecase: 'am-function', person: 'am-actor', service: 'am-service',
+  // High-level constructs (reuse existing glyphs).
+  workflow: 'process', 'workflow-step': 'gear', 'etl-flow': 'flow',
+  api: 'interface', 'api-operation': 'gear', 'proxy-api': 'interface', 'integration-event': 'event',
+  'external-system': 'component', 'identity-provider': 'key',
+  'ai-agent': 'robot', 'mcp-gateway': 'plug', rag: 'lens',
+  'ui-app': 'component', page: 'interface', 'menu-item': 'field',
+  module: 'gear',
 };
 
 const N = (

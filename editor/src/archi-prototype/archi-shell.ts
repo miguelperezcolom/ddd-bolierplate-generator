@@ -16,17 +16,35 @@ import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from
 
 interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; group: string; }
 /** Element palette groups, in display order — new (high-level) groups slot in here. */
-const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Otros'];
+const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Orquestación', 'Integración', 'Externo', 'IA', 'UI', 'Distribución', 'Otros'];
 const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'component', label: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'Estratégico' },
   { kind: 'aggregate', label: 'Agregado', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
   { kind: 'entity', label: 'Entidad', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
   { kind: 'value-object', label: 'Value object', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
   { kind: 'invariant', label: 'Invariante', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
+  { kind: 'read-model', label: 'Read model', layer: 'domain', w: 160, h: 56, group: 'Dominio' },
+  { kind: 'policy', label: 'Policy', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
   { kind: 'event', label: 'Evento', layer: 'event', w: 200, h: 62, group: 'Dominio' },
   { kind: 'usecase', label: 'Caso de uso', layer: 'behavior', w: 160, h: 62, group: 'Comportamiento' },
   { kind: 'service', label: 'Servicio', layer: 'behavior', w: 170, h: 50, group: 'Comportamiento' },
   { kind: 'person', label: 'Actor', layer: 'behavior', w: 130, h: 74, group: 'Comportamiento' },
+  { kind: 'workflow', label: 'Workflow', layer: 'orchestration', w: 240, h: 130, container: true, group: 'Orquestación' },
+  { kind: 'workflow-step', label: 'Paso', layer: 'orchestration', w: 150, h: 56, group: 'Orquestación' },
+  { kind: 'etl-flow', label: 'Flujo ETL', layer: 'orchestration', w: 160, h: 56, group: 'Orquestación' },
+  { kind: 'api', label: 'API', layer: 'api', w: 160, h: 56, group: 'Integración' },
+  { kind: 'api-operation', label: 'Operación API', layer: 'api', w: 170, h: 52, group: 'Integración' },
+  { kind: 'proxy-api', label: 'Proxy API', layer: 'api', w: 160, h: 56, group: 'Integración' },
+  { kind: 'integration-event', label: 'Evento integración', layer: 'api', w: 200, h: 56, group: 'Integración' },
+  { kind: 'external-system', label: 'Sistema externo', layer: 'external', w: 220, h: 120, container: true, group: 'Externo' },
+  { kind: 'identity-provider', label: 'IdP', layer: 'external', w: 150, h: 56, group: 'Externo' },
+  { kind: 'ai-agent', label: 'Agente IA', layer: 'ai', w: 160, h: 60, group: 'IA' },
+  { kind: 'mcp-gateway', label: 'Gateway MCP', layer: 'ai', w: 170, h: 56, group: 'IA' },
+  { kind: 'rag', label: 'RAG', layer: 'ai', w: 140, h: 56, group: 'IA' },
+  { kind: 'ui-app', label: 'App UI', layer: 'ui', w: 240, h: 130, container: true, group: 'UI' },
+  { kind: 'page', label: 'Página', layer: 'ui', w: 150, h: 60, group: 'UI' },
+  { kind: 'menu-item', label: 'Menú', layer: 'ui', w: 140, h: 48, group: 'UI' },
+  { kind: 'module', label: 'Módulo', layer: 'tech', w: 160, h: 60, group: 'Distribución' },
   { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16, group: 'Otros' },
 ];
 
@@ -36,12 +54,18 @@ const EXTRA_TOOLS: ElementTool[] = [
   { kind: 'note', label: 'Nota', layer: 'event', w: 160, h: 64, group: 'Extras' },
 ];
 
-function kindLayer(kind: string): LayerKey {
-  if (kind === 'component' || kind === 'area' || kind === 'system') return 'context';
-  if (kind === 'event') return 'event';
-  if (kind === 'usecase' || kind === 'person' || kind === 'service') return 'behavior';
-  return 'domain';
-}
+const KIND_LAYER: Record<string, LayerKey> = {
+  component: 'context', area: 'context', system: 'context',
+  event: 'event',
+  usecase: 'behavior', person: 'behavior', service: 'behavior',
+  workflow: 'orchestration', 'workflow-step': 'orchestration', 'etl-flow': 'orchestration',
+  api: 'api', 'api-operation': 'api', 'proxy-api': 'api', 'integration-event': 'api',
+  'external-system': 'external', 'identity-provider': 'external',
+  'ai-agent': 'ai', 'mcp-gateway': 'ai', rag: 'ai',
+  'ui-app': 'ui', page: 'ui', 'menu-item': 'ui',
+  module: 'tech',
+};
+function kindLayer(kind: string): LayerKey { return KIND_LAYER[kind] ?? 'domain'; }
 
 type Tool =
   | { kind: 'select' }
@@ -724,7 +748,10 @@ export class ArchiShell extends LitElement {
           <button title="Alejar" @click=${() => this.canvasEl?.zoomBy(0.8)}>−</button>
           <button title="Ajustar a la ventana" @click=${() => this.canvasEl?.fit()}>⤢</button>
         </div>
-        <div class="legend">${Object.values(LAYER).map((l) => html`<span class="k"><span class="sw" style="background:${l.fill};border-color:${l.stroke}"></span>${l.name}</span>`)}</div>
+        <div class="legend">${(() => {
+          const used = new Set(this.scene.nodes.map((n) => kindLayer(n.kind)));
+          return Object.entries(LAYER).filter(([k]) => used.has(k as LayerKey)).map(([, l]) => html`<span class="k"><span class="sw" style="background:${l.fill};border-color:${l.stroke}"></span>${l.name}</span>`);
+        })()}</div>
       </div>
 
       <div class="panel palette"><header>Paleta</header><div class="body">${this.renderPalette()}</div></div>
