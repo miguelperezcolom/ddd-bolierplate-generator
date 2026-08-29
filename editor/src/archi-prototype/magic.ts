@@ -7,14 +7,41 @@
 import MATRIX from './archimate-matrix.generated.json' assert { type: 'json' };
 import type { SceneEdge } from '../scene.js';
 
-/** modux node kind (== canvas symbol) → ArchiMate concept used in the matrix. */
+/** modux node kind → ArchiMate concept used in the validity matrix. */
 const KIND_TO_CONCEPT: Record<string, string> = {
+  // Estratégico / contexto
   component: 'ApplicationComponent', // bounded context / system
+  'external-system': 'ApplicationComponent',
+  'identity-provider': 'ApplicationComponent',
+  module: 'ApplicationComponent',
+  // Dominio
   aggregate: 'BusinessObject',
   entity: 'DataObject',
+  'value-object': 'DataObject',
+  'read-model': 'DataObject',
+  invariant: 'Constraint',
+  policy: 'ApplicationFunction',
   event: 'ApplicationEvent',
+  'integration-event': 'ApplicationEvent',
+  // Comportamiento
   usecase: 'ApplicationFunction',
-  person: 'BusinessActor', // actor
+  service: 'ApplicationService',
+  person: 'BusinessActor',
+  // Orquestación
+  workflow: 'BusinessProcess',
+  'workflow-step': 'ApplicationProcess',
+  'etl-flow': 'ApplicationProcess',
+  // Integración / APIs
+  api: 'ApplicationInterface',
+  'proxy-api': 'ApplicationInterface',
+  'mcp-gateway': 'ApplicationInterface',
+  'api-operation': 'ApplicationService',
+  // IA / UI (activos que colaboran e interactúan)
+  'ai-agent': 'ApplicationComponent',
+  rag: 'DataObject',
+  'ui-app': 'ApplicationComponent',
+  page: 'ApplicationComponent',
+  'menu-item': 'ApplicationComponent',
 };
 
 type Matrix = Record<string, Record<string, string[]>>;
