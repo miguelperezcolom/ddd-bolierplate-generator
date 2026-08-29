@@ -230,10 +230,25 @@ export class ArchiShell extends LitElement {
   }
 
   private patchNodes(fn: (n: SceneNode) => SceneNode) { this.scene = { ...this.scene, nodes: this.scene.nodes.map(fn) }; }
+  private descendantsOf(id: string): SceneNode[] {
+    const out: SceneNode[] = [], stack = [id];
+    while (stack.length) {
+      const pid = stack.pop()!;
+      for (const n of this.scene.nodes) if (n.parentId === pid) { out.push(n); stack.push(n.id); }
+    }
+    return out;
+  }
   private moveNodes(moves: { id: string; x: number; y: number }[]) {
     this.commit();
-    const m = new Map(moves.map((mv) => [mv.id, mv]));
-    this.patchNodes((n) => (m.has(n.id) ? { ...n, x: m.get(n.id)!.x, y: m.get(n.id)!.y } : n));
+    // Moving a container carries its whole subtree by the same delta.
+    const all = new Map(moves.map((mv) => [mv.id, mv]));
+    for (const mv of moves) {
+      const n = this.node(mv.id); if (!n) continue;
+      const dx = mv.x - n.x, dy = mv.y - n.y;
+      if (dx === 0 && dy === 0) continue;
+      for (const d of this.descendantsOf(mv.id)) all.set(d.id, { id: d.id, x: d.x + dx, y: d.y + dy });
+    }
+    this.patchNodes((n) => (all.has(n.id) ? { ...n, x: all.get(n.id)!.x, y: all.get(n.id)!.y } : n));
   }
   /** Align the multi-selection to the primary selection's edge/centre (Archi's align tools). */
   private align(mode: 'left' | 'centerH' | 'right' | 'top' | 'middleV' | 'bottom') {
