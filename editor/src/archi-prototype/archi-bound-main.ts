@@ -37,6 +37,9 @@ function apply(cmd: ModuxCommand): void {
       if (el) el.name = cmd.name;
       break;
     }
+    case 'add-boundedContext':
+      model.boundedContexts.push({ id: cmd.id, name: cmd.name, subdomainType: cmd.subdomainType });
+      break;
     case 'add-aggregate':
       (model.aggregates ??= []).push({ id: cmd.id, name: cmd.name, boundedContextId: cmd.boundedContextId ?? '' });
       break;

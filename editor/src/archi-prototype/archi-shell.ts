@@ -573,9 +573,16 @@ export class ArchiShell extends LitElement {
       const id = `${el.kind}-${Date.now()}`;
       if (el.kind === 'aggregate') {
         const bc = this.model!.boundedContexts[0]?.id;
-        this.emit('modux-command', { command: { kind: 'add-aggregate', id, name: el.label, boundedContextId: bc } });
+        const name = `Agregado ${(this.model!.aggregates ?? []).length + 1}`;
+        this.emit('modux-command', { command: { kind: 'add-aggregate', id, name, boundedContextId: bc } });
         const layout = { ...this.viewLayout, [id]: { x, y } };
         this.viewLayout = layout; this.emit('layout-changed', { layout });
+      } else if (el.kind === 'component') {
+        const name = `Contexto ${this.model!.boundedContexts.length + 1}`;
+        this.emit('modux-command', { command: { kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' } });
+        this.flash(`«${name}» añadido al modelo — asígnalo en la propiedad «Contexto» de un agregado`);
+      } else {
+        this.flash('En la vista de Agregados se añaden agregados y contextos');
       }
       return { id, label: el.label, kind: el.kind, symbol: el.kind, x, y, w: el.w, h: el.h } as SceneNode;
     }
