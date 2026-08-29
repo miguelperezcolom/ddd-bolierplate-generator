@@ -2297,6 +2297,18 @@ export class ModuxCanvas extends LitElement {
       edgeInks.push(this.renderEdgeInk(edge, pts, [...priorSegments]));
       for (let i = 0; i < pts.length - 1; i++) priorSegments.push([pts[i], pts[i + 1]]);
     });
+    // Paint by nesting depth so every container stays BEHIND its descendants
+    // (a parent can never cover its children, at any nesting level).
+    const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
+    const depthOf = (n: SceneNode) => {
+      let d = 0;
+      for (let p = n.parentId; p; p = byId.get(p)?.parentId) { if (++d > 50) break; }
+      return d;
+    };
+    const orderedNodes = this.scene.nodes
+      .map((n, i) => ({ n, i, d: depthOf(n) }))
+      .sort((a, b) => a.d - b.d || a.i - b.i)
+      .map((x) => x.n);
     return html`
       <svg
         class="main ${this._pendingLink || this.tool.kind === 'connect' ? 'linking' : ''} ${this.tool.kind === 'place' ? 'placing' : ''} ${this.toolForbidden() ? 'forbidden' : ''} ${this._spaceDown ? 'panning' : ''}"
@@ -2382,8 +2394,7 @@ export class ModuxCanvas extends LitElement {
           <rect x="-100000" y="-100000" width="200000" height="200000"
                 fill=${this.archimate ? '#ffffff' : 'url(#dots)'}
                 pointer-events="none"></rect>
-          ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
-          ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
+          ${orderedNodes.map((n) => this.renderNode(n))}
           ${edgeHits}
           ${edgeInks}
           ${this.tool.kind === 'place' && this._placeDrag
