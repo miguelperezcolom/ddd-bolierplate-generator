@@ -14,24 +14,26 @@ import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
 
-interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; }
+interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; group: string; }
+/** Element palette groups, in display order — new (high-level) groups slot in here. */
+const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Otros'];
 const ELEMENT_TOOLS: ElementTool[] = [
-  { kind: 'component', label: 'Contexto', layer: 'context', w: 240, h: 130, container: true },
-  { kind: 'aggregate', label: 'Agregado', layer: 'domain', w: 160, h: 66 },
-  { kind: 'entity', label: 'Entidad', layer: 'domain', w: 160, h: 66 },
-  { kind: 'value-object', label: 'Value object', layer: 'domain', w: 150, h: 56 },
-  { kind: 'invariant', label: 'Invariante', layer: 'domain', w: 150, h: 56 },
-  { kind: 'event', label: 'Evento', layer: 'event', w: 200, h: 62 },
-  { kind: 'usecase', label: 'Caso de uso', layer: 'behavior', w: 160, h: 62 },
-  { kind: 'service', label: 'Servicio', layer: 'behavior', w: 170, h: 50 },
-  { kind: 'person', label: 'Actor', layer: 'behavior', w: 130, h: 74 },
-  { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16 },
+  { kind: 'component', label: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'Estratégico' },
+  { kind: 'aggregate', label: 'Agregado', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
+  { kind: 'entity', label: 'Entidad', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
+  { kind: 'value-object', label: 'Value object', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
+  { kind: 'invariant', label: 'Invariante', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
+  { kind: 'event', label: 'Evento', layer: 'event', w: 200, h: 62, group: 'Dominio' },
+  { kind: 'usecase', label: 'Caso de uso', layer: 'behavior', w: 160, h: 62, group: 'Comportamiento' },
+  { kind: 'service', label: 'Servicio', layer: 'behavior', w: 170, h: 50, group: 'Comportamiento' },
+  { kind: 'person', label: 'Actor', layer: 'behavior', w: 130, h: 74, group: 'Comportamiento' },
+  { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16, group: 'Otros' },
 ];
 
 /** Non-ArchiMate extras (Archi's Note/Group section of the palette). */
 const EXTRA_TOOLS: ElementTool[] = [
-  { kind: 'group', label: 'Grupo', layer: 'context', w: 240, h: 150, container: true },
-  { kind: 'note', label: 'Nota', layer: 'event', w: 160, h: 64 },
+  { kind: 'group', label: 'Grupo', layer: 'context', w: 240, h: 150, container: true, group: 'Extras' },
+  { kind: 'note', label: 'Nota', layer: 'event', w: 160, h: 64, group: 'Extras' },
 ];
 
 function kindLayer(kind: string): LayerKey {
@@ -136,6 +138,10 @@ export class ArchiShell extends LitElement {
 
     .palette { grid-area: palette; border-left: 1px solid #cbd5e1; }
     .pgroup { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; padding: 8px 10px 3px; }
+    .pgroup.pfold { cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }
+    .pgroup.pfold:hover { color: #64748b; }
+    .pgroup .ptw { font-size: 8px; color: #94a3b8; }
+    .pgroup .pnote { text-transform: none; font-weight: 400; margin-left: auto; color: #cbd5e1; font-size: 9px; padding-right: 4px; }
     .pitem { display: flex; align-items: center; gap: 7px; padding: 4px 10px; cursor: pointer; }
     .pitem:hover { background: #e7edf5; }
     .pitem.on { background: #dbeafe; box-shadow: inset 2px 0 0 #2563eb; }
@@ -568,6 +574,19 @@ export class ArchiShell extends LitElement {
       <line x1=${x1} y1="7" x2=${x2} y2="7" stroke=${s} stroke-width="1.4" stroke-dasharray=${dash}/>
       ${startM}${endM}</svg>`;
   }
+  /** A collapsible palette section (click the header to fold), like Archi's palette. */
+  private palGroup(key: string, label: string, body: unknown, extra = '') {
+    const collapsed = this.collapsed.has('pal:' + key);
+    return html`
+      <div class="pgroup pfold" @click=${() => this.toggle('pal:' + key)}>
+        <span class="ptw">${collapsed ? '▶' : '▼'}</span>${label}${extra ? html`<span class="pnote">${extra}</span>` : nothing}
+      </div>
+      ${collapsed ? nothing : body}`;
+  }
+  private elItem(el: ElementTool) {
+    const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
+    return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
+  }
   private renderPalette() {
     const magicOn = this.tool.kind === 'connect' && this.tool.rel === null;
     return html`
@@ -575,23 +594,17 @@ export class ArchiShell extends LitElement {
       <div class="pitem ${this.tool.kind === 'select' ? 'on' : ''}" @click=${() => this.resetTool()}><span class="sw" style="background:#94a3b8"></span><span class="lbl">Seleccionar</span></div>
       <div class="pitem ${magicOn ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel: null }, e)}><span class="sw" style="background:#7c3aed"></span><span class="lbl">Conector mágico ✦</span></div>
 
-      <div class="pgroup">Relaciones</div>
-      ${REL_TYPES.map((rel) => {
+      ${this.palGroup('rel', 'Relaciones', REL_TYPES.map((rel) => {
         const on = this.tool.kind === 'connect' && this.tool.rel === rel;
         return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.relPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
+      }))}
+
+      ${ELEMENT_GROUPS.map((g, i) => {
+        const items = ELEMENT_TOOLS.filter((el) => el.group === g);
+        return items.length ? this.palGroup('el:' + g, g, items.map((el) => this.elItem(el)), i === 0 ? 'Shift = fija' : '') : nothing;
       })}
 
-      <div class="pgroup">Elementos <span style="text-transform:none;font-weight:400">· Shift = fija</span></div>
-      ${ELEMENT_TOOLS.map((el) => {
-        const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind)}<span class="lbl">${el.label}</span></div>`;
-      })}
-
-      <div class="pgroup">Extras</div>
-      ${EXTRA_TOOLS.map((el) => {
-        const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
-      })}
+      ${this.palGroup('extras', 'Extras', EXTRA_TOOLS.map((el) => this.elItem(el)))}
     `;
   }
 
