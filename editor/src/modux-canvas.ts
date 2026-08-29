@@ -284,8 +284,8 @@ export class ModuxCanvas extends LitElement {
   private _focusEdges = new Set<string>();
   @state() private _editingId: string | null = null;
   @state() private _spaceDown = false;
-  /** Shift held: gates the hover spotlight (fade unrelated nodes) so it isn't always on. */
-  @state() private _shiftDown = false;
+  /** Alt held: gates the hover spotlight (fade unrelated nodes) so it isn't always on. */
+  @state() private _altDown = false;
   @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
   @state() private _selectedWaypoint: { edgeId: string; index: number } | null = null;
   @state() private _resize: { id: string; x: number; y: number; w: number; h: number } | null = null;
@@ -400,7 +400,7 @@ export class ModuxCanvas extends LitElement {
   }
 
   private _onWindowSpace = (e: KeyboardEvent): void => {
-    if (e.key === 'Shift') this._shiftDown = true;
+    if (e.key === 'Alt') this._altDown = true;
     if (e.key !== ' ') return;
     const target = e.composedPath()[0];
     if (
@@ -418,7 +418,7 @@ export class ModuxCanvas extends LitElement {
 
   private _onWindowSpaceUp = (e: KeyboardEvent): void => {
     if (e.key === ' ') this._spaceDown = false;
-    if (e.key === 'Shift') this._shiftDown = false;
+    if (e.key === 'Alt') this._altDown = false;
   };
 
   private _onKeyUp = (e: KeyboardEvent): void => {
@@ -429,7 +429,7 @@ export class ModuxCanvas extends LitElement {
   // silently disabling rubber-band selection.
   private _onBlur = (): void => {
     this._spaceDown = false;
-    this._shiftDown = false;
+    this._altDown = false;
   };
 
   private _onKeyDown = (e: KeyboardEvent): void => {
@@ -811,8 +811,8 @@ export class ModuxCanvas extends LitElement {
 
   /** True while a node is hovered and no gesture is in progress. */
   private get spotlighting(): boolean {
-    // Only while Shift is held — otherwise plain hover never dims unrelated nodes.
-    return !!this._focusNodeId && this._shiftDown && !this.gestureActive();
+    // Only while Alt is held — otherwise plain hover never dims unrelated nodes.
+    return !!this._focusNodeId && this._altDown && !this.gestureActive();
   }
 
   /** A gesture owns the pointer — don't spotlight a neighbourhood mid-drag. */
@@ -2124,6 +2124,9 @@ export class ModuxCanvas extends LitElement {
     if (!this._pendingLink) return svg``;
     const source = this.scene.nodes.find((n) => n.id === this._pendingLink!.sourceId);
     if (!source) return svg``;
+    // No line while the pointer is still inside the source element.
+    const sp = this.nodePos(source);
+    if (Math.abs(this._pendingLink.x - sp.x) <= source.w / 2 && Math.abs(this._pendingLink.y - sp.y) <= source.h / 2) return svg``;
     const a = this.borderPoint(source, this._pendingLink.x, this._pendingLink.y);
     return svg`
       <line x1=${a.x} y1=${a.y} x2=${this._pendingLink.x} y2=${this._pendingLink.y}

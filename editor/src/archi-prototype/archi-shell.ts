@@ -489,22 +489,26 @@ export class ArchiShell extends LitElement {
     this.addNodeAt(el, d.x, d.y);
     if (!this.sticky) this.tool = { kind: 'select' };
   };
+  /** After a relation is established, cancelled or rejected, go back to the selection tool (unless sticky). */
+  private afterConnect() { if (!this.sticky) this.tool = { kind: 'select' }; }
   private onCommitted = (e: Event) => {
     const d = (e as CustomEvent).detail as { sourceId: string; targetId: string; rel: string | null; x: number; y: number };
     const src = this.node(d.sourceId)!, tgt = this.node(d.targetId)!;
     if (d.rel === null) {
       const opts = validRelations(src.kind, tgt.kind);
-      if (!opts.length) { this.flash(`Archi no permite ninguna relación entre «${src.label}» y «${tgt.label}»`); return; }
-      this.menu = { x: d.x, y: d.y, src, tgt, opts };
+      if (!opts.length) { this.flash(`No hay ninguna relación válida entre «${src.label}» y «${tgt.label}»`); this.afterConnect(); return; }
+      this.menu = { x: d.x, y: d.y, src, tgt, opts }; // pending pick — reset on pickFromMenu
     } else {
       const dir = canDraw(d.rel, src.kind, tgt.kind);
       if (dir) { this.commit(); this.addEdge(d.rel, dir === 'forward' ? src : tgt, dir === 'forward' ? tgt : src); }
+      this.afterConnect();
     }
   };
   private onRejected = (e: Event) => {
     const d = (e as CustomEvent).detail as { sourceId: string; targetId: string; rel: string };
     const src = this.node(d.sourceId), tgt = this.node(d.targetId);
     this.flash(`«${REL_NOTATION[d.rel]?.label ?? d.rel}» no es válida entre «${src?.label}» y «${tgt?.label}»`);
+    this.afterConnect();
   };
   private onConnectEmpty = (e: Event) => {
     const d = (e as CustomEvent).detail as { sourceId: string; x: number; y: number; sceneX: number; sceneY: number };
@@ -539,6 +543,7 @@ export class ArchiShell extends LitElement {
     this.commit();
     this.addEdge(o.type, o.reverse ? tgt : src, o.reverse ? src : tgt);
     this.menu = null;
+    this.afterConnect();
   }
 
   private toggleCreateExpand(kind: string) { this.createExpand = this.createExpand === kind ? null : kind; }
@@ -550,6 +555,7 @@ export class ArchiShell extends LitElement {
     const n = this.addNodeAt(el, sx, sy);
     if (o) this.addEdge(o.type, o.reverse ? n : src, o.reverse ? src : n);
     this.createMenu = null; this.createExpand = null;
+    this.afterConnect();
   }
 
   // ---- tree (Archi-style: folders by layer + a Relations folder) ----------
