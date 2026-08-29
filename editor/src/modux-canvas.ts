@@ -269,6 +269,8 @@ export class ModuxCanvas extends LitElement {
   private _focusEdges = new Set<string>();
   @state() private _editingId: string | null = null;
   @state() private _spaceDown = false;
+  /** Shift held: gates the hover spotlight (fade unrelated nodes) so it isn't always on. */
+  @state() private _shiftDown = false;
   @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
   @state() private _selectedWaypoint: { edgeId: string; index: number } | null = null;
   @state() private _resize: { id: string; x: number; y: number; w: number; h: number } | null = null;
@@ -383,6 +385,7 @@ export class ModuxCanvas extends LitElement {
   }
 
   private _onWindowSpace = (e: KeyboardEvent): void => {
+    if (e.key === 'Shift') this._shiftDown = true;
     if (e.key !== ' ') return;
     const target = e.composedPath()[0];
     if (
@@ -400,6 +403,7 @@ export class ModuxCanvas extends LitElement {
 
   private _onWindowSpaceUp = (e: KeyboardEvent): void => {
     if (e.key === ' ') this._spaceDown = false;
+    if (e.key === 'Shift') this._shiftDown = false;
   };
 
   private _onKeyUp = (e: KeyboardEvent): void => {
@@ -410,6 +414,7 @@ export class ModuxCanvas extends LitElement {
   // silently disabling rubber-band selection.
   private _onBlur = (): void => {
     this._spaceDown = false;
+    this._shiftDown = false;
   };
 
   private _onKeyDown = (e: KeyboardEvent): void => {
@@ -791,7 +796,8 @@ export class ModuxCanvas extends LitElement {
 
   /** True while a node is hovered and no gesture is in progress. */
   private get spotlighting(): boolean {
-    return !!this._focusNodeId && !this.gestureActive();
+    // Only while Shift is held — otherwise plain hover never dims unrelated nodes.
+    return !!this._focusNodeId && this._shiftDown && !this.gestureActive();
   }
 
   /** A gesture owns the pointer — don't spotlight a neighbourhood mid-drag. */
