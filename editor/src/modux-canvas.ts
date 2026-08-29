@@ -57,19 +57,6 @@ function polylineMidpoint(pts: Point[]): Point {
   return pts[Math.floor(pts.length / 2)];
 }
 
-/** ArchiMate Event silhouette (centred at 0,0): concave notch on the left, semicircle on the right. */
-function eventShape(hw: number, hh: number): string {
-  const indent = Math.min((2 * hh) / 3, (2 * hw) / 3);
-  return `M ${-hw} ${-hh} L ${-hw + indent} 0 L ${-hw} ${hh} L ${hw - indent} ${hh} A ${indent} ${hh} 0 0 1 ${hw - indent} ${-hh} Z`;
-}
-
-/** ArchiMate Function silhouette (centred at 0,0): pointed top, notched bottom (chevron). */
-function functionShape(hw: number, hh: number): string {
-  const y1 = -hh + (2 * hh) / 5;
-  const y2 = hh - (2 * hh) / 5;
-  return `M ${-hw} ${hh} L ${-hw} ${y1} L 0 ${-hh} L ${hw} ${y1} L ${hw} ${hh} L 0 ${y2} Z`;
-}
-
 /** Orthogonal polyline with rounded corners (ArchiMate mode) — quadratic fillet per vertex. */
 function roundedOrthoPath(pts: Point[], radius = 10): string {
   if (pts.length < 2) return '';
@@ -1799,20 +1786,13 @@ export class ModuxCanvas extends LitElement {
     const tooltip = node.derived
       ? `${node.tooltip ? `${node.tooltip} — ` : ''}Inferido: stub generado por el sistema (no declarado a mano)`
       : node.tooltip;
-    // ArchiMate distinctive silhouette (leaf nodes only): Event/Function get a custom
-    // outline; Object shows a title divider; the rest stay rectangles (icon carries the type).
-    const amShape = this.archimate && !isContainer
-      ? node.kind === 'event' ? eventShape(hw, hh)
-        : node.kind === 'usecase' ? functionShape(hw, hh)
-        : null
-      : null;
-    const amObject = this.archimate && !isContainer && (node.kind === 'aggregate' || node.kind === 'entity');
+    // Archi's "boxed" notation: EVERY element is a plain rectangle with its type icon
+    // in the top-right corner and the name at the top — no distinctive silhouettes.
     const nodeFill = node.fill ?? (node.kind === 'note' ? 'var(--modux-note-fill, #fef9c3)' : 'var(--modux-node-fill, #ffffff)');
     const nodeStroke = toolStroke ?? (hovered || selected ? hl : this.archimate ? '#5C5C5C' : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)'));
     const nodeStrokeW = toolStroke ? 2 : selected || hovered ? 2 : this.archimate ? 1 : 1.4;
-    const amRx = this.archimate ? (node.kind === 'service' ? hh : node.kind === 'usecase' ? 11 : 2) : isChild ? 6 : 10;
-    // Behaviour shapes (pointed/curved tops) centre their label; flat-top figures put it on top.
-    const amLabelY = node.kind === 'event' || node.kind === 'usecase' ? 4 : -hh + 17;
+    const amRx = this.archimate ? 2 : isChild ? 6 : 10;
+    const amLabelY = -hh + 17;
     // ArchiMate Junction: a small filled dot (AND) or hollow dot (OR) — no label/icon.
     if (this.archimate && node.kind === 'junction') {
       const jStroke = toolStroke ?? (hovered || selected ? hl : '#5C5C5C');
@@ -1851,18 +1831,10 @@ export class ModuxCanvas extends LitElement {
                   : 'Modificado respecto al sistema'}</title>
               </rect>`
           : ''}
-        ${amShape
-          ? svg`<path d=${amShape} style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`}
-                  stroke-width=${nodeStrokeW} stroke-linejoin="round" stroke-dasharray=${node.dashed ? '6 4' : ''}>
-                ${tooltip ? svg`<title>${tooltip}</title>` : ''}</path>`
-          : svg`<rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${amRx}
-                  style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`}
-                  stroke-width=${nodeStrokeW} stroke-dasharray=${node.dashed ? '6 4' : ''}>
-                ${tooltip ? svg`<title>${tooltip}</title>` : ''}</rect>`}
-        ${amObject
-          ? svg`<line x1=${-hw} y1=${-hh + 28} x2=${hw} y2=${-hh + 28}
-                  style=${`stroke: ${nodeStroke}`} stroke-width="1" pointer-events="none"></line>`
-          : ''}
+        <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${amRx}
+              style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`}
+              stroke-width=${nodeStrokeW} stroke-dasharray=${node.dashed ? '6 4' : ''}>
+          ${tooltip ? svg`<title>${tooltip}</title>` : ''}</rect>
         ${node.derived
           ? svg`<text x=${-hw + 5} y=${-hh + 13} font-size="10" style="fill: var(--modux-derive, #a855f7)"
                   pointer-events="none">✦</text>`
@@ -1888,17 +1860,7 @@ export class ModuxCanvas extends LitElement {
                     : 'Contraer: oculta los hijos'}</title>
                 </g>`
           : ''}
-        ${this.archimate && node.kind === 'person' && !isContainer
-          ? svg`<g fill="none" style=${`stroke: ${nodeStroke}`} stroke-width="1.6"
-                  stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
-                <circle cx="0" cy="-6" r="5"></circle>
-                <line x1="0" y1="-1" x2="0" y2="13"></line>
-                <line x1="-9" y1="5" x2="9" y2="5"></line>
-                <line x1="0" y1="13" x2="-8" y2="24"></line>
-                <line x1="0" y1="13" x2="8" y2="24"></line>
-              </g>`
-          : ''}
-        ${node.symbol && SYMBOLS[node.symbol] && !(this.archimate && node.kind === 'person') && (!isChild || isContainer || this.archimate)
+        ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer || this.archimate)
           ? svg`<g transform="translate(${hw - (node.collapsible ? 37 : 17)}, ${-hh + 5})" fill="none"
                   style=${'stroke: ' + (node.stroke ?? 'var(--modux-node-stroke, #64748b)')}
                   stroke-width="1.1" stroke-linejoin="round"
@@ -1950,11 +1912,6 @@ export class ModuxCanvas extends LitElement {
               <rect x=${-hw - 5} y=${-hh + 13} width="12" height="8"></rect>
               <rect x=${-hw - 5} y=${-hh + 27} width="12" height="8"></rect>
             </g>`
-          : ''}
-        ${selected && this.archimate
-          ? [[-hw, -hh], [0, -hh], [hw, -hh], [hw, 0], [hw, hh], [0, hh], [-hw, hh], [-hw, 0]].map(
-              ([cx, cy]) => svg`<rect x=${cx - 3.5} y=${cy - 3.5} width="7" height="7"
-                fill=${this.selectedId === node.id ? '#1e293b' : '#ffffff'} stroke="#5C5C5C" stroke-width="1" pointer-events="none"></rect>`)
           : ''}
         ${selected &&
         this.connectable &&
@@ -2085,13 +2042,14 @@ export class ModuxCanvas extends LitElement {
                 </g>`,
             )
           : ''}
-        ${(isContainer || node.resizable) && selected
+        ${(isContainer || node.resizable || this.archimate) && selected
           ? ([[-1, -1], [1, -1], [-1, 1], [1, 1]] as const).map(
               ([sx, sy]) => svg`
-                <rect data-resize x=${sx * hw - 6.5} y=${sy * hh - 6.5} width="13" height="13" rx="2.5"
-                      style="fill: var(--modux-primary, #2563eb); stroke: var(--modux-surface, #ffffff)"
-                      stroke-width="1.5"
-                      style="cursor: ${sx * sy > 0 ? 'nwse' : 'nesw'}-resize"
+                <rect data-resize x=${sx * hw - 6.5} y=${sy * hh - 6.5} width=${this.archimate ? 8 : 13} height=${this.archimate ? 8 : 13} rx=${this.archimate ? 1 : 2.5}
+                      style=${'cursor: ' + (sx * sy > 0 ? 'nwse' : 'nesw') + '-resize; fill: '
+                        + (this.archimate ? (this.selectedId === node.id ? '#1e293b' : '#ffffff') : 'var(--modux-primary, #2563eb)')
+                        + '; stroke: ' + (this.archimate ? '#5C5C5C' : 'var(--modux-surface, #ffffff)')}
+                      stroke-width=${this.archimate ? 1 : 1.5}
                       @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node, sx, sy)}>
                   <title>Arrastra para cambiar el tamaño (Shift: simétrico desde el centro)</title>
                 </rect>`,

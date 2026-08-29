@@ -24,6 +24,8 @@ Estado: ✅ hecho · 🟡 parcial · ⬜ pendiente · ❔ decisión de diseño
 
 modux mapea sus conceptos a figuras ArchiMate. Silueta + icono arriba-derecha.
 
+**Notación en caja (como el Archi de RIU): TODO elemento es un rectángulo con el icono de tipo arriba-derecha.**
+
 | Concepto modux | Figura ArchiMate | Silueta | Icono | Estado |
 |---|---|---|---|---|
 | Contexto / sistema | ApplicationComponent | rect + pestañas izq. | pestañas | ✅ |
@@ -82,7 +84,8 @@ Transcrito del fuente de Archi. `markerStart`/`markerEnd` en `SceneEdge`.
 - ✅ Arrastrar hijo dentro/fuera del padre
 
 ### Edición (bucle básico — ¡era el gran hueco!)
-- ✅ Mover nodos (persiste), mover en grupo, redimensionar, colapsar contenedores
+- ✅ Mover nodos (persiste), mover en grupo, colapsar contenedores
+- ✅ Redimensionar CUALQUIER elemento (asas de esquina funcionales, no solo contenedores)
 - ✅ Renombrar in-place con F2 (Enter confirma, Esc cancela)
 - ✅ Borrar con Supr/Backspace (nodo + sus aristas; contenedor + hijos)
 - ✅ Deshacer/Rehacer (Ctrl+Z / Ctrl+Y o Ctrl+Shift+Z) con historial de 60 pasos
