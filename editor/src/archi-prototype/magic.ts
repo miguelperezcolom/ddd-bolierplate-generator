@@ -13,7 +13,6 @@ const KIND_TO_CONCEPT: Record<string, string> = {
   component: 'ApplicationComponent', // bounded context / system
   'external-system': 'ApplicationComponent',
   'identity-provider': 'ApplicationComponent',
-  module: 'ApplicationComponent',
   // Dominio
   aggregate: 'BusinessObject',
   entity: 'DataObject',
@@ -42,6 +41,15 @@ const KIND_TO_CONCEPT: Record<string, string> = {
   'ui-app': 'ApplicationComponent',
   page: 'ApplicationComponent',
   'menu-item': 'ApplicationComponent',
+  // Módulos (patrones arquitectónicos)
+  module: 'ApplicationComponent',
+  bff: 'ApplicationComponent',
+  acl: 'ApplicationComponent',
+  'api-gateway': 'ApplicationComponent',
+  adapter: 'ApplicationComponent',
+  saga: 'ApplicationProcess',
+  projector: 'ApplicationFunction',
+  scheduler: 'ApplicationFunction',
 };
 
 type Matrix = Record<string, Record<string, string[]>>;

@@ -16,7 +16,7 @@ export const LAYER = {
   external:     { fill: '#F1F5F9', stroke: '#64748B', name: 'Externo' },
   ai:           { fill: '#F3E8FF', stroke: '#9333EA', name: 'IA' },
   ui:           { fill: '#CCFBF1', stroke: '#0D9488', name: 'UI' },
-  tech:         { fill: '#DCFCE7', stroke: '#16A34A', name: 'Distribución' },
+  tech:         { fill: '#DCFCE7', stroke: '#16A34A', name: 'Módulos' },
 } as const;
 
 export type LayerKey = keyof typeof LAYER;
@@ -61,7 +61,9 @@ export const ARCHIMATE_SYMBOL: Record<string, string> = {
   'external-system': 'component', 'identity-provider': 'key',
   'ai-agent': 'robot', 'mcp-gateway': 'plug', rag: 'lens',
   'ui-app': 'component', page: 'interface', 'menu-item': 'field',
-  module: 'gear',
+  // Módulos (patrones arquitectónicos que se materializan como módulos).
+  module: 'gear', bff: 'interface', acl: 'am-acl', 'api-gateway': 'am-gateway',
+  adapter: 'plug', saga: 'process', projector: 'readmodel', scheduler: 'clock',
 };
 
 const N = (

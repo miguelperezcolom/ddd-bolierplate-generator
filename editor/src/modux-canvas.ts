@@ -136,6 +136,12 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
     <line x1="6" y1="8.4" x2="3.4" y2="11.4"></line>
     <line x1="6" y1="8.4" x2="8.6" y2="11.4"></line>`,
   'am-service': svg`<rect x="0.8" y="3" width="10.4" height="6" rx="3"></rect>`,
+  // ACL (Anti-Corruption Layer): a barrier/translation layer between two contexts.
+  'am-acl': svg`<rect x="0.5" y="2.5" width="3.4" height="7"></rect>
+    <rect x="8.1" y="2.5" width="3.4" height="7"></rect>
+    <line x1="6" y1="1" x2="6" y2="11"></line>`,
+  // API Gateway: a funnel that routes many in to one out.
+  'am-gateway': svg`<path d="M0.8 1.2 H11.2 L7.4 6 V11 H4.6 V6 Z"></path>`,
   aggregate: svg`<path d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"></path>`,
   shield: svg`<path d="M6 0.5 L11 2.5 V6 C11 9 8.8 11 6 11.8 C3.2 11 1 9 1 6 V2.5 Z"></path>`,
   note: svg`<path d="M1.5 0.5 H10.5 V7.5 L7 11.5 H1.5 Z"></path><path d="M10.5 7.5 H7 V11.5"></path>`,

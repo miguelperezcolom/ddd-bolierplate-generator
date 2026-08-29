@@ -17,7 +17,7 @@ import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from
 
 interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; group: string; }
 /** Element palette groups, in display order — new (high-level) groups slot in here. */
-const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Orquestación', 'Integración', 'Externo', 'IA', 'UI', 'Distribución', 'Otros'];
+const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Orquestación', 'Integración', 'Externo', 'IA', 'UI', 'Módulos', 'Otros'];
 const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'component', label: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'Estratégico' },
   { kind: 'aggregate', label: 'Agregado', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
@@ -45,7 +45,14 @@ const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'ui-app', label: 'App UI', layer: 'ui', w: 240, h: 130, container: true, group: 'UI' },
   { kind: 'page', label: 'Página', layer: 'ui', w: 150, h: 60, group: 'UI' },
   { kind: 'menu-item', label: 'Menú', layer: 'ui', w: 140, h: 48, group: 'UI' },
-  { kind: 'module', label: 'Módulo', layer: 'tech', w: 160, h: 60, group: 'Distribución' },
+  { kind: 'module', label: 'Módulo', layer: 'tech', w: 160, h: 60, group: 'Módulos' },
+  { kind: 'bff', label: 'BFF', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
+  { kind: 'acl', label: 'ACL', layer: 'tech', w: 150, h: 56, group: 'Módulos' },
+  { kind: 'api-gateway', label: 'API Gateway', layer: 'tech', w: 170, h: 56, group: 'Módulos' },
+  { kind: 'adapter', label: 'Adaptador', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
+  { kind: 'saga', label: 'Saga', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
+  { kind: 'projector', label: 'Projector', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
+  { kind: 'scheduler', label: 'Scheduler', layer: 'tech', w: 150, h: 56, group: 'Módulos' },
   { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16, group: 'Otros' },
 ];
 
@@ -64,7 +71,7 @@ const KIND_LAYER: Record<string, LayerKey> = {
   'external-system': 'external', 'identity-provider': 'external',
   'ai-agent': 'ai', 'mcp-gateway': 'ai', rag: 'ai',
   'ui-app': 'ui', page: 'ui', 'menu-item': 'ui',
-  module: 'tech',
+  module: 'tech', bff: 'tech', acl: 'tech', 'api-gateway': 'tech', adapter: 'tech', saga: 'tech', projector: 'tech', scheduler: 'tech',
 };
 function kindLayer(kind: string): LayerKey { return KIND_LAYER[kind] ?? 'domain'; }
 
@@ -170,6 +177,9 @@ export class ArchiShell extends LitElement {
     .pgroup .ptw { font-size: 8px; color: #94a3b8; }
     .pgroup .pnote { text-transform: none; font-weight: 400; margin-left: auto; color: #cbd5e1; font-size: 9px; padding-right: 4px; }
     .pitem { display: flex; align-items: center; gap: 7px; padding: 4px 10px; cursor: pointer; }
+    .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 4px; padding: 2px 6px 6px; }
+    .pgrid .pitem { padding: 3px 5px; gap: 5px; border-radius: 5px; overflow: hidden; min-width: 0; }
+    .pgrid .pitem .lbl { min-width: 0; font-size: 12px; }
     .pitem:hover { background: #e7edf5; }
     .pitem.on { background: #dbeafe; box-shadow: inset 2px 0 0 #2563eb; }
     .pitem .sw { width: 13px; height: 13px; border-radius: 3px; flex: none; border: 1px solid rgba(0,0,0,.25); }
@@ -608,11 +618,11 @@ export class ArchiShell extends LitElement {
       <div class="pgroup pfold" @click=${() => this.toggle('pal:' + key)}>
         <span class="ptw">${collapsed ? '▶' : '▼'}</span>${label}${extra ? html`<span class="pnote">${extra}</span>` : nothing}
       </div>
-      ${collapsed ? nothing : body}`;
+      ${collapsed ? nothing : html`<div class="pgrid">${body}</div>`}`;
   }
   private elItem(el: ElementTool) {
     const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-    return html`<div class="pitem ${on ? 'on' : ''}" draggable="true"
+    return html`<div class="pitem ${on ? 'on' : ''}" title=${el.label} draggable="true"
       @dragstart=${(e: DragEvent) => { this._dragEl = el; if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', el.kind); } }}
       @dragend=${() => (this._dragEl = null)}
       @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
@@ -630,12 +640,14 @@ export class ArchiShell extends LitElement {
     const magicOn = this.tool.kind === 'connect' && this.tool.rel === null;
     return html`
       <div class="pgroup">Herramientas</div>
-      <div class="pitem ${this.tool.kind === 'select' ? 'on' : ''}" @click=${() => this.resetTool()}><span class="sw" style="background:#94a3b8"></span><span class="lbl">Seleccionar</span></div>
-      <div class="pitem ${magicOn ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel: null }, e)}><span class="sw" style="background:#7c3aed"></span><span class="lbl">Conector mágico ✦</span></div>
+      <div class="pgrid">
+        <div class="pitem ${this.tool.kind === 'select' ? 'on' : ''}" @click=${() => this.resetTool()}><span class="sw" style="background:#94a3b8"></span><span class="lbl">Seleccionar</span></div>
+        <div class="pitem ${magicOn ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel: null }, e)}><span class="sw" style="background:#7c3aed"></span><span class="lbl">Conector mágico ✦</span></div>
+      </div>
 
       ${this.palGroup('rel', 'Relaciones', REL_TYPES.map((rel) => {
         const on = this.tool.kind === 'connect' && this.tool.rel === rel;
-        return html`<div class="pitem ${on ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.relPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
+        return html`<div class="pitem ${on ? 'on' : ''}" title=${REL_NOTATION[rel]?.label ?? rel} @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.relPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
       }))}
 
       ${ELEMENT_GROUPS.map((g, i) => {
