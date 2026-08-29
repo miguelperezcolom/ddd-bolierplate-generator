@@ -19,6 +19,8 @@ const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'component', label: 'Contexto', layer: 'context', w: 240, h: 130, container: true },
   { kind: 'aggregate', label: 'Agregado', layer: 'domain', w: 160, h: 66 },
   { kind: 'entity', label: 'Entidad', layer: 'domain', w: 160, h: 66 },
+  { kind: 'value-object', label: 'Value object', layer: 'domain', w: 150, h: 56 },
+  { kind: 'invariant', label: 'Invariante', layer: 'domain', w: 150, h: 56 },
   { kind: 'event', label: 'Evento', layer: 'event', w: 200, h: 62 },
   { kind: 'usecase', label: 'Caso de uso', layer: 'behavior', w: 160, h: 62 },
   { kind: 'service', label: 'Servicio', layer: 'behavior', w: 170, h: 50 },
