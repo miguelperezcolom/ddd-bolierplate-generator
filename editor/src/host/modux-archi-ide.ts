@@ -90,7 +90,7 @@ export class ModuxArchiIde extends LitElement {
       // the plugin re-dispatches them through here (see EditorBridge).
       const w = window as unknown as {
         __moduxSave?: () => void; __moduxUndo?: () => void; __moduxRedo?: () => void;
-        __moduxCopy?: () => void; __moduxPaste?: () => void;
+        __moduxCopy?: () => void; __moduxPaste?: () => void; __moduxReload?: () => void;
       };
       const shell = () => this.renderRoot.querySelector('archi-shell') as ArchiShell | null;
       w.__moduxSave = this.boundSave;
@@ -98,6 +98,9 @@ export class ModuxArchiIde extends LitElement {
       w.__moduxRedo = () => shell()?.hostRedo();
       w.__moduxCopy = () => shell()?.hostCopy();
       w.__moduxPaste = () => shell()?.hostPaste();
+      // Another view saved a catalog change: re-read the model from disk so this view reflects it
+      // (the plugin calls this after any OTHER editor on the same catalog flushes).
+      w.__moduxReload = () => void this.reloadFromDisk();
       // Tell the host when a text field is focused so it lets native copy/paste through there
       // instead of routing the clipboard keys to the canvas.
       document.addEventListener('focusin', this.onFocusChange, true);
@@ -130,6 +133,21 @@ export class ModuxArchiIde extends LitElement {
   /** Re-derive the catalog projection the shell draws. */
   private refresh(): void {
     this.model = project(this.store);
+  }
+
+  /**
+   * Re-read the catalog from disk after another view changed it, and re-derive. The view document
+   * (members + geometry) is this view's own and is kept. Skipped while this view has unsaved work,
+   * so a live update never clobbers edits in progress; those views catch up on their next reload.
+   */
+  private async reloadFromDisk(): Promise<void> {
+    if (!this.fs || this.dirty) return;
+    try {
+      this.store = await loadTree(this.fs, ROOT);
+      this.refresh();
+    } catch (e) {
+      console.error(`modux archi: no se pudo recargar tras cambio externo: ${message(e)}`);
+    }
   }
 
   /** A command from the shell (add/rename/relate/…): apply to the store on the edit chain. */
@@ -216,7 +234,8 @@ export class ModuxArchiIde extends LitElement {
     document.removeEventListener('focusin', this.onFocusChange, true);
     document.removeEventListener('focusout', this.onFocusChange, true);
     const w = window as unknown as {
-      __moduxSave?: unknown; __moduxUndo?: unknown; __moduxRedo?: unknown; __moduxCopy?: unknown; __moduxPaste?: unknown;
+      __moduxSave?: unknown; __moduxUndo?: unknown; __moduxRedo?: unknown; __moduxCopy?: unknown;
+      __moduxPaste?: unknown; __moduxReload?: unknown;
     };
     if (w.__moduxSave === this.boundSave) {
       delete w.__moduxSave;
@@ -224,6 +243,7 @@ export class ModuxArchiIde extends LitElement {
       delete w.__moduxRedo;
       delete w.__moduxCopy;
       delete w.__moduxPaste;
+      delete w.__moduxReload;
     }
     super.disconnectedCallback();
   }

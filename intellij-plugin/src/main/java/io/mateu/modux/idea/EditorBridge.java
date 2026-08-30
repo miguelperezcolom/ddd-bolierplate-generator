@@ -19,6 +19,7 @@ import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.ui.jcef.JBCefJSQuery;
+import com.intellij.util.messages.Topic;
 import org.cef.CefSettings;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
@@ -47,6 +48,14 @@ public final class EditorBridge implements Disposable {
 
     private static final Logger LOG = Logger.getInstance(EditorBridge.class);
     private static final Gson GSON = new Gson();
+
+    /** One editor wrote the catalog; other editors on the SAME catalog reload so their view updates. */
+    interface CatalogChangeListener {
+        void catalogChanged(String catalogPath, Object source);
+    }
+
+    static final Topic<CatalogChangeListener> CATALOG_CHANGED =
+            Topic.create("modux catalog changed", CatalogChangeListener.class);
 
     private final JBCefBrowser browser;
     private final JBCefJSQuery query;
@@ -90,6 +99,17 @@ public final class EditorBridge implements Disposable {
                     @Override
                     public void beforeAllDocumentsSaving() {
                         if (modified) requestSave();
+                    }
+                });
+
+        // Live cross-view sync: when ANOTHER editor on the same catalog writes, reload from disk so
+        // this view reflects the change (a rename in one view shows in every open view of it).
+        project.getMessageBus().connect(this).subscribe(CATALOG_CHANGED,
+                (CatalogChangeListener) (path, source) -> {
+                    if (source != this && catalogRoot != null && catalogRoot.getPath().equals(path)) {
+                        browser.getCefBrowser().executeJavaScript(
+                                "window.__moduxReload && window.__moduxReload();",
+                                browser.getCefBrowser().getURL(), 0);
                     }
                 });
 
@@ -465,6 +485,10 @@ public final class EditorBridge implements Disposable {
             deletes.add(element.getAsString());
         }
         files.write(writes, deletes);
+        // Tell every other editor on this catalog to reload, so open views of the same model update.
+        if (catalogRoot != null) {
+            project.getMessageBus().syncPublisher(CATALOG_CHANGED).catalogChanged(catalogRoot.getPath(), this);
+        }
         return GSON.toJsonTree(writes.size() + deletes.size());
     }
 
