@@ -1,0 +1,673 @@
+{
+  "ApplicationComponent": {
+    "ApplicationComponent": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "realization",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "assignment",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "assignment",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "flow",
+      "assignment",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "flow",
+      "assignment",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "flow",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "ApplicationEvent": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "ApplicationFunction": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "flow",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "flow",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "ApplicationInterface": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "flow",
+      "assignment",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "ApplicationProcess": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "flow",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "flow",
+      "association",
+      "realization",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "ApplicationService": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "BusinessActor": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "flow",
+      "assignment",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "BusinessObject": {
+    "ApplicationComponent": [
+      "association"
+    ],
+    "ApplicationEvent": [
+      "association"
+    ],
+    "ApplicationFunction": [
+      "association"
+    ],
+    "ApplicationInterface": [
+      "association"
+    ],
+    "ApplicationProcess": [
+      "association"
+    ],
+    "ApplicationService": [
+      "association"
+    ],
+    "BusinessActor": [
+      "association"
+    ],
+    "BusinessObject": [
+      "composition",
+      "aggregation",
+      "association",
+      "specialization"
+    ],
+    "BusinessProcess": [
+      "association"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "association"
+    ]
+  },
+  "BusinessProcess": {
+    "ApplicationComponent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationEvent": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationFunction": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationInterface": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationProcess": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "ApplicationService": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessActor": [
+      "flow",
+      "association",
+      "triggering",
+      "serving"
+    ],
+    "BusinessObject": [
+      "access",
+      "association"
+    ],
+    "BusinessProcess": [
+      "composition",
+      "flow",
+      "aggregation",
+      "association",
+      "specialization",
+      "triggering",
+      "serving"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "access",
+      "association"
+    ]
+  },
+  "Constraint": {
+    "ApplicationComponent": [
+      "association"
+    ],
+    "ApplicationEvent": [
+      "association"
+    ],
+    "ApplicationFunction": [
+      "association"
+    ],
+    "ApplicationInterface": [
+      "association"
+    ],
+    "ApplicationProcess": [
+      "association"
+    ],
+    "ApplicationService": [
+      "association"
+    ],
+    "BusinessActor": [
+      "association"
+    ],
+    "BusinessObject": [
+      "association"
+    ],
+    "BusinessProcess": [
+      "association"
+    ],
+    "Constraint": [
+      "composition",
+      "aggregation",
+      "influence",
+      "association",
+      "specialization"
+    ],
+    "DataObject": [
+      "association"
+    ]
+  },
+  "DataObject": {
+    "ApplicationComponent": [
+      "association"
+    ],
+    "ApplicationEvent": [
+      "association"
+    ],
+    "ApplicationFunction": [
+      "association"
+    ],
+    "ApplicationInterface": [
+      "association"
+    ],
+    "ApplicationProcess": [
+      "association"
+    ],
+    "ApplicationService": [
+      "association"
+    ],
+    "BusinessActor": [
+      "association"
+    ],
+    "BusinessObject": [
+      "association",
+      "realization"
+    ],
+    "BusinessProcess": [
+      "association"
+    ],
+    "Constraint": [
+      "influence",
+      "association",
+      "realization"
+    ],
+    "DataObject": [
+      "composition",
+      "aggregation",
+      "association",
+      "specialization"
+    ]
+  }
+}

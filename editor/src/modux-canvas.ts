@@ -57,6 +57,32 @@ function polylineMidpoint(pts: Point[]): Point {
   return pts[Math.floor(pts.length / 2)];
 }
 
+/** Perpendicular distance of point b from the line through a and c. */
+function perpDist(a: Point, b: Point, c: Point): number {
+  const dx = c.x - a.x, dy = c.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return Math.hypot(b.x - a.x, b.y - a.y);
+  return Math.abs((b.x - a.x) * dy - (b.y - a.y) * dx) / len;
+}
+
+/** Orthogonal polyline with rounded corners (ArchiMate mode) — quadratic fillet per vertex. */
+function roundedOrthoPath(pts: Point[], radius = 10): string {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0].x} ${pts[0].y}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1], p1 = pts[i], p2 = pts[i + 1];
+    const l1 = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1;
+    const l2 = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+    const rr = Math.min(radius, l1 / 2, l2 / 2);
+    const a = { x: p1.x - ((p1.x - p0.x) / l1) * rr, y: p1.y - ((p1.y - p0.y) / l1) * rr };
+    const b = { x: p1.x + ((p2.x - p1.x) / l2) * rr, y: p1.y + ((p2.y - p1.y) / l2) * rr };
+    d += ` L ${a.x} ${a.y} Q ${p1.x} ${p1.y} ${b.x} ${b.y}`;
+  }
+  const last = pts[pts.length - 1];
+  d += ` L ${last.x} ${last.y}`;
+  return d;
+}
+
 function pathWithBridges(pts: Point[], priorSegments: [Point, Point][], radius = 7): string {
   let d = `M ${pts[0].x} ${pts[0].y}`;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -92,6 +118,35 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   component: svg`<rect x="3.5" y="0.5" width="8" height="11" rx="1"></rect>
     <rect x="0.5" y="2.5" width="6" height="2.6"></rect>
     <rect x="0.5" y="6.9" width="6" height="2.6"></rect>`,
+  // ArchiMate-accurate type icons (top-right badge), transcribed from Archi's figure source.
+  'am-component': svg`<rect x="3" y="1" width="8.5" height="10"></rect>
+    <rect x="0.5" y="2.8" width="4" height="2.4"></rect>
+    <rect x="0.5" y="6.8" width="4" height="2.4"></rect>`,
+  'am-object': svg`<rect x="0.8" y="1.5" width="10.4" height="9"></rect>
+    <line x1="0.8" y1="4" x2="11.2" y2="4"></line>`,
+  // Aggregate (DDD): a cluster — stacked rectangles (root + its members).
+  'am-aggregate': svg`<path d="M3.4 3.4 V1 H11 V8.6 H8.6"></path>
+    <rect x="1" y="3.4" width="7.6" height="7.2" rx="0.6"></rect>
+    <line x1="1" y1="5.6" x2="8.6" y2="5.6"></line>`,
+  'am-event': svg`<path d="M2.5 2.5 H8.5 Q11 2.5 11 6 Q11 9.5 8.5 9.5 H2.5 Q4.3 6 2.5 2.5 Z"></path>`,
+  'am-function': svg`<path d="M1.5 11 V4 L6 1 L10.5 4 V11 L6 8.5 Z"></path>`,
+  'am-actor': svg`<circle cx="6" cy="2.6" r="1.8"></circle>
+    <line x1="6" y1="4.4" x2="6" y2="8.4"></line>
+    <line x1="2.6" y1="5.8" x2="9.4" y2="5.8"></line>
+    <line x1="6" y1="8.4" x2="3.4" y2="11.4"></line>
+    <line x1="6" y1="8.4" x2="8.6" y2="11.4"></line>`,
+  'am-service': svg`<rect x="0.8" y="3" width="10.4" height="6" rx="3"></rect>`,
+  // ACL (Anti-Corruption Layer): a barrier/translation layer between two contexts.
+  'am-acl': svg`<rect x="0.5" y="2.5" width="3.4" height="7"></rect>
+    <rect x="8.1" y="2.5" width="3.4" height="7"></rect>
+    <line x1="6" y1="1" x2="6" y2="11"></line>`,
+  // API Gateway: a funnel that routes many in to one out.
+  'am-gateway': svg`<path d="M0.8 1.2 H11.2 L7.4 6 V11 H4.6 V6 Z"></path>`,
+  // Deployment service: a server/rack (the runtime unit that holds modules).
+  'am-deployment': svg`<rect x="0.8" y="1.5" width="10.4" height="9" rx="1"></rect>
+    <line x1="0.8" y1="4.3" x2="11.2" y2="4.3"></line>
+    <line x1="0.8" y1="7.1" x2="11.2" y2="7.1"></line>
+    <circle cx="2.6" cy="2.9" r="0.5"></circle><circle cx="2.6" cy="5.7" r="0.5"></circle>`,
   aggregate: svg`<path d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"></path>`,
   shield: svg`<path d="M6 0.5 L11 2.5 V6 C11 9 8.8 11 6 11.8 C3.2 11 1 9 1 6 V2.5 Z"></path>`,
   note: svg`<path d="M1.5 0.5 H10.5 V7.5 L7 11.5 H1.5 Z"></path><path d="M10.5 7.5 H7 V11.5"></path>`,
@@ -156,6 +211,12 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
  *  - element-activated { elementType, id, kind }  double click
  *  - selection-cleared                          click on empty canvas
  */
+/** Archi-style drawing tool selected in the palette; drives direct manipulation on the canvas. */
+export type CanvasTool =
+  | { kind: 'select' }
+  | { kind: 'place'; nodeKind: string; w: number; h: number }
+  | { kind: 'connect'; rel: string | null };
+
 @customElement('modux-canvas')
 export class ModuxCanvas extends LitElement {
   @property({ attribute: false }) scene: Scene = { nodes: [], edges: [] };
@@ -164,6 +225,27 @@ export class ModuxCanvas extends LitElement {
   @property({ attribute: false }) selectedIds: string[] = [];
   /** Whether the connect gesture (drag from node handles) is available. */
   @property({ type: Boolean }) connectable = true;
+
+  /**
+   * ArchiMate notation mode (opt-in): rounds orthogonal edge corners and moves the
+   * type icon to the top-right of every node with a centred label — the Archi look.
+   * Default off leaves the production editor's rendering untouched.
+   */
+  @property({ type: Boolean }) archimate = false;
+
+  /**
+   * Active drawing tool (Archi-style direct manipulation). 'select' (default) is
+   * the normal editor. 'place' drops a node on click; 'connect' does click-source
+   * → click-target with a live rubber line and green/red target feedback.
+   */
+  @property({ attribute: false }) tool: CanvasTool = { kind: 'select' };
+
+  /**
+   * Host-supplied relationship-validity oracle (the canvas is semantics-agnostic):
+   * given source/target kinds and the tool's relationship (null = magic connector),
+   * returns whether the connection is allowed — drives the hover colour and gating.
+   */
+  @property({ attribute: false }) connectValidator?: (srcKind: string, tgtKind: string, rel: string | null) => boolean;
   /** Manual bend points per edge id (host-owned geometry, like node positions). */
   @property({ attribute: false }) edgePoints: Record<string, Point[]> = {};
 
@@ -202,10 +284,18 @@ export class ModuxCanvas extends LitElement {
   private _focusEdges = new Set<string>();
   @state() private _editingId: string | null = null;
   @state() private _spaceDown = false;
+  /** Alt held: gates the hover spotlight (fade unrelated nodes) so it isn't always on. */
+  @state() private _altDown = false;
   @state() private _wpDrag: { edgeId: string; points: Point[]; index: number } | null = null;
   @state() private _selectedWaypoint: { edgeId: string; index: number } | null = null;
   @state() private _resize: { id: string; x: number; y: number; w: number; h: number } | null = null;
   @state() private _rubber: { a: Point; b: Point } | null = null;
+  /** Tool-mode transient state: the chosen connect source, the hovered node, the place ghost. */
+  @state() private _connectSource: string | null = null;
+  @state() private _toolHover: string | null = null;
+  @state() private _ghost: { x: number; y: number } | null = null;
+  @state() private _placeDrag: { x0: number; y0: number; x1: number; y1: number } | null = null;
+  private _connectMove?: (ev: PointerEvent) => void;
 
   private _zoomBehavior?: ZoomBehavior<SVGSVGElement, unknown>;
   private _fitted = false;
@@ -246,6 +336,12 @@ export class ModuxCanvas extends LitElement {
     }
     svg.main.linking {
       cursor: crosshair;
+    }
+    svg.main.placing {
+      cursor: copy;
+    }
+    svg.main.forbidden {
+      cursor: not-allowed;
     }
     svg.main.panning {
       cursor: grab;
@@ -304,6 +400,7 @@ export class ModuxCanvas extends LitElement {
   }
 
   private _onWindowSpace = (e: KeyboardEvent): void => {
+    if (e.key === 'Alt') this._altDown = true;
     if (e.key !== ' ') return;
     const target = e.composedPath()[0];
     if (
@@ -321,6 +418,7 @@ export class ModuxCanvas extends LitElement {
 
   private _onWindowSpaceUp = (e: KeyboardEvent): void => {
     if (e.key === ' ') this._spaceDown = false;
+    if (e.key === 'Alt') this._altDown = false;
   };
 
   private _onKeyUp = (e: KeyboardEvent): void => {
@@ -331,6 +429,7 @@ export class ModuxCanvas extends LitElement {
   // silently disabling rubber-band selection.
   private _onBlur = (): void => {
     this._spaceDown = false;
+    this._altDown = false;
   };
 
   private _onKeyDown = (e: KeyboardEvent): void => {
@@ -517,6 +616,11 @@ export class ModuxCanvas extends LitElement {
         this.selectedId === wp.edgeId && wp.index < (this.edgePoints[wp.edgeId]?.length ?? 0);
       if (!stillValid) this._selectedWaypoint = null;
     }
+    // Switching away from connect/place cancels any half-drawn gesture cleanly.
+    if (changed.has('tool')) {
+      if (this.tool.kind !== 'connect') this.endConnectTracking();
+      if (this.tool.kind !== 'place') this._ghost = null;
+    }
   }
 
   protected updated(): void {
@@ -531,6 +635,7 @@ export class ModuxCanvas extends LitElement {
         input.select();
       }
     }
+    this.pruneCollinearWaypoints();
   }
 
   /**
@@ -706,7 +811,8 @@ export class ModuxCanvas extends LitElement {
 
   /** True while a node is hovered and no gesture is in progress. */
   private get spotlighting(): boolean {
-    return !!this._focusNodeId && !this.gestureActive();
+    // Only while Alt is held — otherwise plain hover never dims unrelated nodes.
+    return !!this._focusNodeId && this._altDown && !this.gestureActive();
   }
 
   /** A gesture owns the pointer — don't spotlight a neighbourhood mid-drag. */
@@ -825,11 +931,21 @@ export class ModuxCanvas extends LitElement {
     };
   }
 
+  /** Scene coordinates → client coordinates (apply pan/zoom). Inverse of sceneFromClient. */
+  clientFromScene(x: number, y: number): { x: number; y: number } {
+    const rect = this.getBoundingClientRect();
+    return {
+      x: x * this._t.k + this._t.x + rect.left,
+      y: y * this._t.k + this._t.y + rect.top,
+    };
+  }
+
   private onNodePointerDown(e: PointerEvent, node: SceneNode): void {
     if (e.button !== 0 || (e.buttons & 1) === 0) return;
     if (this._spaceDown) return; // let the zoom behavior pan instead
     e.stopPropagation();
     this.focus();
+    if (this.tool.kind !== 'select' && this.handleToolPointer(node, e)) return;
     const start = this.toScene(e);
     const origin = this.nodePos(node);
     let moved = false;
@@ -1085,7 +1201,7 @@ export class ModuxCanvas extends LitElement {
    * resize is symmetric about the centre. Children never leave the box: they
    * keep their absolute position, so each edge stops at the outermost child.
    */
-  private onResizePointerDown(e: PointerEvent, node: SceneNode, sx: 1 | -1, sy: 1 | -1): void {
+  private onResizePointerDown(e: PointerEvent, node: SceneNode, sx: -1 | 0 | 1, sy: -1 | 0 | 1): void {
     if (e.button !== 0 || (e.buttons & 1) === 0) return;
     e.stopPropagation();
     this.focus();
@@ -1119,33 +1235,34 @@ export class ModuxCanvas extends LitElement {
           id: node.id,
           x: start.x,
           y: start.y,
-          w: ev.altKey
+          w: sx === 0 ? start.w : ev.altKey
             ? Math.max(symMin.w, 2 * Math.abs(p.x - start.x))
             : Math.max(symMin.w, snapValue(2 * Math.abs(p.x - start.x))),
-          h: ev.altKey
+          h: sy === 0 ? start.h : ev.altKey
             ? Math.max(symMin.h, 2 * Math.abs(p.y - start.y))
             : Math.max(symMin.h, snapValue(2 * Math.abs(p.y - start.y))),
         };
         return;
       }
-      // Anchor = the opposite corner; the dragged edges stop at the floor size
-      // and at the outermost child (plus its margin). Snapped to the grid unless Alt.
+      // Anchor = the opposite edge/corner; a side handle (0 on an axis) leaves that
+      // dimension untouched. Dragged edges stop at the floor size and outermost child.
       const pg = ev.altKey ? p : { x: snapValue(p.x), y: snapValue(p.y) };
       const ax = start.x - (sx * start.w) / 2;
       const ay = start.y - (sy * start.h) / 2;
-      const px = sx > 0
-        ? Math.max(pg.x, ax + MIN_W, kids.length ? kidsRight + CONTAINER_INSET : -Infinity)
-        : Math.min(pg.x, ax - MIN_W, kids.length ? kidsLeft - CONTAINER_INSET : Infinity);
-      const py = sy > 0
-        ? Math.max(pg.y, ay + MIN_H, kids.length ? kidsBottom + CONTAINER_INSET : -Infinity)
-        : Math.min(pg.y, ay - MIN_H, kids.length ? kidsTop - CONTAINER_HEADER : Infinity);
-      this._resize = {
-        id: node.id,
-        x: (ax + px) / 2,
-        y: (ay + py) / 2,
-        w: Math.abs(px - ax),
-        h: Math.abs(py - ay),
-      };
+      let nx = start.x, ny = start.y, nw = start.w, nh = start.h;
+      if (sx !== 0) {
+        const px = sx > 0
+          ? Math.max(pg.x, ax + MIN_W, kids.length ? kidsRight + CONTAINER_INSET : -Infinity)
+          : Math.min(pg.x, ax - MIN_W, kids.length ? kidsLeft - CONTAINER_INSET : Infinity);
+        nx = (ax + px) / 2; nw = Math.abs(px - ax);
+      }
+      if (sy !== 0) {
+        const py = sy > 0
+          ? Math.max(pg.y, ay + MIN_H, kids.length ? kidsBottom + CONTAINER_INSET : -Infinity)
+          : Math.min(pg.y, ay - MIN_H, kids.length ? kidsTop - CONTAINER_HEADER : Infinity);
+        ny = (ay + py) / 2; nh = Math.abs(py - ay);
+      }
+      this._resize = { id: node.id, x: nx, y: ny, w: nw, h: nh };
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
@@ -1212,6 +1329,65 @@ export class ModuxCanvas extends LitElement {
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+  }
+
+  // ---- tool-mode interaction (Archi-style direct manipulation) -------------
+
+  private nodeById(id: string | null): SceneNode | undefined {
+    return id ? this.scene.nodes.find((n) => n.id === id) : undefined;
+  }
+
+  /** True while hovering an INVALID target during a connect gesture — drives the no-drop cursor. */
+  private toolForbidden(): boolean {
+    if (this.tool.kind !== 'connect' || !this._connectSource || !this._toolHover) return false;
+    const src = this.nodeById(this._connectSource), tgt = this.nodeById(this._toolHover);
+    if (!src || !tgt || tgt.id === src.id) return false;
+    return !!this.connectValidator && !this.connectValidator(src.kind, tgt.kind, this.tool.rel);
+  }
+
+  /** A pointerdown landed on `node` while a place/connect tool is active. Returns true if handled. */
+  private handleToolPointer(node: SceneNode, e: PointerEvent): boolean {
+    if (this.tool.kind === 'place') {
+      const p = this.toScene(e);
+      this.emit('place-requested', { nodeKind: this.tool.nodeKind, w: this.tool.w, h: this.tool.h, x: snapValue(p.x), y: snapValue(p.y) });
+      return true;
+    }
+    if (this.tool.kind === 'connect') {
+      if (!this._connectSource) {
+        this._connectSource = node.id;
+        const p = this.toScene(e);
+        this._pendingLink = { sourceId: node.id, x: p.x, y: p.y };
+        this.startConnectTracking();
+      } else if (node.id !== this._connectSource) {
+        const src = this.nodeById(this._connectSource)!;
+        const rel = this.tool.rel;
+        const ok = rel === null || !this.connectValidator || this.connectValidator(src.kind, node.kind, rel);
+        this.emit(ok ? 'connect-committed' : 'connect-rejected', {
+          sourceId: this._connectSource, targetId: node.id, rel, x: e.clientX, y: e.clientY,
+        });
+        this.endConnectTracking();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private startConnectTracking(): void {
+    this._connectMove = (ev: PointerEvent) => {
+      if (!this._connectSource) return;
+      const p = this.toScene(ev);
+      this._pendingLink = { sourceId: this._connectSource, x: p.x, y: p.y };
+      this._toolHover = this.nodeIdAt(ev);
+    };
+    window.addEventListener('pointermove', this._connectMove);
+  }
+
+  private endConnectTracking(): void {
+    if (this._connectMove) window.removeEventListener('pointermove', this._connectMove);
+    this._connectMove = undefined;
+    this._connectSource = null;
+    this._pendingLink = null;
+    this._toolHover = null;
   }
 
   // ---- geometry helpers ----------------------------------------------------
@@ -1285,8 +1461,13 @@ export class ModuxCanvas extends LitElement {
     const sp = this.nodePos(source);
     const tp = this.nodePos(target);
     if (!waypoints.length) {
-      // No manual bends: route orthogonally — horizontal/vertical segments, a
-      // straight diagonal only when the boxes leave no clean path.
+      // ArchiMate mode uses Archi's default "Manual" router: a straight line between
+      // the two boxes (clipped to their borders), even if it crosses other figures.
+      if (this.archimate) {
+        return [this.borderPoint(source, tp.x, tp.y), this.borderPoint(target, sp.x, sp.y)];
+      }
+      // Otherwise route orthogonally — horizontal/vertical segments, a straight
+      // diagonal only when the boxes leave no clean path.
       return orthogonalRoute(
         { x: sp.x, y: sp.y, w: source.w, h: source.h },
         { x: tp.x, y: tp.y, w: target.w, h: target.h },
@@ -1339,6 +1520,71 @@ export class ModuxCanvas extends LitElement {
       if (dist < best.dist) best = { seg: i, dist };
     }
     return best.seg;
+  }
+
+  /**
+   * Archi's bend-point creation handle: grabbing the hollow midpoint circle of
+   * segment `seg` births a bend once the pointer moves, then drags it. A plain
+   * click leaves the line straight (so the handle just previews where a bend goes).
+   */
+  private beginBendDrag(e: PointerEvent, edge: SceneEdge, seg: number): void {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const start = this.toScene(e);
+    let created = false;
+    const onMove = (ev: PointerEvent) => {
+      if ((ev.buttons & 1) === 0) { onUp(); return; }
+      const p = this.toScene(ev);
+      if (!created) {
+        if (Math.hypot(p.x - start.x, p.y - start.y) < 4 / this._t.k) return;
+        created = true;
+        this.focus();
+        const waypoints = [...(this.edgePoints[edge.id] ?? [])];
+        waypoints.splice(seg, 0, p);
+        this._selectedWaypoint = { edgeId: edge.id, index: seg };
+        this._wpDrag = { edgeId: edge.id, points: waypoints, index: seg };
+      } else if (this._wpDrag) {
+        const next = [...this._wpDrag.points];
+        next[seg] = p;
+        this._wpDrag = { ...this._wpDrag, points: next };
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (this._wpDrag && created) this.emit('edge-points-changed', { id: this._wpDrag.edgeId, points: this._wpDrag.points });
+      this._wpDrag = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  /** Drop bendpoints that ended up on a straight segment (after moving a node or waypoints). */
+  private pruneCollinearWaypoints(): void {
+    if (this._wpDrag || this._dragPos || this._dragGroup || this._resize) return;
+    const TOL = 3;
+    for (const edge of this.scene.edges) {
+      let list = this.edgePoints[edge.id];
+      if (!list?.length) continue;
+      const source = this.scene.nodes.find((n) => n.id === edge.sourceId);
+      const target = this.scene.nodes.find((n) => n.id === edge.targetId);
+      if (!source || !target) continue;
+      let changed = false;
+      for (;;) {
+        if (!list.length) break;
+        const a = this.orthoBorderPoint(source, list[0].x, list[0].y);
+        const b = this.orthoBorderPoint(target, list[list.length - 1].x, list[list.length - 1].y);
+        const poly = [a, ...list, b];
+        let rm = -1;
+        for (let i = 0; i < list.length; i++) {
+          if (perpDist(poly[i], poly[i + 1], poly[i + 2]) < TOL) { rm = i; break; }
+        }
+        if (rm < 0) break;
+        list = list.filter((_, j) => j !== rm);
+        changed = true;
+      }
+      if (changed) this.emit('edge-points-changed', { id: edge.id, points: list, auto: true });
+    }
   }
 
   /** Insert a new bend on `edge` at scene point `at`, selecting it. */
@@ -1406,6 +1652,7 @@ export class ModuxCanvas extends LitElement {
       <g data-edge-id=${edge.id}>
         <polyline class="edge-hit" points=${hitPoints}
               fill="none" stroke="transparent" stroke-width="14"
+              pointer-events=${this.tool.kind === 'select' ? 'stroke' : 'none'}
               @click=${(e: MouseEvent) => {
                 e.stopPropagation();
                 this.focus();
@@ -1449,7 +1696,7 @@ export class ModuxCanvas extends LitElement {
     const faded = this.spotlighting && !this._focusEdges.has(edge.id);
     return svg`
       <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : faded ? 0.1 : edge.faint ? 0.4 : 1}>
-        <path d=${pathWithBridges(pts, priorSegments)}
+        <path d=${this.archimate ? roundedOrthoPath(pts) : pathWithBridges(pts, priorSegments)}
               fill="none"
               stroke=${color} stroke-width=${highlighted ? 3 : 1.6}
               stroke-dasharray=${edge.dashArray ?? (edge.dashed ? '6 4' : '')}
@@ -1460,6 +1707,11 @@ export class ModuxCanvas extends LitElement {
               marker-end=${edge.markerEnd
                 ? `url(#${edge.markerEnd}-${this.markerId(color)})`
                 : edge.arrow ? `url(#arrow-${this.markerId(color)})` : ''}></path>
+        ${edge.kind === 'influence'
+          ? svg`<text x=${mid.x + 11} y=${mid.y + 4} text-anchor="middle" font-size="12" font-weight="700"
+                  fill=${color} paint-order="stroke" stroke="var(--modux-canvas-bg, #fafafa)" stroke-width="3"
+                  pointer-events="none">±</text>`
+          : ''}
         ${edge.label
           ? svg`<text x=${mid.x} y=${mid.y - 6} text-anchor="middle"
                   style="cursor: pointer" pointer-events="all"
@@ -1489,13 +1741,9 @@ export class ModuxCanvas extends LitElement {
                 this._selectedWaypoint?.edgeId === edge.id && this._selectedWaypoint.index === i;
               return svg`
                 <circle data-waypoint cx=${p.x} cy=${p.y} r=${wpSelected ? 6 : 5}
-                        style=${'fill: ' +
-                          (wpSelected
-                            ? 'var(--modux-primary, #2563eb)'
-                            : 'var(--modux-node-fill, #ffffff)') +
-                          '; stroke: var(--modux-primary, #2563eb)'}
+                        style=${'cursor: move; fill: ' + (this.archimate ? '#0000FF' : 'var(--modux-primary, #2563eb)')
+                          + '; stroke: ' + (wpSelected ? '#1e293b' : 'var(--modux-surface, #ffffff)')}
                         stroke-width="1.6" pointer-events="all"
-                        style="cursor: move"
                         @pointerdown=${(e: PointerEvent) => {
                           if (e.button !== 0) return;
                           e.stopPropagation();
@@ -1509,6 +1757,17 @@ export class ModuxCanvas extends LitElement {
                         }}>
                   <title>Arrastra para ajustar · Supr o doble click para quitar el punto</title>
                 </circle>`;
+            })
+          : ''}
+        ${selected && this.archimate
+          ? pts.slice(0, -1).map((_p, i) => {
+              const mx = (pts[i].x + pts[i + 1].x) / 2;
+              const my = (pts[i].y + pts[i + 1].y) / 2;
+              return svg`<circle data-bend-create cx=${mx} cy=${my} r="4.5"
+                  fill="var(--modux-canvas-bg, #ffffff)" stroke="#0000FF" stroke-width="1.4"
+                  pointer-events="all" style="cursor: crosshair"
+                  @pointerdown=${(e: PointerEvent) => this.beginBendDrag(e, edge, i)}>
+                  <title>Arrastra para crear un punto de ruptura</title></circle>`;
             })
           : ''}
       </g>
@@ -1555,6 +1814,19 @@ export class ModuxCanvas extends LitElement {
     const { x, y } = this.nodePos(node);
     const selected = this.selectedId === node.id || this.selectedIds.includes(node.id);
     const hovered = this._hoverNodeId === node.id;
+    // Tool-mode target feedback. Archi highlights the source and any VALID hovered
+    // target in pure blue; an invalid target isn't highlighted (the cursor turns to
+    // "no-drop" instead). Off-notation mode keeps the green/red affordance.
+    const hl = this.archimate ? '#0000FF' : '#2563eb';
+    let toolStroke: string | null = null;
+    if (this.tool.kind === 'connect') {
+      if (node.id === this._connectSource) toolStroke = hl;
+      else if (node.id === this._toolHover) {
+        const src = this.nodeById(this._connectSource);
+        const ok = !src || !this.connectValidator || this.connectValidator(src.kind, node.kind, this.tool.rel);
+        toolStroke = ok ? (this.archimate ? hl : '#16a34a') : (this.archimate ? null : '#dc2626');
+      }
+    }
     // Spotlight in effect and this node is outside the hovered neighbourhood.
     const faded = this.spotlighting && !this._focusNodes.has(node.id);
     const isContainer = !!node.container;
@@ -1570,6 +1842,26 @@ export class ModuxCanvas extends LitElement {
     const tooltip = node.derived
       ? `${node.tooltip ? `${node.tooltip} — ` : ''}Inferido: stub generado por el sistema (no declarado a mano)`
       : node.tooltip;
+    // Archi's "boxed" notation: EVERY element is a plain rectangle with its type icon
+    // in the top-right corner and the name at the top — no distinctive silhouettes.
+    const nodeFill = node.fill ?? (node.kind === 'note' ? 'var(--modux-note-fill, #fef9c3)' : 'var(--modux-node-fill, #ffffff)');
+    const nodeStroke = toolStroke ?? (hovered || selected ? hl : this.archimate ? '#5C5C5C' : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)'));
+    const nodeStrokeW = toolStroke ? 2 : selected || hovered ? 2 : this.archimate ? 1 : 1.4;
+    const amRx = this.archimate ? 2 : isChild ? 6 : 10;
+    const amLabelY = -hh + 17;
+    // ArchiMate Junction: a small filled dot (AND) or hollow dot (OR) — no label/icon.
+    if (this.archimate && node.kind === 'junction') {
+      const jStroke = toolStroke ?? (hovered || selected ? hl : '#5C5C5C');
+      return svg`
+        <g data-node-id=${node.id} transform="translate(${x}, ${y})"
+           @pointerenter=${() => this.setFocusNode(node.id)}
+           @pointerleave=${() => this.setFocusNode(null)}
+           @pointerdown=${(e: PointerEvent) => this.onNodePointerDown(e, node)}>
+          <circle r="7" fill=${node.tooltip === 'or' ? '#ffffff' : '#000000'}
+                  stroke=${jStroke} stroke-width=${selected || hovered ? 2 : 1}></circle>
+          ${selected ? svg`<rect x="-11" y="-11" width="22" height="22" fill="none" stroke=${hl} stroke-width="1" stroke-dasharray="3 2"></rect>` : ''}
+        </g>`;
+    }
     return svg`
       <g data-node-id=${node.id}
          opacity=${node.dim ? 0.25 : faded ? 0.16 : 1}
@@ -1595,20 +1887,10 @@ export class ModuxCanvas extends LitElement {
                   : 'Modificado respecto al sistema'}</title>
               </rect>`
           : ''}
-        <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${isChild ? 6 : 10}
-              style=${'fill: ' +
-                (node.fill ??
-                  (node.kind === 'note'
-                    ? 'var(--modux-note-fill, #fef9c3)'
-                    : 'var(--modux-node-fill, #ffffff)')) +
-                '; stroke: ' +
-                (hovered || selected
-                  ? 'var(--modux-primary, #2563eb)'
-                  : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)'))}
-              stroke-width=${selected || hovered ? 2.5 : 1.4}
-              stroke-dasharray=${node.dashed ? '6 4' : ''}>
-          ${tooltip ? svg`<title>${tooltip}</title>` : ''}
-        </rect>
+        <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${amRx}
+              style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`}
+              stroke-width=${nodeStrokeW} stroke-dasharray=${node.dashed ? '6 4' : ''}>
+          ${tooltip ? svg`<title>${tooltip}</title>` : ''}</rect>
         ${node.derived
           ? svg`<text x=${-hw + 5} y=${-hh + 13} font-size="10" style="fill: var(--modux-derive, #a855f7)"
                   pointer-events="none">✦</text>`
@@ -1634,15 +1916,15 @@ export class ModuxCanvas extends LitElement {
                     : 'Contraer: oculta los hijos'}</title>
                 </g>`
           : ''}
-        ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer)
-          ? svg`<g transform="translate(${hw - (node.collapsible ? 37 : 17)}, ${-hh + 5})" fill="none"
-                  style=${'stroke: ' + (node.stroke ?? 'var(--modux-node-stroke, #64748b)')}
-                  stroke-width="1.1" stroke-linejoin="round"
-                  stroke-linecap="round" opacity="0.85" pointer-events="none">
+        ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer || this.archimate)
+          ? svg`<g transform="translate(${hw - (node.collapsible ? 40 : 22)}, ${-hh + 5}) scale(${this.archimate ? 1.45 : 1})" fill="none"
+                  style=${'stroke: ' + (this.archimate ? '#475569' : (node.stroke ?? 'var(--modux-node-stroke, #64748b)'))}
+                  stroke-width=${this.archimate ? 1 : 1.1} stroke-linejoin="round"
+                  stroke-linecap="round" pointer-events="none">
                 ${SYMBOLS[node.symbol]}
               </g>`
           : ''}
-        ${isChild && !isContainer && node.symbol && SYMBOLS[node.symbol]
+        ${isChild && !isContainer && !this.archimate && node.symbol && SYMBOLS[node.symbol]
           ? svg`<g transform="translate(${-hw + 8}, -6)" fill="none"
                   style=${'stroke: ' + (node.stroke ?? 'var(--modux-node-stroke, #64748b)')}
                   stroke-width="1.2" stroke-linejoin="round"
@@ -1666,7 +1948,7 @@ export class ModuxCanvas extends LitElement {
                     this.commitRename(node, (e.target as HTMLInputElement).value)}
                 />
               </foreignObject>`
-          : isChild && !isContainer
+          : isChild && !isContainer && !this.archimate
             ? svg`<text x=${-hw + 24} y="4" text-anchor="start" font-size="12" font-weight="600"
                 font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)" pointer-events="none">${childLabel}</text>`
             : isContainer
@@ -1674,14 +1956,22 @@ export class ModuxCanvas extends LitElement {
                   font-weight="700" font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${node.label}</text>`
               : node.kind === 'area'
                 ? '' // a bare rectangle: its name only shows as tooltip (F2 still edits it)
-                : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
-                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 16)}</text>`}
+                : svg`<text x="0" y=${this.archimate ? amLabelY : 4} text-anchor="middle"
+                  font-size=${this.archimate ? 12 : 13} font-weight=${this.archimate ? '400' : '600'}
+                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 22)}</text>`}
         ${isContainer
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
-                style="stroke: var(--modux-border, #e2e8f0)" stroke-width="1" pointer-events="none"></line>`
+                style=${`stroke: ${this.archimate ? nodeStroke : 'var(--modux-border, #e2e8f0)'}`} stroke-width="1" pointer-events="none"></line>`
+          : ''}
+        ${this.archimate && isContainer && node.kind === 'component'
+          ? svg`<g pointer-events="none" style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`} stroke-width="1">
+              <rect x=${-hw - 5} y=${-hh + 13} width="12" height="8"></rect>
+              <rect x=${-hw - 5} y=${-hh + 27} width="12" height="8"></rect>
+            </g>`
           : ''}
         ${selected &&
         this.connectable &&
+        !this.archimate &&
         (isChild
           ? node.kind === 'menu-item' ||
             node.kind === 'menu-group' ||
@@ -1808,16 +2098,23 @@ export class ModuxCanvas extends LitElement {
                 </g>`,
             )
           : ''}
-        ${(isContainer || node.resizable) && selected
-          ? ([[-1, -1], [1, -1], [-1, 1], [1, 1]] as const).map(
-              ([sx, sy]) => svg`
-                <rect data-resize x=${sx * hw - 6.5} y=${sy * hh - 6.5} width="13" height="13" rx="2.5"
-                      style="fill: var(--modux-primary, #2563eb); stroke: var(--modux-surface, #ffffff)"
-                      stroke-width="1.5"
-                      style="cursor: ${sx * sy > 0 ? 'nwse' : 'nesw'}-resize"
+        ${(isContainer || node.resizable || this.archimate) && selected
+          ? ((this.archimate
+              ? [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]
+              : [[-1, -1], [1, -1], [-1, 1], [1, 1]]) as readonly (readonly [-1 | 0 | 1, -1 | 0 | 1])[]).map(
+              ([sx, sy]) => {
+                const hs = this.archimate ? 8 : 13;
+                const cur = sx === 0 ? 'ns' : sy === 0 ? 'ew' : sx * sy > 0 ? 'nwse' : 'nesw';
+                return svg`
+                <rect data-resize x=${sx * hw - hs / 2} y=${sy * hh - hs / 2} width=${hs} height=${hs} rx=${this.archimate ? 1 : 2.5}
+                      style=${'cursor: ' + cur + '-resize; fill: '
+                        + (this.archimate ? (this.selectedId === node.id ? '#1e293b' : '#ffffff') : 'var(--modux-primary, #2563eb)')
+                        + '; stroke: ' + (this.archimate ? '#5C5C5C' : 'var(--modux-surface, #ffffff)')}
+                      stroke-width=${this.archimate ? 1 : 1.5}
                       @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node, sx, sy)}>
                   <title>Arrastra para cambiar el tamaño (Shift: simétrico desde el centro)</title>
-                </rect>`,
+                </rect>`;
+              },
             )
           : ''}
       </g>
@@ -1828,6 +2125,9 @@ export class ModuxCanvas extends LitElement {
     if (!this._pendingLink) return svg``;
     const source = this.scene.nodes.find((n) => n.id === this._pendingLink!.sourceId);
     if (!source) return svg``;
+    // No line while the pointer is still inside the source element.
+    const sp = this.nodePos(source);
+    if (Math.abs(this._pendingLink.x - sp.x) <= source.w / 2 && Math.abs(this._pendingLink.y - sp.y) <= source.h / 2) return svg``;
     const a = this.borderPoint(source, this._pendingLink.x, this._pendingLink.y);
     return svg`
       <line x1=${a.x} y1=${a.y} x2=${this._pendingLink.x} y2=${this._pendingLink.y}
@@ -1997,9 +2297,25 @@ export class ModuxCanvas extends LitElement {
       edgeInks.push(this.renderEdgeInk(edge, pts, [...priorSegments]));
       for (let i = 0; i < pts.length - 1; i++) priorSegments.push([pts[i], pts[i + 1]]);
     });
+    // Paint by nesting depth so every container stays BEHIND its descendants
+    // (a parent can never cover its children, at any nesting level).
+    const byId = new Map(this.scene.nodes.map((n) => [n.id, n]));
+    const depthOf = (n: SceneNode) => {
+      let d = 0;
+      for (let p = n.parentId; p; p = byId.get(p)?.parentId) { if (++d > 50) break; }
+      return d;
+    };
+    const orderedNodes = this.scene.nodes
+      .map((n, i) => ({ n, i, d: depthOf(n) }))
+      .sort((a, b) => a.d - b.d || a.i - b.i)
+      .map((x) => x.n);
     return html`
       <svg
-        class="main ${this._pendingLink ? 'linking' : ''} ${this._spaceDown ? 'panning' : ''}"
+        class="main ${this._pendingLink || this.tool.kind === 'connect' ? 'linking' : ''} ${this.tool.kind === 'place' ? 'placing' : ''} ${this.toolForbidden() ? 'forbidden' : ''} ${this._spaceDown ? 'panning' : ''}"
+        @pointermove=${(e: PointerEvent) => {
+          if (this.tool.kind === 'connect') this._toolHover = this.nodeIdAt(e);
+          else if (this.tool.kind === 'place') this._ghost = this.toScene(e);
+        }}
         @pointerdown=${(e: PointerEvent) => {
           const target = e.target as Element;
           if (target.closest('[data-node-id]') || target.closest('[data-edge-id]')) return;
@@ -2007,6 +2323,38 @@ export class ModuxCanvas extends LitElement {
           // A native <select> popup over the canvas can leak a ghost pointerdown with
           // no button actually held — it must not start a gesture that never ends.
           if ((e.buttons & 1) === 0) return;
+          if (this.tool.kind === 'place') {
+            // Click drops at default size; drag defines the box size (Archi's gesture).
+            const { nodeKind, w: dw, h: dh } = this.tool;
+            const s = this.toScene(e);
+            this._placeDrag = { x0: s.x, y0: s.y, x1: s.x, y1: s.y };
+            const onMove = (ev: PointerEvent) => {
+              const q = this.toScene(ev);
+              if (this._placeDrag) this._placeDrag = { ...this._placeDrag, x1: q.x, y1: q.y };
+            };
+            const onUp = () => {
+              window.removeEventListener('pointermove', onMove);
+              window.removeEventListener('pointerup', onUp);
+              const d = this._placeDrag;
+              this._placeDrag = null;
+              if (!d) return;
+              const w = Math.abs(d.x1 - d.x0), h = Math.abs(d.y1 - d.y0);
+              if (w > 12 && h > 12) {
+                this.emit('place-requested', { nodeKind, w: Math.round(w), h: Math.round(h), x: snapValue((d.x0 + d.x1) / 2), y: snapValue((d.y0 + d.y1) / 2) });
+              } else {
+                this.emit('place-requested', { nodeKind, w: dw, h: dh, x: snapValue(d.x0), y: snapValue(d.y0) });
+              }
+            };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+            return;
+          }
+          if (this.tool.kind === 'connect') {
+            if (this._connectSource && this.tool.rel === null)
+              this.emit('connect-on-empty', { sourceId: this._connectSource, x: e.clientX, y: e.clientY, sceneX: this.toScene(e).x, sceneY: this.toScene(e).y });
+            this.endConnectTracking();
+            return;
+          }
           this.startRubberBand(e);
         }}
       >
@@ -2043,12 +2391,21 @@ export class ModuxCanvas extends LitElement {
           )}
         </defs>
         <g class="viewport" transform="translate(${this._t.x}, ${this._t.y}) scale(${this._t.k})">
-          <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#dots)"
+          <rect x="-100000" y="-100000" width="200000" height="200000"
+                fill=${this.archimate ? '#ffffff' : 'url(#dots)'}
                 pointer-events="none"></rect>
+          ${orderedNodes.map((n) => this.renderNode(n))}
           ${edgeHits}
-          ${this.scene.nodes.filter((n) => !n.parentId).map((n) => this.renderNode(n))}
-          ${this.scene.nodes.filter((n) => n.parentId).map((n) => this.renderNode(n))}
           ${edgeInks}
+          ${this.tool.kind === 'place' && this._placeDrag
+            ? svg`<rect x=${Math.min(this._placeDrag.x0, this._placeDrag.x1)} y=${Math.min(this._placeDrag.y0, this._placeDrag.y1)}
+                    width=${Math.abs(this._placeDrag.x1 - this._placeDrag.x0)} height=${Math.abs(this._placeDrag.y1 - this._placeDrag.y0)}
+                    rx="2" pointer-events="none" fill="rgba(37,99,235,0.08)" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="6 4"></rect>`
+            : this.tool.kind === 'place' && this._ghost
+            ? svg`<rect x=${this._ghost.x - this.tool.w / 2} y=${this._ghost.y - this.tool.h / 2}
+                    width=${this.tool.w} height=${this.tool.h} rx="10" pointer-events="none"
+                    fill="rgba(37,99,235,0.08)" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="6 4"></rect>`
+            : ''}
           ${this._menuSlots
             ? svg`<g pointer-events="none">
                 ${this._menuSlots.slots.map(
