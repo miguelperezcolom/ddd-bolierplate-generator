@@ -224,6 +224,7 @@ export class ModuxArchiIde extends LitElement {
       <archi-shell
         .model=${this.model}
         .view=${{ members: this.members }}
+        .viewId=${this.doc.viewId}
         @modux-command=${this.onCommand}
         @view-changed=${this.onViewChanged}
       ></archi-shell>

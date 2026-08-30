@@ -154,6 +154,27 @@ const RENAME_TYPE: Record<string, string> = {
   'ui-app': 'ui-app', page: 'page', 'read-model': 'read-model', 'integration-event': 'integration-event',
 };
 
+/**
+ * Cross-view clipboard for bound mode. Shared across editor webviews via localStorage (every modux
+ * editor is served from the same origin, so they share it), with an in-memory fallback for the same
+ * webview when storage is unavailable. Copy in one view, paste in another → the target view ADDS the
+ * same elements (their relations re-derive); paste in the SAME view → the elements are DUPLICATED.
+ */
+type ClipItem = { id: string; kind: string; label: string; x: number; y: number; w: number; h: number };
+type ClipData = { sourceView: string; items: ClipItem[] };
+const CLIP_KEY = 'modux-archi-clipboard';
+let clipFallback: ClipData | null = null;
+function writeClip(data: ClipData) {
+  clipFallback = data;
+  try { localStorage.setItem(CLIP_KEY, JSON.stringify(data)); } catch { /* storage unavailable: fall back to memory */ }
+}
+function readClip(): ClipData | null {
+  try { const raw = localStorage.getItem(CLIP_KEY); if (raw) return JSON.parse(raw) as ClipData; } catch { /* ignore */ }
+  return clipFallback;
+}
+/** Distinguishes views that have no id yet, so same-webview paste still duplicates. */
+let viewSeq = 0;
+
 type Tool =
   | { kind: 'select' }
   | { kind: 'place'; el: ElementTool }
@@ -169,6 +190,11 @@ export class ArchiShell extends LitElement {
    */
   @property({ attribute: false }) model: ModuxModel | null = null;
   @property({ attribute: false }) view: ViewMembers = { members: [] };
+  /** Which view this shell edits — distinguishes same-view (duplicate) from cross-view (add) paste. */
+  @property() viewId?: string;
+  private _viewKey = `v-${++viewSeq}-${Date.now()}`;
+  /** Stable per-view key: the document's id when it has one, else a per-instance fallback. */
+  private get vk() { return this.viewId ?? this._viewKey; }
   private get bound() { return !!this.model; }
   private emit(name: string, detail: unknown) { this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true })); }
   protected willUpdate(changed: PropertyValues) {
@@ -516,11 +542,21 @@ export class ArchiShell extends LitElement {
   private copy() {
     const ids = new Set(this.selectedIds.length ? this.selectedIds : this.selectedId ? [this.selectedId] : []);
     if (!ids.size) return;
+    if (this.bound) {
+      const items: ClipItem[] = [];
+      for (const m of this.view.members) if (ids.has(m.id)) {
+        const el = this.resolveElement(m.id);
+        if (el) items.push({ id: m.id, kind: el.kind, label: el.label, x: m.x, y: m.y, w: m.w, h: m.h });
+      }
+      if (items.length) writeClip({ sourceView: this.vk, items });
+      return;
+    }
     const nodes = this.scene.nodes.filter((n) => ids.has(n.id));
     const edges = this.scene.edges.filter((e) => ids.has(e.sourceId) && ids.has(e.targetId));
     this.clipboard = structuredClone({ nodes, edges });
   }
   private paste() {
+    if (this.bound) { this.pasteBound(); return; }
     if (!this.clipboard?.nodes.length) return;
     this.commit();
     const idMap = new Map<string, string>();
@@ -535,6 +571,36 @@ export class ArchiShell extends LitElement {
     this.scene = { ...this.scene, nodes: [...this.scene.nodes, ...newNodes], edges: [...this.scene.edges, ...newEdges] };
     this.selectedIds = newNodes.map((n) => n.id);
     this.selectedId = newNodes[0]?.id ?? null;
+  }
+  /**
+   * Bound paste: same view ⇒ DUPLICATE (mint new elements of the same kind+name); other view ⇒ ADD
+   * the same elements as members (their relations re-derive from the model since both ends are now
+   * present). An element already in the target view is skipped rather than doubled.
+   */
+  private pasteBound() {
+    const clip = readClip();
+    if (!clip?.items?.length) return;
+    const sameView = clip.sourceView === this.vk;
+    const here = new Set(this.view.members.map((m) => m.id));
+    const additions: ViewMembers['members'] = [];
+    const stamp = Date.now();
+    clip.items.forEach((it, i) => {
+      if (sameView) {
+        const build = BOUND_CREATE[it.kind];
+        if (!build) return;                                     // kind can't be minted standalone
+        const newId = `${it.kind}-${stamp}-${i}`;
+        this.emit('modux-command', { command: build(newId, it.label) });
+        additions.push({ id: newId, x: it.x + 24, y: it.y + 24, w: it.w, h: it.h });
+      } else {
+        if (here.has(it.id)) return;                            // already shown in this view
+        if (this.resolveElement(it.id)) additions.push({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h });
+      }
+    });
+    if (!additions.length) return;
+    this.view = { members: [...this.view.members, ...additions] };
+    this.emit('view-changed', { view: this.view });
+    this.selectedIds = additions.map((a) => a.id);
+    this.selectedId = additions[0]?.id ?? null;
   }
 
   protected updated() { this.style.setProperty('--pal-w', this.paletteWidth + 'px'); }
