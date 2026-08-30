@@ -156,8 +156,8 @@ export class ArchiShell extends LitElement {
   @state() private meta: Record<string, { doc: string; props: { k: string; v: string }[] }> = {};
   /** Sticky palette tool (Shift-click keeps the tool selected after use, like Archi). */
   private sticky = false;
-  /** Element being dragged from the palette onto the canvas. */
-  private _dragEl: ElementTool | null = null;
+  /** Element being dragged from the palette onto the canvas (pointer-based; see beginPaletteDrag). */
+  @state() private _paletteDrag: { el: ElementTool; x: number; y: number; startX: number; startY: number; moved: boolean } | null = null;
   /** Format painter: the fill to stamp onto clicked nodes (null = painter off). */
   @state() private painter: string | null = null;
 
@@ -277,6 +277,8 @@ export class ArchiShell extends LitElement {
     .menu .mi .rev { font-size: 10px; color: #94a3b8; margin-left: auto; }
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 70; background: #7f1d1d; color: #fff;
       padding: 8px 14px; border-radius: 8px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+    .drag-ghost { position: fixed; transform: translate(-50%, -50%); z-index: 80; pointer-events: none;
+      background: #1e293b; color: #fff; padding: 3px 9px; border-radius: 6px; font-size: 11px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
   `;
 
   // ---- helpers -------------------------------------------------------------
@@ -621,6 +623,7 @@ export class ArchiShell extends LitElement {
       else if (el.kind === 'component') this.emit('modux-command', { command: { kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' } });
       else if (el.kind === 'entity') this.emit('modux-command', { command: { kind: 'add-entity', id, name } });
       else if (el.kind === 'value-object') this.emit('modux-command', { command: { kind: 'add-value-object', id, name } });
+      else if (el.kind === 'person') this.emit('modux-command', { command: { kind: 'add-actor', id, name } });
       else { created = false; this.flash(`«${el.label}» aún no cableado en el spike`); }
       if (created) {
         this.view = { members: [...this.view.members, { id, x, y, w: el.w, h: el.h }] };
@@ -755,18 +758,36 @@ export class ArchiShell extends LitElement {
   }
   private elItem(el: ElementTool) {
     const on = this.tool.kind === 'place' && this.tool.el.kind === el.kind;
-    return html`<div class="pitem ${on ? 'on' : ''}" title=${el.label} draggable="true"
-      @dragstart=${(e: DragEvent) => { this._dragEl = el; if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', el.kind); } }}
-      @dragend=${() => (this._dragEl = null)}
-      @click=${(e: MouseEvent) => this.pickTool({ kind: 'place', el }, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
+    // Pointer-based drag, NOT the HTML5 draggable API: native drag-and-drop hangs inside JCEF
+    // (the drag grabs the pointer and never releases, freezing the view). A tap arms the place
+    // tool (click-on-canvas to drop); a real drag drops the element where the pointer is released.
+    return html`<div class="pitem ${on ? 'on' : ''}" title=${el.label}
+      @pointerdown=${(e: PointerEvent) => this.beginPaletteDrag(el, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
   }
-  private onCanvasDrop = (e: DragEvent) => {
+  private beginPaletteDrag(el: ElementTool, e: PointerEvent) {
+    if (e.button !== 0) return;
     e.preventDefault();
-    const el = this._dragEl; this._dragEl = null;
-    if (!el || !this.canvasEl) return;
-    const p = this.canvasEl.sceneFromClient(e.clientX, e.clientY);
+    this._paletteDrag = { el, x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, moved: false };
+    window.addEventListener('pointermove', this.onPaletteDragMove);
+    window.addEventListener('pointerup', this.onPaletteDragUp);
+  }
+  private onPaletteDragMove = (e: PointerEvent) => {
+    const d = this._paletteDrag; if (!d) return;
+    const moved = d.moved || Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 5;
+    this._paletteDrag = { ...d, x: e.clientX, y: e.clientY, moved };
+  };
+  private onPaletteDragUp = (e: PointerEvent) => {
+    window.removeEventListener('pointermove', this.onPaletteDragMove);
+    window.removeEventListener('pointerup', this.onPaletteDragUp);
+    const d = this._paletteDrag; this._paletteDrag = null;
+    if (!d) return;
+    if (!d.moved) { this.pickTool({ kind: 'place', el: d.el }, e); return; } // a tap: arm the place tool
+    const c = this.canvasEl; if (!c) return;                                 // a drag: drop on the canvas
+    const r = c.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    const p = c.sceneFromClient(e.clientX, e.clientY);
     if (!this.bound) this.commit();
-    const n = this.addNodeAt(el, snapValue(p.x), snapValue(p.y));
+    const n = this.addNodeAt(d.el, snapValue(p.x), snapValue(p.y));
     if (!this.bound) this.maybeNest(n.id);
   };
   private renderPalette() {
@@ -925,9 +946,7 @@ export class ArchiShell extends LitElement {
         <div class="body">${this.renderTree()}</div>
       </div>
 
-      <div class="canvas-wrap" @contextmenu=${this.onContextMenu}
-        @dragover=${(e: DragEvent) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }}
-        @drop=${this.onCanvasDrop}>
+      <div class="canvas-wrap" @contextmenu=${this.onContextMenu}>
         <modux-canvas archimate
           .scene=${this.displayScene} .selectedId=${this.selectedId} .selectedIds=${this.selectedIds}
           .edgePoints=${this.edgePoints}
@@ -981,6 +1000,9 @@ export class ArchiShell extends LitElement {
           <div class="mi" @click=${() => this.ctxDelete()}>Borrar <span class="rev">Supr</span></div>
         </div>` : nothing}
       ${this.toast ? html`<div class="toast">${this.toast}</div>` : nothing}
+      ${this._paletteDrag?.moved
+        ? html`<div class="drag-ghost" style="left:${this._paletteDrag.x}px;top:${this._paletteDrag.y}px">${this._paletteDrag.el.label}</div>`
+        : nothing}
     `;
   }
 }
