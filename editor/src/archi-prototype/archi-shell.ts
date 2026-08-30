@@ -325,6 +325,9 @@ export class ArchiShell extends LitElement {
   private snap() { return { scene: structuredClone(this.scene), edgePoints: structuredClone(this.edgePoints) }; }
   /** Call before any model mutation so it can be undone. */
   private commit() { this.history = [...this.history, this.snap()].slice(-60); this.future = []; }
+  /** The IDE host re-dispatches Cmd/Ctrl+Z here (macOS IntelliJ grabs it before the webview). */
+  hostUndo() { this.undo(); }
+  hostRedo() { this.redo(); }
   private undo() {
     const prev = this.history.at(-1); if (!prev) return;
     this.future = [this.snap(), ...this.future];

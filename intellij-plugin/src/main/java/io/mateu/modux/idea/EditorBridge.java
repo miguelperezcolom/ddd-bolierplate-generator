@@ -454,7 +454,7 @@ public final class EditorBridge implements Disposable {
                     </style>
                   </head>
                   <body>
-                    <div id="root"><modux-editor-ide></modux-editor-ide></div>
+                    <div id="root"><modux-archi-ide></modux-archi-ide></div>
                     <script>
                       window.moduxBridge = function (request) {
                         return new Promise(function (resolve, reject) {
