@@ -431,6 +431,9 @@ export class ArchiShell extends LitElement {
   /** The IDE host re-dispatches Cmd/Ctrl+Z here (macOS IntelliJ grabs it before the webview). */
   hostUndo() { this.undo(); }
   hostRedo() { this.redo(); }
+  /** Same story for Cmd/Ctrl+C/V — the IDE grabs the clipboard keys before the webview sees them. */
+  hostCopy() { this.copy(); }
+  hostPaste() { this.paste(); }
   private undo() {
     const prev = this.history.at(-1); if (!prev) return;
     this.future = [this.snap(), ...this.future];

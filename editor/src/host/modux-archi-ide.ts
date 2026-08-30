@@ -85,13 +85,23 @@ export class ModuxArchiIde extends LitElement {
       this.doc = (parse(await readView(bridge)) as ViewDoc) ?? {};
       this.store = await loadTree(this.fs, ROOT);
       this.members = this.membersFromDoc();
-      // The IDE host calls these: Ctrl+S (native save) and Cmd/Ctrl+Z / Shift+Z (macOS IntelliJ
-      // grabs the undo keys before the webview, so the plugin re-dispatches them through here).
-      const w = window as unknown as { __moduxSave?: () => void; __moduxUndo?: () => void; __moduxRedo?: () => void };
+      // The IDE host calls these: Ctrl+S (native save), Cmd/Ctrl+Z / Shift+Z (undo/redo) and
+      // Cmd/Ctrl+C / V (copy/paste) — macOS IntelliJ grabs all these keys before the webview, so
+      // the plugin re-dispatches them through here (see EditorBridge).
+      const w = window as unknown as {
+        __moduxSave?: () => void; __moduxUndo?: () => void; __moduxRedo?: () => void;
+        __moduxCopy?: () => void; __moduxPaste?: () => void;
+      };
       const shell = () => this.renderRoot.querySelector('archi-shell') as ArchiShell | null;
       w.__moduxSave = this.boundSave;
       w.__moduxUndo = () => shell()?.hostUndo();
       w.__moduxRedo = () => shell()?.hostRedo();
+      w.__moduxCopy = () => shell()?.hostCopy();
+      w.__moduxPaste = () => shell()?.hostPaste();
+      // Tell the host when a text field is focused so it lets native copy/paste through there
+      // instead of routing the clipboard keys to the canvas.
+      document.addEventListener('focusin', this.onFocusChange, true);
+      document.addEventListener('focusout', this.onFocusChange, true);
       this.refresh();
       console.info(`modux archi: vista abierta — corte=${this.doc.viewId ?? '(todo)'} — ${summary(this.store)}`);
     } catch (e) {
@@ -203,17 +213,45 @@ export class ModuxArchiIde extends LitElement {
   override disconnectedCallback(): void {
     window.clearTimeout(this.autosaveTimer);
     if (this.dirty) void this.save();
-    const w = window as unknown as { __moduxSave?: unknown; __moduxUndo?: unknown; __moduxRedo?: unknown };
+    document.removeEventListener('focusin', this.onFocusChange, true);
+    document.removeEventListener('focusout', this.onFocusChange, true);
+    const w = window as unknown as {
+      __moduxSave?: unknown; __moduxUndo?: unknown; __moduxRedo?: unknown; __moduxCopy?: unknown; __moduxPaste?: unknown;
+    };
     if (w.__moduxSave === this.boundSave) {
       delete w.__moduxSave;
       delete w.__moduxUndo;
       delete w.__moduxRedo;
+      delete w.__moduxCopy;
+      delete w.__moduxPaste;
     }
     super.disconnectedCallback();
   }
 
   /** Stable reference so the IDE host can call save() and disconnect can clear exactly it. */
   private readonly boundSave = () => this.save();
+
+  /** Last text-focus state reported to the host, to avoid chattering the bridge on every focus move. */
+  private textFocused = false;
+  /**
+   * Report whether the deep focus is on an editable field (input/textarea/contenteditable), piercing
+   * shadow roots. The plugin reads this to decide whether Cmd/Ctrl+C·V is a text edit (leave native)
+   * or a canvas clipboard action (route to the shell).
+   */
+  private readonly onFocusChange = () => {
+    const path = (document as unknown as { activeElement: Element | null });
+    let el: Element | null = path.activeElement;
+    // Walk into shadow roots to the real focus.
+    while (el && (el as HTMLElement & { shadowRoot?: ShadowRoot | null }).shadowRoot?.activeElement) {
+      el = (el as HTMLElement & { shadowRoot: ShadowRoot }).shadowRoot.activeElement;
+    }
+    const tag = el?.tagName;
+    const editable = tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement | null)?.isContentEditable === true;
+    if (editable === this.textFocused) return;
+    this.textFocused = editable;
+    const bridge = hostBridge();
+    if (bridge) void bridge({ op: 'setTextFocus', value: editable });
+  };
 
   override render() {
     if (!this.model) {

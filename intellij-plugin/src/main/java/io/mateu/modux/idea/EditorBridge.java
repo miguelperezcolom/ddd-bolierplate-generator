@@ -58,6 +58,8 @@ public final class EditorBridge implements Disposable {
     private Consumer<Boolean> onModified;
     /** Latest dirty state, so the Ctrl+S hook only bothers the webview when there is work to save. */
     private volatile boolean modified;
+    /** Whether a text field inside the webview holds focus — then the clipboard keys stay native. */
+    private volatile boolean textFieldFocused;
 
     /**
      * Two roots, by §12: the catalog (`.modux/`) that owns the elements — where {@code list}/
@@ -96,6 +98,10 @@ public final class EditorBridge implements Disposable {
         // it at the event queue (which runs before action dispatch) while OUR editor holds focus, and
         // route it to the editor's own undo/redo history instead.
         IdeEventQueue.getInstance().addDispatcher(this::interceptUndoRedo, this);
+        // Same for the clipboard keys (Cmd/Ctrl+C, Cmd/Ctrl+V): IntelliJ's $Copy/$Paste actions grab
+        // them first, so the webview never sees them. Route to the canvas's own copy/paste — but only
+        // when a text field is NOT focused, so native text copy/paste in inputs keeps working.
+        IdeEventQueue.getInstance().addDispatcher(this::interceptCopyPaste, this);
 
         if (!EditorResources.isBundled()) {
             LOG.error("the modux editor bundle is missing from the plugin: build editor/ first");
@@ -271,6 +277,36 @@ public final class EditorBridge implements Disposable {
         return true;
     }
 
+    /**
+     * Grab Cmd/Ctrl+C and Cmd/Ctrl+V before IntelliJ's own $Copy/$Paste, while THIS webview has
+     * focus and no text field inside it does, and route to the canvas's copy/paste. When a text
+     * field is focused we do NOT consume, so native copy/paste keeps working in the properties
+     * panel and inline rename.
+     */
+    private boolean interceptCopyPaste(AWTEvent e) {
+        if (!(e instanceof KeyEvent ke) || ke.getID() != KeyEvent.KEY_PRESSED) return false;
+        int code = ke.getKeyCode();
+        if (code != KeyEvent.VK_C && code != KeyEvent.VK_V) return false;
+        // Only the plain accelerator (no Shift/Alt), so Cmd+Shift+C and the like are left alone.
+        int mods = ke.getModifiersEx();
+        if ((mods & (KeyEvent.META_DOWN_MASK | KeyEvent.CTRL_DOWN_MASK)) == 0) return false;
+        if ((mods & (KeyEvent.SHIFT_DOWN_MASK | KeyEvent.ALT_DOWN_MASK)) != 0) return false;
+        if (textFieldFocused) return false;   // let native text copy/paste through
+        var focus = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        if (focus == null || !SwingUtilities.isDescendingFrom(focus, browser.getComponent())) return false;
+        browser.getCefBrowser().executeJavaScript(
+                code == KeyEvent.VK_C ? "window.__moduxCopy && window.__moduxCopy();"
+                        : "window.__moduxPaste && window.__moduxPaste();",
+                browser.getCefBrowser().getURL(), 0);
+        return true;
+    }
+
+    /** The webview reports whether a text field is focused, so the clipboard keys stay native there. */
+    private com.google.gson.JsonElement setTextFocus(JsonObject request) {
+        this.textFieldFocused = request.has("value") && request.get("value").getAsBoolean();
+        return JsonNull.INSTANCE;
+    }
+
     /** Ask the webview to flush its buffered edits to disk (native save routes here). */
     private void requestSave() {
         browser.getCefBrowser().executeJavaScript(
@@ -303,6 +339,7 @@ public final class EditorBridge implements Disposable {
                 case "createView" -> createView(request);
                 case "resolveProject" -> GSON.toJsonTree(resolveProject(request));
                 case "setModified" -> setModified(request);
+                case "setTextFocus" -> setTextFocus(request);
                 default -> throw new IllegalArgumentException("unknown op: " + op);
             };
             var envelope = new JsonObject();
