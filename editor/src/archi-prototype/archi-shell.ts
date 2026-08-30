@@ -509,7 +509,15 @@ export class ArchiShell extends LitElement {
     this.patchNodes((n) => (n.id === d.id ? { ...n, x: d.x, y: d.y, w: d.w, h: d.h } : n));
   };
   private onNodeRenamed = (e: Event) => {
-    const d = (e as CustomEvent).detail; this.commit();
+    const d = (e as CustomEvent).detail;
+    if (this.bound) {
+      // In bound mode the label is the model element's name — rename it there, not on the derived
+      // scene (which the next projection would overwrite, so the edit would never persist).
+      const n = this.node(d.id);
+      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: this.modelType(n.kind), id: d.id, name: d.name } });
+      return;
+    }
+    this.commit();
     this.patchNodes((n) => (n.id === d.id ? { ...n, label: d.name } : n));
   };
   private onCollapseToggled = (e: Event) => {
