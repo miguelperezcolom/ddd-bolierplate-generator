@@ -80,6 +80,80 @@ const KIND_LAYER: Record<string, LayerKey> = {
 };
 function kindLayer(kind: string): LayerKey { return KIND_LAYER[kind] ?? 'domain'; }
 
+/**
+ * Bound-mode wiring (free-form view over a real catalog): palette kind → the real modux command
+ * that mints the element. Only kinds that create a STANDALONE element visible in the projection
+ * are here; parent-only or unsupported kinds fall through to a "not wired" notice. The module
+ * patterns (bff/acl/api-gateway/adapter) are minted as plain modules — «al final, eso serán
+ * módulos» — until the schema carries a module pattern.
+ */
+const BOUND_CREATE: Record<string, (id: string, name: string) => Record<string, unknown>> = {
+  component: (id, name) => ({ kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' }),
+  aggregate: (id, name) => ({ kind: 'add-aggregate', id, name }),
+  entity: (id, name) => ({ kind: 'add-entity', id, name }),
+  'value-object': (id, name) => ({ kind: 'add-value-object', id, name }),
+  person: (id, name) => ({ kind: 'add-actor', id, name }),
+  usecase: (id, name) => ({ kind: 'add-use-case', id, name }),
+  policy: (id, name) => ({ kind: 'add-use-case', id, name, policy: true }),
+  workflow: (id, name) => ({ kind: 'add-workflow', id, name }),
+  'etl-flow': (id, name) => ({ kind: 'add-etl-flow', id, name }),
+  api: (id, name) => ({ kind: 'add-api', id, name }),
+  'proxy-api': (id, name) => ({ kind: 'add-proxy-api', id, name }),
+  'external-system': (id, name) => ({ kind: 'add-external-system', id, name }),
+  'identity-provider': (id, name) => ({ kind: 'add-identity-provider', id, name }),
+  'ai-agent': (id, name) => ({ kind: 'add-ai-agent', id, name }),
+  'mcp-gateway': (id, name) => ({ kind: 'add-mcp-gateway', id, name }),
+  rag: (id, name) => ({ kind: 'add-rag', id, name }),
+  'ui-app': (id, name) => ({ kind: 'create-ui-app', id, name }),
+  page: (id, name) => ({ kind: 'create-ui-page', id, name }),
+  deployment: (id, name) => ({ kind: 'add-service', id, name }),
+  module: (id, name) => ({ kind: 'add-module', id, name, boundedContextId: '' }),
+  bff: (id, name) => ({ kind: 'add-module', id, name, boundedContextId: '' }),
+  acl: (id, name) => ({ kind: 'add-module', id, name, boundedContextId: '' }),
+  'api-gateway': (id, name) => ({ kind: 'add-module', id, name, boundedContextId: '' }),
+  adapter: (id, name) => ({ kind: 'add-module', id, name, boundedContextId: '' }),
+  // These live nested inside a parent; created loose (top-level) and adopted later by a composition edge.
+  invariant: (id, name) => ({ kind: 'add-loose-element', id, name, elementType: 'invariant' }),
+  'read-model': (id, name) => ({ kind: 'add-loose-element', id, name, elementType: 'read-model' }),
+  'integration-event': (id, name) => ({ kind: 'add-loose-element', id, name, elementType: 'integration-event' }),
+};
+
+/** Where each element kind lands in the projected model, so a member id resolves back to a node. */
+const RESOLVE_INDEX: { field: keyof ModuxModel; kind: string }[] = [
+  { field: 'boundedContexts', kind: 'component' },
+  { field: 'aggregates', kind: 'aggregate' },
+  { field: 'entities', kind: 'entity' },
+  { field: 'valueObjects', kind: 'value-object' },
+  { field: 'actors', kind: 'person' },
+  { field: 'looseUseCases', kind: 'usecase' },
+  { field: 'workflows', kind: 'workflow' },
+  { field: 'etlFlows', kind: 'etl-flow' },
+  { field: 'apis', kind: 'api' },
+  { field: 'proxyApis', kind: 'proxy-api' },
+  { field: 'externalSystems', kind: 'external-system' },
+  { field: 'identityProviders', kind: 'identity-provider' },
+  { field: 'aiAgents', kind: 'ai-agent' },
+  { field: 'mcpGateways', kind: 'mcp-gateway' },
+  { field: 'rags', kind: 'rag' },
+  { field: 'uiApps', kind: 'ui-app' },
+  { field: 'pages', kind: 'page' },
+  { field: 'services', kind: 'deployment' },
+  { field: 'modules', kind: 'module' },
+];
+
+/** A loose element's `elementType` → the node kind to draw it as. */
+const LOOSE_KIND: Record<string, string> = {
+  invariant: 'invariant', 'read-model': 'read-model', 'integration-event': 'integration-event',
+};
+
+/** Node kind → the `type` the rename-element command expects (rename.ts). Absent ⇒ rename unsupported. */
+const RENAME_TYPE: Record<string, string> = {
+  component: 'boundedContext', aggregate: 'aggregate', entity: 'entity', 'value-object': 'value-object',
+  person: 'actor', usecase: 'use-case', workflow: 'workflow', api: 'api', 'proxy-api': 'proxy-api',
+  'external-system': 'external-system', 'ai-agent': 'ai-agent', 'mcp-gateway': 'mcp-gateway', rag: 'rag',
+  'ui-app': 'ui-app', page: 'page', 'read-model': 'read-model', 'integration-event': 'integration-event',
+};
+
 type Tool =
   | { kind: 'select' }
   | { kind: 'place'; el: ElementTool }
@@ -102,16 +176,17 @@ export class ArchiShell extends LitElement {
       this.scene = this.buildViewScene();
     }
   }
-  /** kind de nodo → tipo del modelo (para comandos). */
-  private modelType(kind: string) { return kind === 'component' ? 'boundedContext' : kind === 'person' ? 'actor' : kind; }
-  /** Resuelve un id del modelo a { kind de nodo, label }. */
+  /** kind de nodo → tipo del modelo (para rename-element). */
+  private modelType(kind: string) { return RENAME_TYPE[kind] ?? kind; }
+  /** Resuelve un id del modelo a { kind de nodo, label }, recorriendo el modelo proyectado. */
   private resolveElement(id: string): { kind: string; label: string } | null {
     const m = this.model!;
-    const bc = m.boundedContexts.find((x) => x.id === id); if (bc) return { kind: 'component', label: bc.name };
-    const ag = (m.aggregates ?? []).find((x) => x.id === id); if (ag) return { kind: 'aggregate', label: ag.name };
-    const en = (m.entities ?? []).find((x) => x.id === id); if (en) return { kind: 'entity', label: en.name };
-    const vo = (m.valueObjects ?? []).find((x) => x.id === id); if (vo) return { kind: 'value-object', label: vo.name };
-    const ac = (m.actors ?? []).find((x) => x.id === id); if (ac) return { kind: 'person', label: ac.name };
+    for (const { field, kind } of RESOLVE_INDEX) {
+      const el = ((m[field] as { id: string; name?: string }[] | undefined) ?? []).find((x) => x.id === id);
+      if (el) return { kind, label: el.name ?? id };
+    }
+    const le = (m.looseElements ?? []).find((x) => x.id === id);
+    if (le) return { kind: LOOSE_KIND[le.elementType] ?? le.elementType, label: le.name };
     return null;
   }
   /** Escena = miembros de la vista (resueltos contra el modelo) + relaciones entre ellos. */
@@ -618,17 +693,14 @@ export class ArchiShell extends LitElement {
     if (this.bound) {
       const id = `${el.kind}-${Date.now()}`;
       const name = el.label;
-      let created = true;
-      if (el.kind === 'aggregate') this.emit('modux-command', { command: { kind: 'add-aggregate', id, name } });
-      else if (el.kind === 'component') this.emit('modux-command', { command: { kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' } });
-      else if (el.kind === 'entity') this.emit('modux-command', { command: { kind: 'add-entity', id, name } });
-      else if (el.kind === 'value-object') this.emit('modux-command', { command: { kind: 'add-value-object', id, name } });
-      else if (el.kind === 'person') this.emit('modux-command', { command: { kind: 'add-actor', id, name } });
-      else { created = false; this.flash(`«${el.label}» aún no cableado en el spike`); }
-      if (created) {
+      const build = BOUND_CREATE[el.kind];
+      if (build) {
+        this.emit('modux-command', { command: build(id, name) });
         this.view = { members: [...this.view.members, { id, x, y, w: el.w, h: el.h }] };
         this.emit('view-changed', { view: this.view });
         this.select(id);
+      } else {
+        this.flash(`«${el.label}» necesita un contenedor o aún no se puede crear suelto`);
       }
       return { id, label: name, kind: el.kind, symbol: el.kind, x, y, w: el.w, h: el.h } as SceneNode;
     }
